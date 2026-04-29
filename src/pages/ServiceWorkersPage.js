@@ -9,12 +9,293 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import apiService from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../styles/theme';
+import { useResponsive, wp, hp, rf, scale, getNumColumns } from '../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(4),
+    paddingTop: insets.top + hp(2),
+    paddingBottom: hp(2),
+    backgroundColor: Colors.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backButton: {
+    padding: wp(1),
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: wp(3),
+  },
+  categoryIcon: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
+  },
+  headerText: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: rf(18),
+    fontWeight: 'bold',
+    color: "#fff",
+  },
+  headerSubtitle: {
+    fontSize: rf(12),
+    color: "#fff",
+  },
+  headerSpacer: {
+    width: scale(32),
+  },
+  scrollView: {
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    marginHorizontal: wp(4),
+    marginBottom: hp(2),
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1.5),
+    borderRadius: scale(12),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: wp(2),
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: rf(14),
+    color: Colors.text,
+  },
+  filtersContainer: {
+    backgroundColor: Colors.card,
+    marginHorizontal: wp(4),
+    marginBottom: hp(2),
+    padding: wp(4),
+    borderRadius: scale(12),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterRow: {
+    marginBottom: hp(1.5),
+  },
+  filterLabel: {
+    fontSize: rf(13),
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    marginBottom: hp(1),
+  },
+  filterChip: {
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1),
+    borderRadius: scale(20),
+    backgroundColor: Colors.input,
+    marginRight: wp(2),
+  },
+  activeFilterChip: {
+    backgroundColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+  },
+  activeFilterChipText: {
+    color: Colors.textLight,
+    fontWeight: '600',
+  },
+  availableFilter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(1),
+  },
+  checkbox: {
+    width: scale(20),
+    height: scale(20),
+    borderRadius: scale(4),
+    borderWidth: 2,
+    borderColor: Colors.border,
+    marginRight: wp(2),
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  availableText: {
+    fontSize: rf(13),
+    color: Colors.text,
+  },
+  resultCount: {
+    fontSize: rf(11),
+    color: Colors.textTertiary,
+  },
+  emptyContainer: {
+    padding: wp(12),
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: rf(16),
+    fontWeight: '600',
+    color: Colors.text,
+    marginTop: hp(2),
+  },
+  emptySubtext: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+    marginTop: hp(1),
+  },
+  workerCard: {
+    backgroundColor: Colors.card,
+    marginHorizontal: wp(4),
+    marginBottom: hp(1.5),
+    borderRadius: scale(12),
+    padding: wp(4),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  workerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(1.5),
+  },
+  workerAvatar: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
+  },
+  workerInfo: {
+    flex: 1,
+  },
+  workerName: {
+    fontSize: rf(15),
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: hp(0.5),
+  },
+  workerStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+    marginRight: wp(1.5),
+  },
+  statusText: {
+    fontSize: rf(11),
+    color: Colors.textSecondary,
+  },
+  workerBio: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+    marginBottom: hp(1.5),
+    lineHeight: rf(18),
+  },
+  workerRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(1.5),
+  },
+  ratingText: {
+    marginLeft: wp(1),
+    fontSize: rf(13),
+    color: Colors.text,
+  },
+  workerDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: hp(1.5),
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: wp(4),
+    marginBottom: hp(1),
+  },
+  detailText: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+    marginLeft: wp(1),
+  },
+  rateText: {
+    fontSize: rf(13),
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  workerActions: {
+    flexDirection: 'row',
+    gap: wp(2),
+  },
+  viewProfileButton: {
+    flex: 1,
+    backgroundColor: Colors.input,
+    paddingVertical: hp(1.5),
+    borderRadius: scale(8),
+    alignItems: 'center',
+  },
+  viewProfileButtonText: {
+    fontSize: rf(13),
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  bookButton: {
+    flex: 1,
+    paddingVertical: hp(1.5),
+    borderRadius: scale(8),
+    alignItems: 'center',
+  },
+  bookButtonText: {
+    fontSize: rf(13),
+    fontWeight: '600',
+    color: Colors.textLight,
+  },
+});
 
 const ServiceWorkersPage = ({ route, navigation }) => {
   const { category } = route.params || {};
+  const { width, height, isTablet, isSmallPhone } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(width, height, isTablet, isSmallPhone, insets);
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,25 +341,25 @@ const ServiceWorkersPage = ({ route, navigation }) => {
       plumbing: {
         title: 'Plomberie',
         icon: 'construct',
-        color: '#3b82f6',
+        color: Colors.primary,
         description: 'Plombiers professionnels disponibles'
       },
       electrical: {
         title: 'Électricité',
         icon: 'flash',
-        color: '#eab308',
+        color: Colors.primary,
         description: 'Électriciens certifiés à votre service'
       },
       hvac: {
         title: 'Climatisation',
-        icon: 'air',
-        color: '#22c55e',
+        icon: 'snow',
+        color: Colors.primary,
         description: 'Techniciens HVAC expérimentés'
       },
       locksmith: {
         title: 'Serrurerie',
         icon: 'lock-closed',
-        color: '#ef4444',
+        color: Colors.primary,
         description: 'Serruriers disponibles 24/7'
       }
     };
@@ -112,24 +393,25 @@ const ServiceWorkersPage = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#667eea" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.card} />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <View style={[styles.categoryIcon, { backgroundColor: categoryInfo.color }]}>
-            <Ionicons name={categoryInfo.icon} size={20} color="#fff" />
+            <Ionicons name={categoryInfo.icon} size={20} color={Colors.textLight} />
           </View>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>{categoryInfo.title}</Text>
@@ -147,7 +429,7 @@ const ServiceWorkersPage = ({ route, navigation }) => {
       >
         {/* Search */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher un professionnel..."
@@ -282,278 +564,8 @@ const ServiceWorkersPage = ({ route, navigation }) => {
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginLeft: 12,
-  },
-  categoryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-  },
-  headerSpacer: {
-    width: 32,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    margin: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  filtersContainer: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  filterRow: {
-    marginBottom: 12,
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-  },
-  activeFilterChip: {
-    backgroundColor: '#667eea',
-  },
-  filterChipText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  activeFilterChipText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  availableFilter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    marginRight: 8,
-  },
-  checkboxChecked: {
-    backgroundColor: '#667eea',
-    borderColor: '#667eea',
-  },
-  availableText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  resultCount: {
-    fontSize: 12,
-    color: '#999',
-  },
-  emptyContainer: {
-    padding: 48,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  workerCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  workerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  workerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  workerInfo: {
-    flex: 1,
-  },
-  workerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  workerStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  workerBio: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  workerRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  ratingText: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#333',
-  },
-  workerDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  rateText: {
-    fontSize: 14,
-    color: '#667eea',
-    fontWeight: '600',
-  },
-  workerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  viewProfileButton: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewProfileButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  bookButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  bookButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-});
 
 export default ServiceWorkersPage;

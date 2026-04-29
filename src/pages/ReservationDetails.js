@@ -8,12 +8,329 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
+import { useResponsive, wp, hp, rf, scale } from '../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    paddingHorizontal: wp(5),
+  },
+  errorText: {
+    fontSize: rf(15),
+    color: Colors.text,
+    textAlign: 'center',
+    marginVertical: hp(2),
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: wp(6),
+    paddingVertical: hp(1.5),
+    borderRadius: scale(8),
+  },
+  retryButtonText: {
+    color: Colors.textLight,
+    fontSize: rf(15),
+    fontWeight: '600',
+  },
+  header: {
+    backgroundColor: Colors.headerBackground,
+    paddingTop: insets.top + hp(5),
+    paddingHorizontal: wp(5),
+    paddingBottom: hp(2.5),
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: wp(4),
+  },
+  headerTitle: {
+    fontSize: rf(18),
+    fontWeight: 'bold',
+    color: Colors.textLight,
+  },
+  profileSection: {
+    backgroundColor: Colors.headerBackground,
+    alignItems: 'center',
+    paddingBottom: hp(5),
+  },
+  profilePictureContainer: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    backgroundColor: Colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  workerCard: {
+    backgroundColor: Colors.card,
+    marginHorizontal: wp(5),
+    borderRadius: scale(16),
+    padding: wp(5),
+    marginTop: -hp(2.5),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  workerName: {
+    fontSize: rf(18),
+    fontWeight: 'bold',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: hp(0.5),
+  },
+  workerProfession: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: hp(1.5),
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: hp(1.5),
+  },
+  starsRow: {
+    flexDirection: 'row',
+    marginRight: wp(2),
+  },
+  ratingText: {
+    fontSize: rf(12),
+    color: Colors.textSecondary,
+  },
+  workerStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingTop: hp(1.5),
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: wp(4),
+  },
+  workerStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: wp(1),
+  },
+  workerStatText: {
+    fontSize: rf(12),
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  section: {
+    paddingHorizontal: wp(5),
+    marginTop: hp(3),
+  },
+  sectionTitle: {
+    fontSize: rf(18),
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: hp(1.5),
+  },
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: scale(12),
+    padding: wp(4),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: wp(3),
+  },
+  formHalf: {
+    flex: 1,
+  },
+  label: {
+    fontSize: rf(13),
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: hp(1),
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: scale(10),
+    padding: wp(3),
+    fontSize: rf(14),
+    backgroundColor: Colors.background,
+    marginBottom: hp(0.25),
+    color: Colors.text,
+  },
+  inputError: {
+    borderColor: '#ef4444',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateText: {
+    fontSize: rf(14),
+    color: Colors.text,
+  },
+  placeholderText: {
+    fontSize: rf(14),
+    color: Colors.textTertiary,
+  },
+  fieldError: {
+    color: '#ef4444',
+    fontSize: rf(11),
+    marginBottom: hp(1),
+    marginTop: hp(0.25),
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: scale(10),
+    padding: wp(3),
+    fontSize: rf(14),
+    backgroundColor: Colors.background,
+    marginBottom: hp(0.25),
+    minHeight: scale(100),
+    color: Colors.text,
+  },
+  charCount: {
+    fontSize: rf(11),
+    color: Colors.textTertiary,
+    textAlign: 'right',
+    marginTop: hp(0.5),
+  },
+  urgencyContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: wp(2),
+  },
+  urgencyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(3.5),
+    paddingVertical: hp(1.25),
+    borderRadius: scale(12),
+    backgroundColor: Colors.background,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    gap: wp(1.5),
+  },
+  urgencyText: {
+    fontSize: rf(12),
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  urgencyTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: hp(1.25),
+  },
+  summaryIconLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: wp(2),
+  },
+  summaryLabel: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: rf(13),
+    fontWeight: '600',
+    color: Colors.text,
+    maxWidth: '50%',
+    textAlign: 'right',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: wp(5),
+    paddingVertical: hp(2),
+    backgroundColor: Colors.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: wp(3),
+    paddingBottom: insets.bottom + hp(2),
+  },
+  cancelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.card,
+    paddingVertical: hp(2),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: wp(1.5),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cancelButtonText: {
+    fontSize: rf(15),
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  confirmButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: hp(2),
+    borderRadius: scale(12),
+    gap: wp(1.5),
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  confirmButtonText: {
+    color: Colors.textLight,
+    fontSize: rf(15),
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+});
 
 const ReservationDetails = ({ route, navigation }) => {
   const {
@@ -29,6 +346,9 @@ const ReservationDetails = ({ route, navigation }) => {
     time,
   } = route.params || {};
   const { user } = useAuth();
+  const { width, height, isTablet, isSmallPhone } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(width, height, isTablet, isSmallPhone, insets);
 
   const [formData, setFormData] = useState({
     date: date || '',
@@ -225,7 +545,8 @@ const ReservationDetails = ({ route, navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.headerBackground} />
       <ScrollView>
         {/* Header */}
         <View style={styles.header}>
@@ -483,7 +804,7 @@ const ReservationDetails = ({ route, navigation }) => {
         </View>
 
         {/* Bottom spacing for buttons */}
-        <View style={{ height: 100 }} />
+        <View style={{ height: hp(12) }} />
       </ScrollView>
 
       {/* Action Buttons - Fixed at bottom like WorkerProfile */}
@@ -507,336 +828,8 @@ const ReservationDetails = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: Colors.text,
-    textAlign: 'center',
-    marginVertical: 16,
-  },
-  retryButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: Colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // Header - matches WorkerProfile
-  header: {
-    backgroundColor: Colors.headerBackground,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.textLight,
-  },
-
-  // Profile section - matches WorkerProfile
-  profileSection: {
-    backgroundColor: Colors.headerBackground,
-    alignItems: 'center',
-    paddingBottom: 40,
-  },
-  profilePictureContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Worker card - matches detailsCard from WorkerProfile
-  workerCard: {
-    backgroundColor: Colors.card,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
-    marginTop: -20,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  workerName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  workerProfession: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  ratingText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  workerStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: 16,
-  },
-  workerStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  workerStatText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-
-  // Sections - matches WorkerProfile section style
-  section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-
-  // Cards - matches reviewCard style from WorkerProfile
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  // Form elements
-  formRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  formHalf: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: Colors.background,
-    marginBottom: 4,
-    color: Colors.text,
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  datePickerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dateText: {
-    fontSize: 16,
-    color: Colors.text,
-  },
-  placeholderText: {
-    fontSize: 16,
-    color: Colors.textTertiary,
-  },
-  fieldError: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginBottom: 8,
-    marginTop: 2,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: Colors.background,
-    marginBottom: 4,
-    minHeight: 100,
-    color: Colors.text,
-  },
-  charCount: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-
-  // Urgency
-  urgencyContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  urgencyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: Colors.background,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    gap: 6,
-  },
-  urgencyText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  urgencyTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-
-  // Summary
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  summaryIconLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  summaryValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    maxWidth: '50%',
-    textAlign: 'right',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-
-  // Action buttons - matches WorkerProfile
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.card,
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 6,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  confirmButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 6,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  confirmButtonText: {
-    color: Colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-});
 
 export default ReservationDetails;

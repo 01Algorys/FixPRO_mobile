@@ -13,9 +13,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const AuthPage = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('user');
-  const [isLogin, setIsLogin] = useState(true);
+const AuthPage = ({ route }) => {
+  const { isLogin: isLoginParam, role: roleParam } = route.params || {};
+  const [activeTab, setActiveTab] = useState(roleParam === 'WORKER' ? 'worker' : 'user');
+  const [isLogin, setIsLogin] = useState(isLoginParam !== undefined ? isLoginParam : true);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',

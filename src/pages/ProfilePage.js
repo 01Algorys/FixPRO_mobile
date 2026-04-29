@@ -83,6 +83,7 @@ const ProfilePage = ({ navigation }) => {
       };
 
       setProfileData(combinedProfileData);
+      console.log("afhoiawjfoiajwfoi",combinedProfileData)
     } catch (error) {
       console.error('Failed to load profile:', error);
       setError('Impossible de charger le profil. Veuillez réessayer.');
@@ -147,6 +148,7 @@ const ProfilePage = ({ navigation }) => {
     }
     return stars;
   };
+  console.log("profile data", profileData)
 
   if (loading) {
     return (
@@ -205,13 +207,13 @@ const ProfilePage = ({ navigation }) => {
 
       {/* Main Content Card */}
       <View style={styles.mainCard}>
-        <Text style={styles.profileName}>{profileData?.name}</Text>
-        <Text style={styles.userEmail}>{profileData?.email}</Text>
+        <Text style={styles.profileName}>{profileData?.user.name}</Text>
+        <Text style={styles.userEmail}>{profileData?.user.email}</Text>
 
         {profileData?.phone ? (
           <View style={styles.infoRow}>
             <Ionicons name="call-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.infoRowText}>{profileData.phone}</Text>
+            <Text style={styles.infoRowText}>{profileData.user.phone}</Text>
           </View>
         ) : null}
 

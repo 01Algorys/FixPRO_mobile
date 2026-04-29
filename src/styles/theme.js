@@ -29,7 +29,7 @@ export const Colors = {
   background: '#f8f9fa', // Light grey background
   card: '#ffffff',
   input: '#f9f9f9',
-  headerBackground: '#1A3763', // Dark blue header background
+  headerBackground: '#0b377a', // Dark blue header background
   
   // Text
   text: '#1a1a1a', // Dark text for better contrast

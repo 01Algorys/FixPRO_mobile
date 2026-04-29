@@ -1,36 +1,43 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socketService';
 import { Alert } from 'react-native';
+import apiService from '../services/api';
+import { useAuth } from './AuthContext';
 
-const API_BASE_URL = process.env.EXPO_API_URL || 'http://10.58.224.226:3001/api';
+const API_BASE_URL = process.env.EXPO_API_URL || 'http://192.168.1.15:3001/api';
 
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [reservationUnread, setReservationUnread] = useState(0);
   const [newConversation, setNewConversation] = useState(null);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const activeConversationRef = useRef(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeConversationRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   useEffect(() => {
     // Load unread counts from AsyncStorage on mount
     const loadUnreadCounts = async () => {
       try {
-        // Load message unread count
-        const token = await AsyncStorage.getItem('token');
-        if (token) {
-          const response = await fetch(`${API_BASE_URL}/messages/unread-count`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUnreadMessages(data.data?.unreadCount || 0);
-            await AsyncStorage.setItem('unreadCount', String(data.data?.unreadCount || 0));
-          }
+        // Only load from API if user is authenticated
+        if (isAuthenticated) {
+          const response = await apiService.getUnreadMessageCount();
+          setUnreadMessages(response.data?.unreadCount || 0);
+          await AsyncStorage.setItem('unreadCount', String(response.data?.unreadCount || 0));
+        } else {
+          // Fall back to AsyncStorage for non-authenticated users
+          const stored = await AsyncStorage.getItem('unreadCount');
+          if (stored) setUnreadMessages(parseInt(stored));
         }
-        // Load reservation unread count
+
+        // Load reservation unread count from AsyncStorage
         const storedReservation = await AsyncStorage.getItem('reservationUnreadCount');
         if (storedReservation) setReservationUnread(parseInt(storedReservation));
       } catch (error) {
@@ -47,11 +54,26 @@ export const NotificationProvider = ({ children }) => {
 
     // Global new_message listener for tab badge updates
     const handleNewMessage = async (data) => {
-      setUnreadMessages(prev => {
-        const newCount = prev + 1;
-        AsyncStorage.setItem('unreadCount', String(newCount));
-        return newCount;
-      });
+      // Only increment if user is NOT currently viewing that conversation
+      if (data.reservationId !== activeConversationRef.current) {
+        setUnreadMessages(prev => {
+          const newCount = prev + 1;
+          AsyncStorage.setItem('unreadCount', String(newCount));
+          return newCount;
+        });
+      }
+    };
+
+    // new_message_badge listener for badge increments
+    const handleNewMessageBadge = async (data) => {
+      // Only increment if user is NOT currently viewing that conversation
+      if (data.reservationId !== activeConversationRef.current) {
+        setUnreadMessages(prev => {
+          const newCount = prev + 1;
+          AsyncStorage.setItem('unreadCount', String(newCount));
+          return newCount;
+        });
+      }
     };
 
     // new_reservation listener for workers
@@ -143,12 +165,14 @@ export const NotificationProvider = ({ children }) => {
     // Register all listeners on socket connect
     const registerListeners = () => {
       socketService.off('new_message', handleNewMessage);
+      socketService.off('new_message_badge', handleNewMessageBadge);
       socketService.off('new_reservation', handleNewReservation);
       socketService.off('reservation_status_changed', handleStatusChanged);
       socketService.off('job_completed', handleJobCompleted);
       socketService.off('conversation_started', handleConversationStarted);
       
       socketService.on('new_message', handleNewMessage);
+      socketService.on('new_message_badge', handleNewMessageBadge);
       socketService.on('new_reservation', handleNewReservation);
       socketService.on('reservation_status_changed', handleStatusChanged);
       socketService.on('job_completed', handleJobCompleted);
@@ -168,6 +192,7 @@ export const NotificationProvider = ({ children }) => {
     return () => {
       socketService.off('connect', registerListeners);
       socketService.off('new_message', handleNewMessage);
+      socketService.off('new_message_badge', handleNewMessageBadge);
       socketService.off('new_reservation', handleNewReservation);
       socketService.off('reservation_status_changed', handleStatusChanged);
       socketService.off('job_completed', handleJobCompleted);
@@ -185,6 +210,18 @@ export const NotificationProvider = ({ children }) => {
     await AsyncStorage.setItem('reservationUnreadCount', '0');
   };
 
+  const setCurrentConversation = (conversationId) => {
+    setActiveConversationId(conversationId);
+  };
+
+  const decrementUnreadByCount = async (count) => {
+    setUnreadMessages(prev => {
+      const newCount = Math.max(0, prev - count);
+      AsyncStorage.setItem('unreadCount', String(newCount));
+      return newCount;
+    });
+  };
+
   return (
     <NotificationContext.Provider value={{ 
       unreadMessages, 
@@ -194,7 +231,10 @@ export const NotificationProvider = ({ children }) => {
       setReservationUnread,
       resetReservationUnread,
       newConversation,
-      setNewConversation
+      setNewConversation,
+      activeConversationId,
+      setCurrentConversation,
+      decrementUnreadByCount
     }}>
       {children}
     </NotificationContext.Provider>

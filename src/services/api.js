@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.EXPO_API_URL || 'http://10.58.224.226:3001/api';
+const API_BASE_URL = process.env.EXPO_API_URL || 'http://192.168.1.15:3001/api';
 
 class ApiService {
   constructor() {
@@ -112,6 +112,13 @@ class ApiService {
     return this.request('/workers/profile', {
       method: 'PUT',
       body: JSON.stringify(workerData),
+    });
+  }
+
+  async changePassword(passwordData) {
+    return this.request('/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify(passwordData),
     });
   }
 
@@ -229,6 +236,17 @@ class ApiService {
 
   async getWorkerMessages(workerId) {
     return this.request(`/messages/worker/${workerId}`);
+  }
+
+  async savePushToken(token) {
+    return this.request('/users/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async getUnreadMessageCount() {
+    return this.request('/messages/unread-count');
   }
 }
 

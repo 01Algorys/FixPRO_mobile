@@ -33,7 +33,7 @@ class SocketService {
         return;
       }
 
-      const apiUrl = process.env.EXPO_API_URL || 'http://10.58.224.226:3001/api';
+      const apiUrl = process.env.EXPO_API_URL || 'http://192.168.1.15:3001/api';
       const socketUrl = apiUrl.replace('/api', '').replace(/\/$/, '');
 
       console.log('Connecting to socket at:', socketUrl);

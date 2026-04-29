@@ -10,19 +10,25 @@ import {
   Alert,
   RefreshControl,
   TextInput,
-  Dimensions,
   StatusBar,
+  SafeAreaView,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
-
-const { width, height } = Dimensions.get('window');
+import { useResponsive, wp, hp, rf, scale, getNumColumns } from '../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const UserHomePage = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const { width, height, isTablet, isSmallPhone, getSpacing } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const numColumns = getNumColumns();
+  const styles = createStyles(width, height, isTablet, isSmallPhone, insets);
   const [workers, setWorkers] = useState([]);
   const [services, setServices] = useState([]);
   const [userData, setUserData] = useState(null);
@@ -90,7 +96,6 @@ const UserHomePage = ({ navigation }) => {
           userId: worker.id || worker.userId || worker._id
         };
       });
-      console.log('Processed Workers:', JSON.stringify(processedWorkers, null, 2));
       setWorkers(processedWorkers);
 
       // Set user data
@@ -128,7 +133,7 @@ const UserHomePage = ({ navigation }) => {
         <Ionicons
           key={i}
           name={i < fullStars ? 'star' : 'star-outline'}
-          size={14}
+          size={rf(14)}
           color={Colors.star}
         />
       );
@@ -196,7 +201,7 @@ const UserHomePage = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.headerBackground} />
       <ScrollView
         style={styles.scrollView}
@@ -248,8 +253,8 @@ const UserHomePage = ({ navigation }) => {
               style={styles.categoryCard}
               onPress={() => handleCategoryClick(category.id)}
             >
-              <View style={[styles.categoryIcon, { backgroundColor: `#ffff` || '#fff' }]}>
-                <Ionicons name={category.icon} size={35} color={Colors.iconLight} />
+              <View style={[styles.categoryIcon, { backgroundColor: Colors.primary + '15' }]}>
+                <Ionicons name={category.icon} size={35} color={Colors.primary} />
               </View>
               <Text style={styles.categoryTitle}>{category.title}</Text>
             </TouchableOpacity>
@@ -307,11 +312,12 @@ const UserHomePage = ({ navigation }) => {
         ))}
       </View>
     </ScrollView>
-    </View>
+  </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+// Responsive styles using utility functions
+const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.headerBackground,
@@ -323,105 +329,102 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.headerBackground,
   },
   header: {
     backgroundColor: Colors.headerBackground,
-    paddingHorizontal: width * 0.05,
-    paddingTop: height * 0.05,
-    paddingBottom: height * 0.03,
+    paddingHorizontal: wp(5),
+    paddingTop: insets.top + hp(2),
+    paddingBottom: hp(3),
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: height * 0.025,
+    marginBottom: hp(2.5),
   },
   headerLeft: {
     flex: 1,
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: width * 0.06,
+    fontSize: rf(28),
     fontWeight: 'bold',
     color: Colors.textLight,
     textAlign: 'left',
   },
   notificationButton: {
-    padding: width * 0.02,
+    padding: wp(2),
     alignItems: 'center',
     justifyContent: 'center',
   },
   welcomeText: {
-    fontSize: width * 0.045,
+    fontSize: rf(16),
     color: Colors.textLight,
-    marginBottom: height * 0.025,
+    marginBottom: hp(2.5),
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: width * 0.03,
+    gap: wp(3),
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.card,
-    borderRadius: width * 0.03,
-    paddingHorizontal: width * 0.03,
-    paddingVertical: height * 0.015,
-    gap: width * 0.025,
+    borderRadius: scale(12),
+    paddingHorizontal: wp(3),
+    paddingVertical: hp(1.5),
+    gap: wp(2.5),
   },
   searchInput: {
-    padding:2,
-    height: height * 0.03,
+    padding: 2,
+    height: hp(4),
     flex: 1,
-    fontSize: width * 0.04,
+    fontSize: rf(14),
     color: Colors.text,
   },
   filterButton: {
     backgroundColor: Colors.primaryDark,
-    width: width * 0.12,
-    height: width * 0.12,
-    borderRadius: width * 0.03,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
   },
   section: {
-    paddingHorizontal: width * 0.025,
-    marginBottom: height * 0.03,
+    paddingHorizontal: wp(4),
+    marginBottom: hp(3),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: height * 0.02,
+    marginBottom: hp(2),
   },
   sectionTitle: {
-    fontSize: width * 0.045,
+    fontSize: rf(18),
     fontWeight: 'bold',
     color: Colors.textLight,
   },
   seeAllText: {
-    fontSize: width * 0.04,
+    fontSize: rf(14),
     color: Colors.textLight,
     fontWeight: '600',
   },
   categoriesGrid: {
-    display: 'flex',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: width * 0.025,
-    paddingLeft: width * 0.0125,
-    paddingRight: width * 0.0125,
+    gap: wp(3),
   },
   categoryCard: {
-    width: '22%',
+    width: isTablet ? '18%' : isSmallPhone ? '23%' : '22%',
     backgroundColor: Colors.card,
-    borderRadius: width * 0.04,
-    padding: width * 0.025,
+    borderRadius: scale(16),
+    padding: wp(3),
     alignItems: 'center',
-    marginBottom: height * 0.02,
+    marginBottom: hp(2),
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -429,24 +432,24 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   categoryIcon: {
-    width: width * 0.14,
-    height: width * 0.14,
-    borderRadius: width * 0.04,
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(16),
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: height * 0.03,
+    marginBottom: hp(2),
   },
   categoryTitle: {
-    fontSize: width * 0.03,
+    fontSize: rf(11),
     fontWeight: '600',
     color: Colors.text,
     textAlign: 'center',
   },
   workerCard: {
     backgroundColor: Colors.card,
-    borderRadius: width * 0.04,
-    padding: width * 0.03,
-    marginBottom: height * 0.03,
+    borderRadius: scale(16),
+    padding: wp(4),
+    marginBottom: hp(2),
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -456,16 +459,16 @@ const styles = StyleSheet.create({
   workerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.03,
+    marginBottom: hp(2),
   },
   workerAvatar: {
-    width: width * 0.14,
-    height: width * 0.14,
-    borderRadius: width * 0.07,
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: width * 0.03,
+    marginRight: wp(3),
     borderWidth: 2,
     borderColor: Colors.primary,
   },
@@ -473,9 +476,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: width * 0.04,
-    height: width * 0.04,
-    borderRadius: width * 0.02,
+    width: scale(16),
+    height: scale(16),
+    borderRadius: scale(8),
     backgroundColor: Colors.success,
     borderWidth: 2,
     borderColor: Colors.card,
@@ -484,26 +487,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   workerName: {
-    fontSize: width * 0.045,
+    fontSize: rf(16),
     fontWeight: '600',
     color: Colors.text,
-    marginBottom: height * 0.005,
+    marginBottom: hp(0.5),
   },
   workerProfession: {
-    fontSize: width * 0.035,
+    fontSize: rf(13),
     color: Colors.textSecondary,
   },
   workerRating: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.02,
+    marginBottom: hp(1.5),
   },
   stars: {
     flexDirection: 'row',
-    marginRight: width * 0.02,
+    marginRight: wp(2),
   },
   ratingText: {
-    fontSize: width * 0.035,
+    fontSize: rf(13),
     color: Colors.textSecondary,
   },
   workerDetails: {
@@ -512,11 +515,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   experienceText: {
-    fontSize: width * 0.035,
+    fontSize: rf(13),
     color: Colors.textSecondary,
   },
   priceText: {
-    fontSize: width * 0.035,
+    fontSize: rf(13),
     color: Colors.textSecondary,
   },
 });

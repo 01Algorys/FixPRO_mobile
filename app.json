@@ -8,15 +8,31 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "android": {
+      "package": "com.fixpro.mobile",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fixpro.mobile"
+      "bundleIdentifier": "com.fixpro.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FixPro needs access to your camera to take profile pictures",
+        "NSPhotoLibraryUsageDescription": "FixPro needs access to your photo library to select profile pictures"
+      }
     },
-    "android": {
-      "package": "com.fixpro.mobile"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "web": {},
+    "plugins": [
+      "expo-notifications",
+      "expo-font"
+    ],
+    "extra": {}
   }
 }

@@ -26,7 +26,7 @@ import { usePresence } from '../hooks/usePresence';
 const WorkerMessagesPage = ({ route }) => {
   const { conversationId, reservationId } = route.params || {};
   const { user } = useAuth();
-  const { resetUnreadMessages, newConversation, setNewConversation } = useNotifications();
+  const { resetUnreadMessages, newConversation, setNewConversation, setCurrentConversation, decrementUnreadByCount } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -52,7 +52,7 @@ const WorkerMessagesPage = ({ route }) => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     if (date.toDateString() === today.toDateString()) {
       return 'Aujourd\'hui';
     } else if (date.toDateString() === yesterday.toDateString()) {
@@ -112,7 +112,7 @@ const WorkerMessagesPage = ({ route }) => {
         }));
         return;
       }
-      
+
       if (data.reservationId === activeConversationRef.current) {
         setMessages(prev => {
           const exists = prev.some(m => m.id === data.message.id);
@@ -157,7 +157,7 @@ const WorkerMessagesPage = ({ route }) => {
     } else if (reservationId) {
       // Handle reservationId param from Contacter button
       console.log('WorkerMessagesPage - reservationId param received:', reservationId);
-      
+
       // Handle reservationId param - load conversations first if needed
       if (conversations.length === 0) {
         loadConversations().then(() => {
@@ -236,23 +236,25 @@ const WorkerMessagesPage = ({ route }) => {
     socketService.leaveReservation(activeConversationId);
     setActiveConversationId(null);
     activeConversationRef.current = null;
+    setCurrentConversation(null); // Clear current conversation in NotificationContext
     setMessages([]);
   };
 
   const openConversation = async (id) => {
     setActiveConversationId(id);
     activeConversationRef.current = id;
+    setCurrentConversation(id); // Set current conversation in NotificationContext
     setMessages([]);
     loadMessages(id);
     socketService.joinReservation(id);
-    
+
     // Mark conversation as read in DB
     try {
       await apiService.markConversationAsRead(id);
     } catch (error) {
       console.error('Failed to mark conversation as read:', error);
     }
-    
+
     setConversations(prev => {
       const updated = prev.map(conv =>
         conv.id === id
@@ -290,7 +292,7 @@ const WorkerMessagesPage = ({ route }) => {
     const messageContent = draft.trim();
     setDraft('');
     setSending(true);
-    
+
     try {
       // Create local message with unique ID
       const localId = `local_${Date.now()}_${Math.random()}`;
@@ -308,13 +310,13 @@ const WorkerMessagesPage = ({ route }) => {
         createdAt: new Date().toISOString(),
         type: 'text'
       };
-      
+
       // Append message immediately
       setMessages(prev => [...prev, newMessage]);
-      
+
       // Send to backend
       await apiService.sendMessage(activeConversationId, messageContent);
-      
+
       // Scroll to bottom after sending
       setTimeout(() => {
         messagesScrollViewRef.current?.scrollToEnd({ animated: true });
@@ -387,9 +389,10 @@ const WorkerMessagesPage = ({ route }) => {
               filteredConversations.map((conversation) => {
                 // For workers, show user's name
                 const participantName = conversation.user?.name || conversation.participantName || 'Client';
+                console.log(participantName.charAt(0).toUpperCase())
                 const participantAvatar = conversation.user?.avatar || conversation.participantAvatar;
                 const isUnread = conversation.unreadCount > 0;
-                
+
                 return (
                   <TouchableOpacity
                     key={conversation.id}
@@ -404,7 +407,7 @@ const WorkerMessagesPage = ({ route }) => {
                           <Text style={styles.avatarText}>{participantName.charAt(0).toUpperCase()}</Text>
                         )}
                       </View>
-                      <OnlineBadge userId={conversation.user?.id} size={12} borderColor="#fff" />
+                      <OnlineBadge userId={conversation.user?.id} size={10} borderColor="#fff" />
                     </View>
                     <View style={styles.threadContent}>
                       <View style={styles.threadHeader}>
@@ -439,17 +442,12 @@ const WorkerMessagesPage = ({ route }) => {
             </TouchableOpacity>
             <View style={styles.chatHeaderInfo}>
               <View style={styles.chatAvatar}>
-                {activeConversation.participantAvatar ? (
-                  <Image source={{ uri: activeConversation.participantAvatar }} style={styles.chatAvatarImage} />
-                ) : (
-                  <Text style={styles.chatAvatarText}>
-                    {activeConversation.participantName?.charAt(0).toUpperCase() || 'C'}
-                  </Text>
-                )}
-                <OnlineBadge userId={activeConversation.user?.id} size={10} borderColor="#fff" />
+                <Text style={styles.chatAvatarText}>
+                  {activeConversation.user.name?.charAt(0).toUpperCase() || 'C'}
+                </Text>
               </View>
               <View style={styles.chatHeaderText}>
-                <Text style={styles.chatTitle}>{activeConversation.participantName}</Text>
+                {/*<Text style={styles.chatTitle}>{activeConversation.user.name}</Text>*/}
                 <Text style={styles.chatSubtitle}>{activeConversation.serviceName}</Text>
                 <OnlineStatusText userId={activeConversation.user?.id} />
               </View>
@@ -460,9 +458,9 @@ const WorkerMessagesPage = ({ route }) => {
               </View>
             )}
           </View>
-          <ScrollView 
-            ref={messagesScrollViewRef} 
-            style={styles.messagesList} 
+          <ScrollView
+            ref={messagesScrollViewRef}
+            style={styles.messagesList}
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
           >
@@ -521,8 +519,8 @@ const WorkerMessagesPage = ({ route }) => {
                 onChangeText={setDraft}
                 multiline
               />
-              <TouchableOpacity 
-                style={[styles.sendButton, (!draft.trim() || sending) && styles.sendButtonDisabled]} 
+              <TouchableOpacity
+                style={[styles.sendButton, (!draft.trim() || sending) && styles.sendButtonDisabled]}
                 onPress={onSend}
                 disabled={!draft.trim() || sending}
               >
@@ -541,7 +539,11 @@ const WorkerMessagesPage = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    width: '100%',
+  },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
   sidebar: {
     flex: 1,
@@ -567,7 +569,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -592,7 +594,7 @@ const styles = StyleSheet.create({
   },
   conversationsList: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   threadCard: {
     backgroundColor: '#ffffff',
@@ -725,23 +727,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   chatHeader: {
-    backgroundColor: '#ffffff',
-    paddingTop: 52,
+    backgroundColor: Colors.headerBackground,
+    paddingTop: 56,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   chatBackButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#f3f4f6',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -752,46 +754,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chatAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.primary + '15',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    overflow: 'hidden',
   },
   chatAvatarImage: {
     width: '100%',
     height: '100%',
   },
   chatAvatarText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: Colors.primary,
+    color: '#ffffff',
   },
   chatHeaderText: {
     flex: 1,
   },
   chatTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 2,
+    marginTop: 5,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   chatSubtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   completedBadge: {
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
   },
   completedText: {
-    fontSize: 11,
-    color: '#6b7280',
+    fontSize: 12,
+    color: '#ffffff',
     fontWeight: '600',
   },
   messagesList: {

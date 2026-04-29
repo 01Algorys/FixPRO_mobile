@@ -11,6 +11,7 @@ import {
   Platform,
   StatusBar,
   Image,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -19,13 +20,414 @@ import { useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
 import { Colors } from '../styles/theme';
+import { useResponsive, wp, hp, rf, scale } from '../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OnlineBadge from '../components/OnlineBadge';
 import OnlineStatusText from '../components/OnlineStatusText';
 
+const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  sidebar: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    width: '100%',
+  },
+  header: {
+    backgroundColor: Colors.primary,
+    paddingTop: insets.top + hp(4),
+    paddingHorizontal: wp(5),
+    paddingBottom: hp(2),
+  },
+  headerTitle: {
+    fontSize: rf(24),
+    fontWeight: '800',
+    color: '#ffffff',
+    marginBottom: hp(0.5),
+  },
+  headerSubtitle: {
+    fontSize: rf(13),
+    color: '#ffffff',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    marginHorizontal: wp(4),
+    marginBottom: hp(2.5),
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1.5),
+    borderRadius: scale(14),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: wp(3),
+  },
+  searchInput: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: rf(14),
+  },
+  clearButton: {
+    marginLeft: wp(3),
+    padding: wp(1),
+  },
+  conversationsList: {
+    flex: 1,
+    paddingHorizontal: wp(4),
+  },
+  threadCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: scale(16),
+    padding: wp(4),
+    marginBottom: hp(1.25),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  threadCardUnread: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  avatarContainer: {
+    marginRight: wp(3),
+    position: 'relative',
+  },
+  avatar: {
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(25),
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarText: {
+    fontSize: rf(16),
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  threadContent: {
+    flex: 1,
+  },
+  threadHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp(0.5),
+  },
+  threadName: {
+    fontSize: rf(14),
+    fontWeight: '700',
+    color: Colors.text,
+    flex: 1,
+  },
+  threadNameUnread: {
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  threadTime: {
+    fontSize: rf(11),
+    color: Colors.textSecondary,
+  },
+  threadTimeUnread: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  threadPreview: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+    marginBottom: hp(0.5),
+  },
+  threadPreviewUnread: {
+    color: '#374151',
+    fontWeight: '600',
+  },
+  serviceTag: {
+    fontSize: rf(11),
+    color: Colors.textSecondary,
+  },
+  unreadBadge: {
+    backgroundColor: Colors.primary,
+    borderRadius: scale(12),
+    minWidth: scale(24),
+    height: scale(24),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp(2),
+    marginLeft: wp(2),
+  },
+  unreadCount: {
+    color: '#ffffff',
+    fontSize: rf(11),
+    fontWeight: '700',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp(10),
+  },
+  emptyIcon: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(32),
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: hp(2),
+  },
+  emptyTitle: {
+    fontSize: rf(16),
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: hp(1),
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: rf(18),
+  },
+  chatPanel: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  chatHeader: {
+    backgroundColor: Colors.headerBackground,
+    paddingTop: insets.top + hp(4),
+    paddingHorizontal: wp(4),
+    paddingBottom: hp(2),
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  chatBackButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
+  },
+  chatHeaderInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chatAvatar: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(3),
+  },
+  chatAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  chatAvatarText: {
+    fontSize: rf(16),
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  chatHeaderText: {
+    flex: 1,
+  },
+  chatTitle: {
+    fontSize: rf(14),
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: hp(0.25),
+  },
+  chatSubtitle: {
+    fontSize: rf(12),
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  completedBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: wp(2.5),
+    paddingVertical: hp(0.6),
+    borderRadius: scale(12),
+  },
+  completedText: {
+    fontSize: rf(11),
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  messagesList: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  messagesContent: {
+    padding: wp(4),
+  },
+  systemMessageContainer: {
+    alignItems: 'center',
+    paddingVertical: hp(1.5),
+    marginBottom: hp(1),
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  systemIcon: {
+    marginRight: wp(1.5),
+  },
+  systemMessageText: {
+    fontSize: rf(12),
+    color: '#6b7280',
+    fontStyle: 'italic',
+  },
+  messageRow: {
+    marginBottom: hp(2),
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  messageUserRow: {
+    justifyContent: 'flex-end',
+  },
+  messageOtherRow: {
+    justifyContent: 'flex-start',
+  },
+  messageAvatar: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: wp(2),
+    overflow: 'hidden',
+  },
+  messageAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  messageAvatarText: {
+    fontSize: rf(11),
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  bubble: {
+    maxWidth: '70%',
+    borderRadius: scale(16),
+    paddingHorizontal: wp(3),
+    paddingVertical: hp(1),
+    marginHorizontal: wp(1),
+  },
+  userBubble: {
+    backgroundColor: Colors.primary,
+    borderBottomRightRadius: scale(4),
+  },
+  otherBubble: {
+    backgroundColor: Colors.card,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderBottomLeftRadius: scale(4),
+  },
+  messageText: {
+    color: Colors.text,
+    fontSize: rf(13),
+    lineHeight: rf(16),
+  },
+  userMessageText: {
+    color: Colors.textLight,
+  },
+  messageTime: {
+    fontSize: rf(10),
+    color: Colors.textSecondary,
+    marginTop: hp(0.5),
+  },
+  messageTimeRight: {
+    textAlign: 'right',
+  },
+  messageTimeLeft: {
+    textAlign: 'left',
+  },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: wp(4),
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingBottom: insets.bottom + wp(4),
+  },
+  composerInput: {
+    flex: 1,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    borderRadius: scale(22),
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1.25),
+    marginRight: wp(3),
+    color: Colors.text,
+    backgroundColor: '#f3f4f6',
+    fontSize: rf(14),
+  },
+  sendButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#d1d5db',
+  },
+  completedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: wp(4),
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingBottom: insets.bottom + wp(4),
+  },
+  completedBarText: {
+    marginLeft: wp(2),
+    fontSize: rf(13),
+    color: Colors.textSecondary,
+  },
+});
+
 const MessagesPage = ({ route }) => {
   const { conversationId, reservationId } = route.params || {};
+  const { width, height, isTablet, isSmallPhone } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(width, height, isTablet, isSmallPhone, insets);
   const { user } = useAuth();
-  const { resetUnreadMessages, newConversation, setNewConversation } = useNotifications();
+  const { resetUnreadMessages, newConversation, setNewConversation, setCurrentConversation, decrementUnreadByCount } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -229,12 +631,14 @@ const MessagesPage = ({ route }) => {
     socketService.leaveReservation(activeConversationId);
     setActiveConversationId(null);
     activeConversationRef.current = null;
+    setCurrentConversation(null); // Clear current conversation in NotificationContext
     setMessages([]);
   };
 
   const onOpenConversation = async (id) => {
     setActiveConversationId(id);
     activeConversationRef.current = id;
+    setCurrentConversation(id); // Set current conversation in NotificationContext
     setMessages([]);
     loadMessages(id);
     socketService.joinReservation(id);
@@ -342,12 +746,13 @@ const MessagesPage = ({ route }) => {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.card} />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={insets.bottom}
+      >
       {!activeConversation ? (
         <View style={styles.sidebar}>
           <View style={styles.header}>
@@ -430,18 +835,13 @@ const MessagesPage = ({ route }) => {
         <View style={styles.chatPanel}>
           <View style={styles.chatHeader}>
             <TouchableOpacity onPress={handleBack} style={styles.chatBackButton}>
-              <Ionicons name="arrow-back" size={20} color={Colors.text} />
+              <Ionicons name="arrow-back" size={20} color={Colors.textLight} />
             </TouchableOpacity>
             <View style={styles.chatHeaderInfo}>
               <View style={styles.chatAvatar}>
-                {activeConversation.participantAvatar ? (
-                  <Image source={{ uri: activeConversation.participantAvatar }} style={styles.chatAvatarImage} />
-                ) : (
-                  <Text style={styles.chatAvatarText}>
-                    {activeConversation.participantName?.charAt(0).toUpperCase() || 'W'}
-                  </Text>
-                )}
-                <OnlineBadge userId={activeConversation.worker?.userId || activeConversation.worker?.id} size={10} borderColor="#fff" />
+                <Text style={styles.chatAvatarText}>
+                  {activeConversation.participantName?.charAt(0).toUpperCase() || 'W'}
+                </Text>
               </View>
               <View style={styles.chatHeaderText}>
                 <Text style={styles.chatTitle}>{activeConversation.participantName}</Text>
@@ -531,393 +931,9 @@ const MessagesPage = ({ route }) => {
           )}
         </View>
       )}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  sidebar: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingTop: 56,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#ffffff',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    color: Colors.text,
-    fontSize: 16,
-  },
-  clearButton: {
-    marginLeft: 12,
-    padding: 4,
-  },
-  conversationsList: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  threadCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  threadCardUnread: {
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-  },
-  avatarContainer: {
-    marginRight: 12,
-    position: 'relative',
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-    threadContent: {
-    flex: 1,
-  },
-  threadHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  threadName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    flex: 1,
-  },
-  threadNameUnread: {
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  threadTime: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  threadTimeUnread: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  threadPreview: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-  },
-  threadPreviewUnread: {
-    color: '#374151',
-    fontWeight: '600',
-  },
-  serviceTag: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  unreadBadge: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    marginLeft: 8,
-  },
-  unreadCount: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  chatPanel: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  chatHeader: {
-    backgroundColor: '#ffffff',
-    paddingTop: 52,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  chatBackButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  chatHeaderInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chatAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  chatAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  chatAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  chatHeaderText: {
-    flex: 1,
-  },
-  chatTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  chatSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  completedBadge: {
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  completedText: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-  messagesList: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  messagesContent: {
-    padding: 16,
-  },
-  systemMessageContainer: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  systemIcon: {
-    marginRight: 6,
-  },
-  systemMessageText: {
-    fontSize: 13,
-    color: '#6b7280',
-    fontStyle: 'italic',
-  },
-  messageRow: {
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  messageUserRow: {
-    justifyContent: 'flex-end',
-  },
-  messageOtherRow: {
-    justifyContent: 'flex-start',
-  },
-  messageAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    overflow: 'hidden',
-  },
-  messageAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  messageAvatarText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  bubble: {
-    maxWidth: '70%',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginHorizontal: 4,
-  },
-  userBubble: {
-    backgroundColor: Colors.primary,
-    borderBottomRightRadius: 4,
-  },
-  otherBubble: {
-    backgroundColor: Colors.card,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    color: Colors.text,
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  userMessageText: {
-    color: Colors.textLight,
-  },
-  messageTime: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  messageTimeRight: {
-    textAlign: 'right',
-  },
-  messageTimeLeft: {
-    textAlign: 'left',
-  },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  composerInput: {
-    flex: 1,
-    borderWidth: 0,
-    borderColor: 'transparent',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 12,
-    color: Colors.text,
-    backgroundColor: '#f3f4f6',
-    fontSize: 16,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#d1d5db',
-  },
-  completedBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  completedBarText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-});
 
 export default MessagesPage;

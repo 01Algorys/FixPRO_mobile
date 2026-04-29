@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,7 +9,11 @@ import { useNotifications } from '../context/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
 
 // Pages
+import WelcomeScreen from '../pages/WelcomeScreen';
+import LoginScreen from '../pages/LoginScreen';
+import RoleSelectionScreen from '../pages/RoleSelectionScreen';
 import AuthPage from '../pages/AuthPage';
+import CreateAccountScreen from '../pages/CreateAccountScreen';
 import UserHomePage from '../pages/UserHomePage';
 import MessagesPage from '../pages/MessagesPage';
 import ReservationsPage from '../pages/ReservationsPage';
@@ -139,7 +143,7 @@ const WorkerTabs = () => {
   );
 };
 
-const AppNavigator = () => {
+const AppNavigator = forwardRef((props, ref) => {
   const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
@@ -151,10 +155,16 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={ref}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
-          <Stack.Screen name="Auth" component={AuthPage} />
+          <>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+            <Stack.Screen name="Auth" component={AuthPage} />
+            <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+          </>
         ) : user?.role === 'WORKER' ? (
           <>
             <Stack.Screen name="WorkerDashboard" component={WorkerTabs} />
@@ -163,8 +173,8 @@ const AppNavigator = () => {
               component={WorkerReservationDetailsPage}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="WorkerProfile" 
+            <Stack.Screen
+              name="WorkerProfile"
               component={WorkerProfile}
               options={{ headerShown: false }}
             />
@@ -172,8 +182,8 @@ const AppNavigator = () => {
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen 
-              name="ServiceWorkers" 
+            <Stack.Screen
+              name="ServiceWorkers"
               component={ServiceWorkersPage}
               options={{ headerShown: false }}
             />
@@ -182,23 +192,23 @@ const AppNavigator = () => {
               component={ProfessionalsPage}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="ReservationDetails" 
+            <Stack.Screen
+              name="ReservationDetails"
               component={ReservationDetails}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="WorkerProfile" 
+            <Stack.Screen
+              name="WorkerProfile"
               component={WorkerProfile}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="Rating" 
+            <Stack.Screen
+              name="Rating"
               component={RatingPage}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="OrderTracking" 
+            <Stack.Screen
+              name="OrderTracking"
               component={OrderTracking}
               options={{ headerShown: false }}
             />
@@ -207,6 +217,6 @@ const AppNavigator = () => {
       </Stack.Navigator>
     </NavigationContainer>
   );
-};
+});
 
 export default AppNavigator;

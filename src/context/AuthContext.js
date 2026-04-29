@@ -30,8 +30,6 @@ export const AuthProvider = ({ children }) => {
       if (token && userData) {
         setUser(JSON.parse(userData));
         setIsAuthenticated(true);
-        // Connect socket after loading stored auth
-        socketService.connect();
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -55,8 +53,6 @@ export const AuthProvider = ({ children }) => {
       
       setUser(userData);
       setIsAuthenticated(true);
-      // Connect socket after successful login
-      socketService.connect();
       
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
@@ -107,6 +103,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateAvatar = async (avatarBase64) => {
+    try {
+      // Update user state with new avatar
+      const updatedUser = { ...user, avatar: avatarBase64 };
+      setUser(updatedUser);
+      
+      // Update AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      console.error('Avatar update failed:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -115,7 +127,8 @@ export const AuthProvider = ({ children }) => {
       login, 
       logout, 
       signup,
-      updateProfile
+      updateProfile,
+      updateAvatar
     }}>
       {children}
     </AuthContext.Provider>

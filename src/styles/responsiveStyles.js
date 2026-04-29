@@ -8,6 +8,7 @@ const breakpoints = {
   small: 375,
   medium: 768,
   large: 1024,
+  xlarge: 1440,
 };
 
 // Responsive padding based on screen width
@@ -16,8 +17,10 @@ const getResponsivePadding = (size) => {
     return size * 0.8;
   } else if (width < breakpoints.medium) {
     return size;
+  } else if (width < breakpoints.large) {
+    return size * 1.3;
   } else {
-    return size * 1.2;
+    return size * 1.5;
   }
 };
 
@@ -33,7 +36,8 @@ export const responsiveStyles = StyleSheet.create({
   responsiveContainer: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingHorizontal: getResponsivePadding(Spacing.lg),
+    alignSelf: 'center',
+    width: '100%',
   },
   
   // Responsive card
@@ -79,11 +83,15 @@ export const responsiveStyles = StyleSheet.create({
     marginHorizontal: -Spacing.sm,
   },
   responsiveGridItem: {
-    width: width < breakpoints.medium ? '100%' : '50%',
+    width: width < breakpoints.medium ? '100%' : width < breakpoints.large ? '50%' : '33.33%',
     paddingHorizontal: Spacing.sm,
   },
   responsiveGridItemSmall: {
-    width: width < breakpoints.medium ? '50%' : '33.33%',
+    width: width < breakpoints.medium ? '50%' : width < breakpoints.large ? '33.33%' : '25%',
+    paddingHorizontal: Spacing.sm,
+  },
+  responsiveGridItemLarge: {
+    width: width < breakpoints.medium ? '100%' : width < breakpoints.large ? '50%' : '25%',
     paddingHorizontal: Spacing.sm,
   },
   
