@@ -220,9 +220,14 @@ const WorkerMessagesPage = ({ route }) => {
   );
 
   const filteredConversations = useMemo(() => {
-    if (!search.trim()) return conversations;
+    // Filter out pending reservations - messaging not available
+    const nonPendingConversations = conversations.filter(
+      (conv) => conv.status !== 'PENDING' && conv.status !== 'pending'
+    );
+
+    if (!search.trim()) return nonPendingConversations;
     const term = search.trim().toLowerCase();
-    return conversations.filter((conversation) => {
+    return nonPendingConversations.filter((conversation) => {
       // For workers, search by user name
       const userName = (conversation.user?.name || '').toLowerCase();
       const serviceName = (conversation.service?.name || '').toLowerCase();

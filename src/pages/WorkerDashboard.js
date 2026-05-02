@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useResponsive, wp, hp, rf, scale } from '../utils/responsive';
@@ -55,6 +55,17 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: hp(2),
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+  },
+  avatarInitial: {
+    fontSize: scale(32),
+    fontWeight: '700',
+    color: '#667eea',
   },
   welcomeText: {
     fontSize: rf(22),
@@ -155,7 +166,13 @@ const WorkerDashboard = ({ navigation }) => {
       <ScrollView style={styles.content}>
         <View style={styles.welcomeCard}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={40} color="#667eea" />
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarInitial}>
+                {(user?.name || 'W')?.[0]?.toUpperCase()}
+              </Text>
+            )}
           </View>
           <Text style={styles.welcomeText}>Welcome, {user?.name || 'Worker'}</Text>
           <Text style={styles.welcomeSubtext}>Manage your services and reservations</Text>

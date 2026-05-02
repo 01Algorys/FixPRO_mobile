@@ -222,7 +222,16 @@ const WorkerProfile = ({ route, navigation }) => {
         {/* Profile Picture Section */}
         <View style={styles.profileSection}>
           <View style={styles.profilePictureContainer}>
-            <Ionicons name="person" size={80} color={Colors.primary} />
+            {worker.user?.avatar || worker.avatar ? (
+              <Image
+                source={{ uri: worker.user?.avatar || worker.avatar }}
+                style={styles.profilePictureImage}
+              />
+            ) : (
+              <Text style={styles.profilePictureInitial}>
+                {(worker.user?.name || worker.name || 'W')?.[0]?.toUpperCase()}
+              </Text>
+            )}
             {worker.isVerified && (
               <View style={styles.verifiedBadge}>
                 <Text style={styles.verifiedText}>Certifié</Text>
@@ -289,11 +298,13 @@ const WorkerProfile = ({ route, navigation }) => {
               <View key={review.id} style={styles.reviewCard}>
                 <View style={styles.reviewHeader}>
                   <View style={styles.reviewerAvatar}>
-                    <Ionicons
-                      name="person"
-                      size={24}
-                      color={Colors.primary}
-                    />
+                    {review.avatar ? (
+                      <Image source={{ uri: review.avatar }} style={styles.reviewerAvatarImage} />
+                    ) : (
+                      <Text style={styles.reviewerAvatarInitial}>
+                        {(review.name || 'C')?.[0]?.toUpperCase()}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.reviewerInfo}>
                     <Text style={styles.reviewerName}>
@@ -402,6 +413,23 @@ const styles = StyleSheet.create({
   profilePictureContainer: {
     position: 'relative',
     alignItems: 'center',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  profilePictureImage: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+  },
+  profilePictureInitial: {
+    fontSize: 40,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   verifiedBadge: {
     position: 'absolute',
@@ -524,6 +552,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  reviewerAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  reviewerAvatarInitial: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   reviewerInfo: {
     flex: 1,

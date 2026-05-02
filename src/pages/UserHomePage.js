@@ -278,7 +278,16 @@ const UserHomePage = ({ navigation }) => {
           >
             <View style={styles.workerHeader}>
               <View style={styles.workerAvatar}>
-                <Ionicons name="person" size={28} color={Colors.primary} />
+                {worker.user?.avatar || worker.avatar ? (
+                  <Image
+                    source={{ uri: worker.user?.avatar || worker.avatar }}
+                    style={styles.workerAvatarImage}
+                  />
+                ) : (
+                  <Text style={styles.workerAvatarInitial}>
+                    {(worker.user?.name || worker.name || 'W')?.[0]?.toUpperCase()}
+                  </Text>
+                )}
                 {worker.isVerified && (
                   <View style={styles.verifiedBadge} />
                 )}
@@ -471,6 +480,17 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
     marginRight: wp(3),
     borderWidth: 2,
     borderColor: Colors.primary,
+    overflow: 'hidden',
+  },
+  workerAvatarImage: {
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
+  },
+  workerAvatarInitial: {
+    fontSize: scale(24),
+    fontWeight: '700',
+    color: Colors.primary,
   },
   verifiedBadge: {
     position: 'absolute',

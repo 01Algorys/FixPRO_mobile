@@ -4,8 +4,9 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
@@ -209,7 +210,16 @@ const OrderTracking = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Professionnel</Text>
             <View style={styles.workerRow}>
               <View style={styles.workerAvatar}>
-                <Ionicons name="person" size={24} color={Colors.primary} />
+                {reservation.worker?.avatar || reservation.workerAvatar ? (
+                  <Image
+                    source={{ uri: reservation.worker?.avatar || reservation.workerAvatar }}
+                    style={styles.workerAvatarImage}
+                  />
+                ) : (
+                  <Text style={styles.workerAvatarInitial}>
+                    {(reservation.workerName || reservation.worker?.name || 'P')?.[0]?.toUpperCase()}
+                  </Text>
+                )}
               </View>
               <View style={styles.workerInfo}>
                 <Text style={styles.workerName}>
@@ -403,6 +413,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  workerAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  workerAvatarInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   workerInfo: {
     flex: 1,

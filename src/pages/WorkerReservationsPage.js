@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api';
@@ -128,7 +128,16 @@ const WorkerReservationsPage = ({ navigation }) => {
                 <View style={styles.cardHeader}>
                   <View style={styles.clientRow}>
                     <View style={styles.clientAvatar}>
-                      <Ionicons name="person" size={24} color={Colors.primary} />
+                      {reservation.user?.avatar || reservation.userAvatar ? (
+                        <Image
+                          source={{ uri: reservation.user?.avatar || reservation.userAvatar }}
+                          style={styles.clientAvatarImage}
+                        />
+                      ) : (
+                        <Text style={styles.clientAvatarInitial}>
+                          {(reservation.clientName || reservation.user?.name || 'C')?.[0]?.toUpperCase()}
+                        </Text>
+                      )}
                     </View>
                     <View style={styles.clientInfo}>
                       <Text style={styles.clientName}>{reservation.clientName || reservation.user?.name || 'Client'}</Text>
@@ -339,6 +348,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  clientAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  clientAvatarInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   clientInfo: {
     flex: 1,

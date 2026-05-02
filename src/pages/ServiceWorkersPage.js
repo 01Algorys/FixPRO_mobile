@@ -11,6 +11,7 @@ import {
   RefreshControl,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import apiService from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -201,6 +202,17 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: wp(3),
+    overflow: 'hidden',
+  },
+  workerAvatarImage: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
+  },
+  workerAvatarInitial: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    color: Colors.primary,
   },
   workerInfo: {
     flex: 1,
@@ -494,7 +506,16 @@ const ServiceWorkersPage = ({ route, navigation }) => {
             <View key={worker.id} style={styles.workerCard}>
               <View style={styles.workerHeader}>
                 <View style={styles.workerAvatar}>
-                  <Ionicons name="person" size={28} color="#667eea" />
+                  {worker.user?.avatar || worker.avatar ? (
+                    <Image
+                      source={{ uri: worker.user?.avatar || worker.avatar }}
+                      style={styles.workerAvatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.workerAvatarInitial}>
+                      {(worker.name || 'W')?.[0]?.toUpperCase()}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.workerInfo}>
                   <Text style={styles.workerName}>{worker.name}</Text>

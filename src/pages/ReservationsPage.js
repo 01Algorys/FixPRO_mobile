@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api';
@@ -224,7 +225,16 @@ const ReservationsPage = ({ navigation }) => {
                 <View style={styles.cardHeader}>
                   <View style={styles.workerRow}>
                     <View style={styles.workerAvatar}>
-                      <Ionicons name="person" size={24} color={Colors.primary} />
+                      {reservation.worker?.avatar || reservation.workerAvatar ? (
+                        <Image
+                          source={{ uri: reservation.worker?.avatar || reservation.workerAvatar }}
+                          style={styles.workerAvatarImage}
+                        />
+                      ) : (
+                        <Text style={styles.workerAvatarInitial}>
+                          {(reservation.workerName || reservation.worker?.name || 'W')?.[0]?.toUpperCase()}
+                        </Text>
+                      )}
                     </View>
                     <View style={styles.workerInfo}>
                       <Text style={styles.workerName}>{reservation.workerName}</Text>
@@ -542,6 +552,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  workerAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  workerAvatarInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   workerInfo: {
     flex: 1,

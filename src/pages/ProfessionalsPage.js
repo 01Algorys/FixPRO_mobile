@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
@@ -105,7 +106,16 @@ const ProfessionalsPage = ({ navigation }) => {
               onPress={() => goToWorkerProfile(worker)}
             >
               <View style={styles.avatar}>
-                <Ionicons name="person" size={24} color={Colors.primary} />
+                {worker.user?.avatar || worker.avatar ? (
+                  <Image
+                    source={{ uri: worker.user?.avatar || worker.avatar }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarInitial}>
+                    {(worker.user?.name || worker.name || 'W')?.[0]?.toUpperCase()}
+                  </Text>
+                )}
               </View>
               <View style={styles.cardContent}>
                 <Text style={styles.name}>{worker.user?.name || worker.name || 'Technicien'}</Text>
@@ -208,6 +218,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   cardContent: {
     flex: 1,
