@@ -5,21 +5,18 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Poppins_900Black } from '@expo-google-fonts/poppins';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 const { width, height } = Dimensions.get('window');
 const BLUE = '#1a56db';
 
 export default function WelcomeScreen({ navigation }) {
   const [fontsLoaded] = useFonts({ Poppins_900Black });
-  const insets = useSafeAreaInsets();
 
   if (!fontsLoaded) {
     return null;
   }
 
   return (
-    <LinearGradient colors={['#1a56db', '#1565c0']} style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <LinearGradient colors={['#1a56db', '#1565c0']} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
       {/* Section 1 - TOP */}

@@ -159,9 +159,9 @@ const AppNavigator = forwardRef((props, ref) => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
           <>
-            <Stack.Screen name="Welcome" component={WelcomeScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+            <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="Login" component={LoginScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
           </>

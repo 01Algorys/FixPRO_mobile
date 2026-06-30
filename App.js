@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, ActivityIndicator, View, Alert } from 'react-native';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -227,8 +226,7 @@ function AppContent() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }} edges={['top']}>
-      <StatusBar style="auto" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a56db' }} edges={['top', 'bottom']}>
       <AppNavigator ref={navigationRef} />
       {toast.visible && (
         <MessageToast
