@@ -5,8 +5,6 @@ import { Alert } from 'react-native';
 import apiService from '../services/api';
 import { useAuth } from './AuthContext';
 
-const API_BASE_URL = process.env.EXPO_API_URL || 'http://192.168.1.15:3001/api';
-
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {

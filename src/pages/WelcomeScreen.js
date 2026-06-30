@@ -10,12 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { width, height } = Dimensions.get('window');
 const BLUE = '#1a56db';
 
-const FEATURE_ICONS = [
-  { label: 'Rapide', uri: 'https://cdn-icons-png.flaticon.com/512/3468/3468081.png' },
-  { label: 'Fiable', uri: 'https://cdn-icons-png.flaticon.com/512/7518/7518748.png' },
-  { label: 'Qualité', uri: 'https://cdn-icons-png.flaticon.com/512/833/833472.png' },
-];
-
 export default function WelcomeScreen({ navigation }) {
   const [fontsLoaded] = useFonts({ Poppins_900Black });
   const insets = useSafeAreaInsets();

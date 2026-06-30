@@ -208,6 +208,28 @@ export default function WorkerProfile({ navigation }) {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Supprimer le compte',
+      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et toutes vos données seront perdues.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteAccount();
+              await logout();
+            } catch (err) {
+              Alert.alert('Erreur', 'La suppression du compte a échoué. Veuillez réessayer.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -496,6 +518,12 @@ export default function WorkerProfile({ navigation }) {
             <Text style={styles.logoutText}>Déconnexion</Text>
           </TouchableOpacity>
 
+          {/* ── DELETE ACCOUNT ── */}
+          <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount}>
+            <Ionicons name="trash-outline" size={20} color="#7f1d1d" />
+            <Text style={styles.deleteAccountText}>Supprimer le compte</Text>
+          </TouchableOpacity>
+
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
@@ -613,4 +641,10 @@ const styles = StyleSheet.create({
     borderRadius: 16, borderWidth: 1.5, borderColor: '#fecaca',
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
+  deleteAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 16, backgroundColor: '#fff', marginTop: 8,
+    borderRadius: 16, borderWidth: 1.5, borderColor: '#7f1d1d40',
+  },
+  deleteAccountText: { fontSize: 15, fontWeight: '700', color: '#7f1d1d' },
 });

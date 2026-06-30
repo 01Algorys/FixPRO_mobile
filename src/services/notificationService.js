@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import apiService from './api';
  
 // ─────────────────────────────────────────────────────────────
 // NOTIFICATION HANDLER
@@ -64,8 +66,20 @@ export const requestNotificationPermissions = async () => {
       console.warn('[Notifications] Permission denied by user');
       return false;
     }
- 
-    console.log('[Notifications] Permission granted ✓');
+
+    // Obtain Expo push token and save to backend
+    try {
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        Constants.easConfig?.projectId;
+      if (projectId) {
+        const pushTokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        await apiService.savePushToken(pushTokenData.data);
+      }
+    } catch (tokenError) {
+      console.warn('[Notifications] Failed to save push token:', tokenError);
+    }
+
     return true;
   } catch (error) {
     console.error('[Notifications] requestNotificationPermissions error:', error);

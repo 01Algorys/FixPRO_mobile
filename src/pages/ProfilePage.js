@@ -141,6 +141,28 @@ const ProfilePage = ({ navigation }) => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Supprimer le compte',
+      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et toutes vos données seront perdues.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiService.deleteAccount();
+              await logout();
+            } catch (err) {
+              Alert.alert('Erreur', 'La suppression du compte a échoué. Veuillez réessayer.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getInitials = (name) => {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -513,6 +535,15 @@ const ProfilePage = ({ navigation }) => {
             <Text style={styles.logoutText}>Déconnexion</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={Colors.error} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteAccountItem} onPress={handleDeleteAccount}>
+          <View style={styles.menuItemLeft}>
+            <View style={[styles.menuItemIcon, { backgroundColor: '#7f1d1d20' }]}>
+              <Ionicons name="trash-outline" size={20} color="#7f1d1d" />
+            </View>
+            <Text style={styles.deleteAccountText}>Supprimer le compte</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -929,6 +960,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: Colors.error,
+  },
+  deleteAccountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.card,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#7f1d1d20',
+  },
+  deleteAccountText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#7f1d1d',
   },
 });
 

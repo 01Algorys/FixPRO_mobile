@@ -134,7 +134,11 @@ export default function LoginScreen({ navigation }) {
             {/* Forgot password */}
             <TouchableOpacity
               style={styles.forgotRow}
-              onPress={() => Alert.alert('Info', 'Fonctionnalité de récupération de mot de passe à venir')}
+              onPress={() => Alert.alert(
+                'Mot de passe oublié',
+                'Veuillez contacter le support à support@fixpro.com pour réinitialiser votre mot de passe.',
+                [{ text: 'OK' }]
+              )}
             >
               <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
@@ -150,25 +154,6 @@ export default function LoginScreen({ navigation }) {
                 : <Text style={styles.loginBtnText}>Se connecter</Text>
               }
             </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.orRow}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>ou continuer avec</Text>
-              <View style={styles.orLine} />
-            </View>
-
-            {/* Social buttons */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialBtn}>
-                <Text style={styles.googleG}>G</Text>
-                <Text style={styles.socialBtnText}>Google</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialBtn}>
-                <Ionicons name="logo-apple" size={20} color="#000" />
-                <Text style={styles.socialBtnText}>Apple</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Register link */}
             <View style={styles.registerRow}>
@@ -249,26 +234,6 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   loginBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-
-  orRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
-  orLine: { flex: 1, height: 1, backgroundColor: '#e5e7eb' },
-  orText: { fontSize: 13, color: '#9ca3af' },
-
-  socialRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  socialBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 14,
-    paddingVertical: 13,
-    backgroundColor: '#fff',
-  },
-  googleG: { fontSize: 18, fontWeight: '900', color: '#ea4335' },
-  socialBtnText: { fontSize: 15, fontWeight: '600', color: '#111827' },
 
   registerRow: { flexDirection: 'row', justifyContent: 'center' },
   registerText: { fontSize: 14, color: '#6b7280' },

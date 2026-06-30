@@ -33,7 +33,7 @@ class SocketService {
         return;
       }
 
-      const apiUrl = process.env.EXPO_API_URL || 'http://192.168.1.15:3001/api';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://fixprobackend-production.up.railway.app/api';
       const socketUrl = apiUrl.replace('/api', '').replace(/\/$/, '');
 
       console.log('Connecting to socket at:', socketUrl);

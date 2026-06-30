@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.EXPO_API_URL || 'http://192.168.1.15:3001/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://fixprobackend-production.up.railway.app/api';
 
 class ApiService {
   constructor() {
@@ -274,6 +274,12 @@ class ApiService {
 
   async getUnreadMessageCount() {
     return this.request('/messages/unread-count');
+  }
+
+  async deleteAccount() {
+    return this.request('/auth/delete-account', {
+      method: 'DELETE',
+    });
   }
 }
 
