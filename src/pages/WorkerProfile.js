@@ -82,7 +82,12 @@ const WorkerProfile = ({ route, navigation }) => {
         if (typeof apiService.getWorkerReviewsPublic === 'function') {
           const reviewsResponse =
             await apiService.getWorkerReviewsPublic(actualWorkerId);
-          reviews = reviewsResponse.data || reviewsResponse || [];
+          reviews =
+            reviewsResponse.data?.reviews ||
+            reviewsResponse.reviews ||
+            reviewsResponse.data ||
+            reviewsResponse ||
+            [];
         } else {
           console.log(
             'getWorkerReviewsPublic is not available in apiService'
@@ -126,10 +131,10 @@ const WorkerProfile = ({ route, navigation }) => {
         reviews: Array.isArray(reviews)
           ? reviews.map((review) => ({
             id: review.id,
-            name: review.reviewerName || review.name || 'Client',
+            name: review.user?.name || review.reviewerName || review.name || 'Client',
+            avatar: review.user?.avatar || review.avatar || null,
             rating: review.rating || 5,
-            comment:
-              review.comment || review.text || 'Excellent service!',
+            comment: review.comment || review.text || '',
           }))
           : [],
       };

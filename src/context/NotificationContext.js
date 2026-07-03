@@ -4,6 +4,7 @@ import socketService from '../services/socketService';
 import { Alert } from 'react-native';
 import apiService from '../services/api';
 import { useAuth } from './AuthContext';
+import { navigate } from '../navigation/RootNavigation';
 
 const NotificationContext = createContext();
 
@@ -138,16 +139,9 @@ export const NotificationProvider = ({ children }) => {
           },
           {
             text: 'Review Now',
-            onPress: () => {
-              // Navigate to review page - this will be handled by navigation
-              // Store in AsyncStorage for App.js to pick up
-              AsyncStorage.setItem('pendingReview', JSON.stringify({
-                reservationId,
-                workerId,
-                workerName,
-                serviceType,
-                navigateNow: true
-              }));
+            onPress: async () => {
+              await AsyncStorage.removeItem('pendingReview');
+              navigate('Rating', { reservationId, workerId, workerName });
             }
           }
         ]

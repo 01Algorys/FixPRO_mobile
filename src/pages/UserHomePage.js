@@ -18,7 +18,6 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import apiService from '../services/api';
-import socketService from '../services/socketService';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../styles/theme';
@@ -100,19 +99,6 @@ const UserHomePage = ({ navigation }) => {
   useEffect(() => {
     loadUserLocation();
     loadData();
-
-    // Listen for navigation to review page
-    socketService.on('navigate_to_review', (data) => {
-      navigation.navigate('Rating', {
-        reservationId: data.reservationId,
-        workerId: data.workerId
-      });
-    });
-
-    // Cleanup on unmount
-    return () => {
-      socketService.off('navigate_to_review');
-    };
   }, []);
 
   const loadCategoryCounts = async () => {
@@ -334,7 +320,7 @@ const UserHomePage = ({ navigation }) => {
         </View>
 
         {/* Categories Section */}
-        <View style={styles.section}>
+        <View style={styles.categoriesSection}>
           <View style={styles.categoriesGrid}>
             {CATEGORIES.map(category => (
               <TouchableOpacity
@@ -344,9 +330,9 @@ const UserHomePage = ({ navigation }) => {
               >
                 <View style={[styles.categoryIcon, { backgroundColor: category.color + '15' }]}>
                   {category.iconLib === 'mci' ? (
-                    <MaterialCommunityIcons name={category.icon} size={26} color={category.color} />
+                    <MaterialCommunityIcons name={category.icon} size={30} color={category.color} />
                   ) : (
-                    <Ionicons name={category.icon} size={26} color={category.color} />
+                    <Ionicons name={category.icon} size={30} color={category.color} />
                   )}
                 </View>
                 <Text style={styles.categoryTitle} numberOfLines={1}>{category.title}</Text>
@@ -390,16 +376,7 @@ const UserHomePage = ({ navigation }) => {
               <Image
                 source={require('../assets/fixpro-worker.png')}
                 style={styles.urgenceImage}
-                resizeMode="contain"
               />
-              <View style={styles.urgenceBadge}>
-                <Ionicons name="shield-checkmark" size={12} color={Colors.textLight} />
-                <Text style={styles.urgenceBadgeText}>Professionnels vérifiés</Text>
-              </View>
-              <View style={styles.urgenceBadge}>
-                <Ionicons name="time" size={12} color={Colors.textLight} />
-                <Text style={styles.urgenceBadgeText}>Intervention rapide</Text>
-              </View>
             </View>
           </LinearGradient>
         </View>
@@ -478,12 +455,7 @@ const UserHomePage = ({ navigation }) => {
                   <Text style={styles.priceLabel}>À partir de</Text>
                   <Text style={styles.priceText}>{worker.basePrice || 30} TND</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.reserveButton}
-                  onPress={() => handleReservePress(worker)}
-                >
-                  <Text style={styles.reserveButtonText}>Réserver</Text>
-                </TouchableOpacity>
+                
               </View>
             </TouchableOpacity>
           ))}
@@ -644,6 +616,11 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
     color: Colors.primary,
     fontWeight: '600',
   },
+  categoriesSection: {
+    paddingHorizontal: wp(4),
+    marginTop: hp(3),
+    marginBottom: hp(3),
+  },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -652,8 +629,8 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
   categoryCard: {
     width: isTablet ? '18%' : '18.5%',
     backgroundColor: Colors.card,
-    borderRadius: scale(16),
-    paddingVertical: wp(2.5),
+    borderRadius: scale(18),
+    paddingVertical: wp(3.5),
     paddingHorizontal: wp(1),
     alignItems: 'center',
     marginBottom: hp(2),
@@ -664,21 +641,21 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
     elevation: 3,
   },
   categoryIcon: {
-    width: scale(46),
-    height: scale(46),
-    borderRadius: scale(14),
+    width: scale(54),
+    height: scale(54),
+    borderRadius: scale(16),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: hp(1),
   },
   categoryTitle: {
-    fontSize: rf(10.5),
+    fontSize: rf(11.5),
     fontWeight: '600',
     color: Colors.text,
     textAlign: 'center',
   },
   categorySubtitle: {
-    fontSize: rf(9),
+    fontSize: rf(9.5),
     color: Colors.textTertiary,
     textAlign: 'center',
     marginTop: hp(0.3),
@@ -749,7 +726,7 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
   },
   urgenceImage: {
     width: '100%',
-    height: hp(11),
+    height: hp(25),
   },
   urgenceBadge: {
     flexDirection: 'row',

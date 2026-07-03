@@ -97,30 +97,6 @@ class SocketService {
         console.log('Reservation update received:', data);
       });
 
-      // Listen for job completion notifications
-      this.socket.on('job_completed_for_review', (data) => {
-        console.log('Job completed for review:', data);
-        Alert.alert(
-          'Travail terminé',
-          data.message || 'Le travail est terminé. Veuillez évaluer le technicien.',
-          [
-            {
-              text: 'Évaluer maintenant',
-              onPress: () => {
-                this.emit('navigate_to_review', {
-                  reservationId: data.reservationId,
-                  workerId: data.workerId
-                });
-              }
-            },
-            {
-              text: 'Plus tard',
-              style: 'cancel'
-            }
-          ]
-        );
-      });
-
       // Listen for new messages
       this.socket.on('new_message', async (data) => {
         console.log('New message received:', data);

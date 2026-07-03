@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { navigationRef, navigate } from './src/navigation/RootNavigation';
 import socketService from './src/services/socketService';
 import {
   requestNotificationPermissions,
@@ -22,7 +23,6 @@ function AppContent() {
   const [pendingReview, setPendingReview] = useState(null);
   const [toast, setToast] = useState({ visible: false, senderName: '', message: '', reservationId: null });
   const appStateRef = useRef(AppState.currentState);
-  const navigationRef = useRef(null);
 
   // Request notification permissions after login
   useEffect(() => {
@@ -179,14 +179,14 @@ function AppContent() {
                 },
                 {
                   text: 'Review Now',
-                  onPress: () => {
-                    // Navigate to review page - this will be handled by navigation
-                    // Update the flag to trigger navigation
-                    AsyncStorage.setItem('pendingReview', JSON.stringify({
-                      ...review,
-                      navigateNow: true
-                    }));
-                    setPendingReview({ ...review, navigateNow: true });
+                  onPress: async () => {
+                    await AsyncStorage.removeItem('pendingReview');
+                    setPendingReview(null);
+                    navigate('Rating', {
+                      reservationId: review.reservationId,
+                      workerId: review.workerId,
+                      workerName: review.workerName,
+                    });
                   }
                 }
               ]

@@ -304,6 +304,23 @@ const ReservationsPage = ({ navigation }) => {
                   </View>
                 )}
 
+                {/* Your final review, once submitted */}
+                {reservation.review && (
+                  <View style={styles.reviewBox}>
+                    <View style={styles.reviewBoxHeader}>
+                      <View style={styles.starsRow}>
+                        {renderStars(reservation.review.rating)}
+                      </View>
+                      <Text style={styles.reviewBoxLabel}>Votre avis</Text>
+                    </View>
+                    {!!reservation.review.comment && (
+                      <Text style={styles.reviewBoxComment} numberOfLines={3}>
+                        {reservation.review.comment}
+                      </Text>
+                    )}
+                  </View>
+                )}
+
                 {/* Divider */}
                 <View style={styles.cardDivider} />
 
@@ -645,6 +662,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.text,
     lineHeight: 20,
+  },
+
+  // Your final review
+  reviewBox: {
+    backgroundColor: Colors.star + '15',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.star,
+  },
+  reviewBoxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  reviewBoxLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  reviewBoxComment: {
+    fontSize: 13,
+    color: Colors.text,
+    lineHeight: 18,
+    fontStyle: 'italic',
   },
 
   // Divider
