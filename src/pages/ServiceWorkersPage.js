@@ -17,6 +17,7 @@ import apiService from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
 import { useResponsive, wp, hp, rf, scale, getNumColumns } from '../utils/responsive';
+import { getCurrentCoords } from '../utils/location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
@@ -314,10 +315,15 @@ const ServiceWorkersPage = ({ route, navigation }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('rating');
   const [filterAvailable, setFilterAvailable] = useState(false);
+  const [coords, setCoords] = useState(null);
+
+  useEffect(() => {
+    getCurrentCoords().then(setCoords);
+  }, []);
 
   useEffect(() => {
     loadWorkers();
-  }, [category, filterAvailable]);
+  }, [category, filterAvailable, coords]);
 
   const loadWorkers = async () => {
     try {
@@ -327,11 +333,16 @@ const ServiceWorkersPage = ({ route, navigation }) => {
         minRating: 0,
         limit: 50
       };
-      
+
       if (filterAvailable) {
         params.isActive = true;
       }
-      
+
+      if (coords) {
+        params.lat = coords.latitude;
+        params.lng = coords.longitude;
+      }
+
       const data = await apiService.getWorkers(params);
       setWorkers(data.data?.workers || data.workers || data.data || data);
     } catch (error) {
@@ -391,6 +402,11 @@ const ServiceWorkersPage = ({ route, navigation }) => {
       if (sortBy === 'rating') return (b.averageRating || 0) - (a.averageRating || 0);
       if (sortBy === 'experience') return (b.experience || 0) - (a.experience || 0);
       if (sortBy === 'jobs') return (b.jobsCompleted || 0) - (a.jobsCompleted || 0);
+      if (sortBy === 'distance') {
+        const aDist = typeof a.distanceKm === 'number' ? a.distanceKm : Infinity;
+        const bDist = typeof b.distanceKm === 'number' ? b.distanceKm : Infinity;
+        return aDist - bDist;
+      }
       return 0;
     });
 
@@ -456,6 +472,7 @@ const ServiceWorkersPage = ({ route, navigation }) => {
             <Text style={styles.filterLabel}>Trier par:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {[
+                ...(coords ? [{ value: 'distance', label: 'Distance' }] : []),
                 { value: 'rating', label: 'Note' },
                 { value: 'experience', label: 'Expérience' },
                 { value: 'jobs', label: 'Jobs' }
@@ -527,6 +544,18 @@ const ServiceWorkersPage = ({ route, navigation }) => {
                     <Text style={styles.statusText}>
                       {worker.isActive ? 'Disponible' : 'Indisponible'}
                     </Text>
+                    {typeof worker.distanceKm === 'number' && (
+                      <>
+                        <Text style={styles.statusText}> · </Text>
+                        <Ionicons name="location" size={12} color={Colors.textSecondary} />
+                        <Text style={styles.statusText}>
+                          {' '}
+                          {worker.distanceKm < 1
+                            ? `${Math.round(worker.distanceKm * 1000)} m`
+                            : `${worker.distanceKm} km`}
+                        </Text>
+                      </>
+                    )}
                   </View>
                 </View>
                 {worker.isVerified && (

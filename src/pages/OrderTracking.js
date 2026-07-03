@@ -42,7 +42,7 @@ const OrderTracking = ({ route, navigation }) => {
     const statusLower = status?.toLowerCase() || 'pending';
     const configs = {
       pending: { color: '#eab308', bg: '#fef9c3', text: 'En attente', icon: 'time' },
-      accepted: { color: '#3b82f6', bg: '#dbeafe', text: 'Accepté', icon: 'checkmark-circle' },
+      accepted: { color: '#1a56db', bg: '#dbeafe', text: 'Accepté', icon: 'checkmark-circle' },
       in_progress: { color: '#8b5cf6', bg: '#ede9fe', text: 'En cours', icon: 'sync-outline' },
       completed: { color: '#22c55e', bg: '#dcfce7', text: 'Terminé', icon: 'checkmark-done-circle' },
       cancelled: { color: '#ef4444', bg: '#fee2e2', text: 'Annulé', icon: 'close-circle' },

@@ -9,27 +9,27 @@ const scale = (size) => {
 };
 
 export const Colors = {
-  // Main colors from the design
-  primary: '#1A3763', // Dark blue header
-  primaryLight: '#2b80ff',
-  primaryDark: '#0A2753',
-  iconLight: '#1b65d4',
-  secondary: '#764ba2',
+  // Main brand blue — matches Login & Welcome screens
+  primary: '#1a56db',
+  primaryLight: '#4175e8',
+  primaryDark: '#1565c0',
+  iconLight: '#1a56db',
+  secondary: '#1565c0',
   accent: '#eab308', // Yellow stars/accent
   success: '#22c55e', // Green for certified badges
   error: '#ef4444',
   warning: '#f97316',
-  info: '#024bc0',
-  
-  // Gradients
-  gradientStart: '#1A3763',
-  gradientEnd: '#764ba2',
+  info: '#1a56db',
+
+  // Gradients — same as Login / Welcome screens
+  gradientStart: '#1a56db',
+  gradientEnd: '#1565c0',
   
   // Backgrounds
   background: '#f8f9fa', // Light grey background
   card: '#ffffff',
   input: '#f9f9f9',
-  headerBackground: '#0b377a', // Dark blue header background
+  headerBackground: '#1a56db',
   
   // Text
   text: '#1a1a1a', // Dark text for better contrast

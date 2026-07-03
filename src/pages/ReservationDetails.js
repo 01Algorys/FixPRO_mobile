@@ -394,7 +394,7 @@ const ReservationDetails = ({ route, navigation }) => {
 
   const urgencyLevels = [
     { value: 'low', label: 'Non urgent', color: '#22c55e', icon: 'time-outline' },
-    { value: 'normal', label: 'Normal', color: '#3b82f6', icon: 'calendar-outline' },
+    { value: 'normal', label: 'Normal', color: '#1a56db', icon: 'calendar-outline' },
     { value: 'high', label: 'Urgent', color: '#f97316', icon: 'alert-circle-outline' },
     { value: 'emergency', label: 'Urgence', color: '#ef4444', icon: 'warning-outline' },
   ];

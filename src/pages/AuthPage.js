@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#1a56db',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#1a56db',
   },
   tabText: {
     marginLeft: 8,
@@ -316,14 +316,14 @@ const styles = StyleSheet.create({
   },
   activeAuthToggle: {
     borderBottomWidth: 2,
-    borderBottomColor: '#667eea',
+    borderBottomColor: '#1a56db',
   },
   authToggleText: {
     fontSize: 14,
     color: '#999',
   },
   activeAuthToggleText: {
-    color: '#667eea',
+    color: '#1a56db',
     fontWeight: '600',
   },
   formContainer: {
@@ -376,12 +376,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   submitButton: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#1a56db',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#667eea',
+    shadowColor: '#1a56db',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

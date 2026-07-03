@@ -116,7 +116,7 @@ export default function WorkerHomePage({ navigation }) {
       >
         {/* ── HEADER ── */}
         <LinearGradient
-          colors={[THEME, '#2a4a8e']}
+          colors={[THEME, '#1565c0']}
           style={styles.header}
         >
           <View style={styles.headerTop}>
@@ -159,7 +159,7 @@ export default function WorkerHomePage({ navigation }) {
 
             {/* Credits — wide blue card */}
             <LinearGradient
-              colors={['#2563eb', '#1d4ed8']}
+              colors={['#1a56db', '#1565c0']}
               style={[styles.statCard, styles.statCardWide]}
             >
               <Ionicons name="wallet-outline" size={28} color="#fff" />
@@ -301,7 +301,7 @@ const getStatusColor = (status) => {
     case 'CANCELLED':
       return '#ef4444';
     case 'in_progress':
-      return '#3b82f6';
+      return '#1a56db';
     default:
       return '#6b7280';
   }
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, color: '#6b7280', marginTop: 8 },
   errorText: { fontSize: 16, color: '#6b7280', textAlign: 'center' },
   retryBtn: {
-    backgroundColor: '#1a2f5e', paddingHorizontal: 28,
+    backgroundColor: '#1a56db', paddingHorizontal: 28,
     paddingVertical: 12, borderRadius: 24, marginTop: 8,
   },
   retryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
@@ -390,14 +390,14 @@ const styles = StyleSheet.create({
   statCardWide: { width: (width - 44) / 2 },
   statLabel: { fontSize: 13, color: '#6b7280', fontWeight: '500' },
   statLabelLight: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#1a2f5e' },
+  statValue: { fontSize: 22, fontWeight: '800', color: '#1a56db' },
   statValueLight: { fontSize: 22, fontWeight: '800', color: '#fff' },
 
   // Sections
   section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#1a2f5e' },
-  seeAll: { fontSize: 14, color: '#2563eb', fontWeight: '600' },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#1a56db' },
+  seeAll: { fontSize: 14, color: '#1a56db', fontWeight: '600' },
 
   // Empty state
   emptyCard: {

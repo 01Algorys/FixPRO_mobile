@@ -6,9 +6,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
+import PasswordRequirements from '../components/PasswordRequirements';
+import { isPasswordValid } from '../utils/passwordValidation';
 
 const { width } = Dimensions.get('window');
 const BLUE = '#1a56db';
@@ -19,30 +20,30 @@ export default function CreateAccountScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  
-  // Form data
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     telephone: '',
     motDePasse: '',
     confirmationMotDePasse: '',
-    // Only for professionals
     selectedServices: [],
-    serviceId: null // Required for professionals
+    serviceId: null,
   });
-  
+
   const [errors, setErrors] = useState({});
 
   const isParticulier = role === 'USER';
   const isProfessionnel = role === 'WORKER';
 
-  // Fetch services for professional registration
   useEffect(() => {
     if (isProfessionnel) {
       fetchServices();
+    } else {
+      setLoadingServices(false);
     }
   }, [isProfessionnel]);
 
@@ -50,8 +51,6 @@ export default function CreateAccountScreen({ navigation, route }) {
     try {
       setLoadingServices(true);
       const response = await apiService.getServices();
-      console.log('Services API response:', response); // Debug log
-      // Handle different possible response structures
       const servicesData = response?.data?.services || response?.services || response || [];
       setServices(Array.isArray(servicesData) ? servicesData : []);
     } catch (error) {
@@ -63,123 +62,87 @@ export default function CreateAccountScreen({ navigation, route }) {
   };
 
   const toggleService = (serviceId) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const isSelected = prev.selectedServices.includes(serviceId);
-      const newSelectedServices = isSelected
-        ? prev.selectedServices.filter(id => id !== serviceId)
+      const newSelected = isSelected
+        ? prev.selectedServices.filter((id) => id !== serviceId)
         : [...prev.selectedServices, serviceId];
-      
       return {
         ...prev,
-        selectedServices: newSelectedServices,
-        serviceId: newSelectedServices.length > 0 ? newSelectedServices[0] : null
+        selectedServices: newSelected,
+        serviceId: newSelected.length > 0 ? newSelected[0] : null,
       };
     });
-    
-    if (errors.selectedServices) {
-      setErrors(prev => ({ ...prev, selectedServices: '' }));
-    }
-    if (errors.serviceId) {
-      setErrors(prev => ({ ...prev, serviceId: '' }));
-    }
+    setErrors((prev) => ({ ...prev, selectedServices: '', serviceId: '' }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
-    // Common validations - simplified
+
     if (!formData.name.trim()) {
       newErrors.name = 'Le nom est requis';
     }
-    
+
     if (!formData.email.trim()) {
-      newErrors.email = 'L\'email est requis';
+      newErrors.email = "L'email est requis";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email invalide';
     }
-    
+
     if (!formData.telephone.trim()) {
       newErrors.telephone = 'Le téléphone est requis';
     }
-    
+
     if (!formData.motDePasse) {
       newErrors.motDePasse = 'Le mot de passe est requis';
-    } else if (formData.motDePasse.length < 6) {
-      newErrors.motDePasse = 'Le mot de passe doit contenir au moins 6 caractères';
+    } else if (!isPasswordValid(formData.motDePasse)) {
+      newErrors.motDePasse = 'Le mot de passe ne satisfait pas tous les critères';
     }
-    
+
     if (!formData.confirmationMotDePasse) {
       newErrors.confirmationMotDePasse = 'La confirmation du mot de passe est requise';
     } else if (formData.motDePasse !== formData.confirmationMotDePasse) {
       newErrors.confirmationMotDePasse = 'Les mots de passe ne correspondent pas';
     }
-    
-    // Professionnel specific validations - simplified with serviceId requirement
-    if (isProfessionnel) {
-      if (formData.selectedServices.length === 0) {
-        newErrors.selectedServices = 'Veuillez sélectionner au moins un service';
-      }
-      if (!formData.serviceId) {
-        newErrors.serviceId = 'Le serviceId est requis';
-      }
+
+    if (isProfessionnel && formData.selectedServices.length === 0) {
+      newErrors.selectedServices = 'Veuillez sélectionner au moins un service';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleCreateAccount = async () => {
     if (!validateForm()) return;
-    
+
     try {
       setLoading(true);
-      
-      // Prepare user data - simplified with serviceId for professionals
+
       const userData = {
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.motDePasse,
-        role: role,
-        phone: formData.telephone.trim()
+        role,
+        phone: formData.telephone.trim(),
       };
-      
-      // Add serviceId for professionals
-      if (isProfessionnel && formData.serviceId) {
-        userData.serviceId = formData.serviceId;
+
+      if (isProfessionnel && formData.selectedServices.length > 0) {
+        userData.services = formData.selectedServices;
       }
-      
+
       const result = await signup(userData);
-      
-      if (result.success) {
-        // Store additional data for profile update after login
-        if (isParticulier || isProfessionnel) {
-          const additionalData = {};
-          
-          if (isParticulier) {
-            additionalData.location = {
-              address: formData.adresse.trim(),
-              city: formData.ville.trim(),
-              zipCode: formData.codePostal.trim()
-            };
-          } else if (isProfessionnel) {
-            additionalData.businessInfo = {
-              companyName: formData.nomEntreprise.trim(),
-              specialty: formData.specialite.trim(),
-              serviceArea: formData.zoneIntervention.trim(),
-              description: formData.descriptionService.trim()
-            };
-            additionalData.services = formData.selectedServices;
-          }
-          
-          // Store for profile update after successful login
-          // This will be handled in the AuthContext or after navigation
-          await AsyncStorage.setItem('pendingProfileData', JSON.stringify(additionalData));
-        }
-        
-        // Navigation is handled by AuthContext/AppNavigator based on auth state
-      } else {
+
+      if (result.pendingApproval) {
+        // Worker account created but awaiting admin approval — go to info screen
+        navigation.replace('PendingApproval');
+        return;
+      }
+
+      if (!result.success) {
         Alert.alert('Erreur', result.error || 'Échec de la création du compte');
       }
+      // On success for regular users, navigation is handled by AuthContext/AppNavigator
     } catch (err) {
       Alert.alert('Erreur', err?.message || 'Une erreur est survenue');
     } finally {
@@ -188,9 +151,9 @@ export default function CreateAccountScreen({ navigation, route }) {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -219,57 +182,65 @@ export default function CreateAccountScreen({ navigation, route }) {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Bienvenue chez FixPro !</Text>
             <Text style={styles.cardSub}>
-              {isParticulier 
-                ? "Créez votre compte pour trouver des professionnels près de chez vous."
-                : "Créez votre compte pour proposer vos services sur FixPro."
-              }
+              {isParticulier
+                ? 'Créez votre compte pour trouver des professionnels près de chez vous.'
+                : 'Créez votre compte pour proposer vos services sur FixPro.'}
             </Text>
 
-            {/* Simplified common fields */}
+            {/* Name */}
             <View style={styles.inputBox}>
               <Ionicons name="person-outline" size={20} color="#b0b8c9" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.inputText}
                 value={formData.name}
-                onChangeText={(value) => handleInputChange('name', value)}
+                onChangeText={(v) => handleInputChange('name', v)}
                 placeholder="Nom complet"
                 placeholderTextColor="#b0b8c9"
               />
             </View>
-            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+            {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
+            {/* Email */}
             <View style={styles.inputBox}>
               <Ionicons name="mail-outline" size={20} color="#b0b8c9" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.inputText}
                 value={formData.email}
-                onChangeText={(value) => handleInputChange('email', value)}
+                onChangeText={(v) => handleInputChange('email', v)}
                 placeholder="email@exemple.com"
                 placeholderTextColor="#b0b8c9"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
-            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
+            {/* Phone */}
             <View style={styles.inputBox}>
               <Ionicons name="call-outline" size={20} color="#b0b8c9" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.inputText}
                 value={formData.telephone}
-                onChangeText={(value) => handleInputChange('telephone', value)}
+                onChangeText={(v) => handleInputChange('telephone', v)}
                 placeholder="Téléphone"
                 placeholderTextColor="#b0b8c9"
                 keyboardType="phone-pad"
               />
             </View>
-            {errors.telephone && <Text style={styles.errorText}>{errors.telephone}</Text>}
+            {errors.telephone ? <Text style={styles.errorText}>{errors.telephone}</Text> : null}
 
-            <View style={styles.inputBox}>
+            {/* Password */}
+            <View style={[
+              styles.inputBox,
+              passwordFocused && styles.inputBoxFocused,
+            ]}>
+              <Ionicons name="lock-closed-outline" size={20} color="#b0b8c9" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.inputText}
                 value={formData.motDePasse}
-                onChangeText={(value) => handleInputChange('motDePasse', value)}
+                onChangeText={(v) => handleInputChange('motDePasse', v)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
                 placeholder="Mot de passe"
                 placeholderTextColor="#b0b8c9"
                 secureTextEntry={!showPassword}
@@ -277,17 +248,25 @@ export default function CreateAccountScreen({ navigation, route }) {
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22} color="#b0b8c9"
+                  size={22}
+                  color="#b0b8c9"
                 />
               </TouchableOpacity>
             </View>
-            {errors.motDePasse && <Text style={styles.errorText}>{errors.motDePasse}</Text>}
+            {errors.motDePasse ? <Text style={styles.errorText}>{errors.motDePasse}</Text> : null}
 
+            {/* Real-time password requirements */}
+            {(passwordFocused || formData.motDePasse.length > 0) && (
+              <PasswordRequirements password={formData.motDePasse} />
+            )}
+
+            {/* Confirm password */}
             <View style={styles.inputBox}>
+              <Ionicons name="lock-closed-outline" size={20} color="#b0b8c9" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.inputText}
                 value={formData.confirmationMotDePasse}
-                onChangeText={(value) => handleInputChange('confirmationMotDePasse', value)}
+                onChangeText={(v) => handleInputChange('confirmationMotDePasse', v)}
                 placeholder="Confirmation du mot de passe"
                 placeholderTextColor="#b0b8c9"
                 secureTextEntry={!showConfirmPassword}
@@ -295,19 +274,23 @@ export default function CreateAccountScreen({ navigation, route }) {
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
                 <Ionicons
                   name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22} color="#b0b8c9"
+                  size={22}
+                  color="#b0b8c9"
                 />
               </TouchableOpacity>
             </View>
-            {errors.confirmationMotDePasse && <Text style={styles.errorText}>{errors.confirmationMotDePasse}</Text>}
+            {errors.confirmationMotDePasse ? (
+              <Text style={styles.errorText}>{errors.confirmationMotDePasse}</Text>
+            ) : null}
 
-            {/* Service Selection - only for professionals */}
+            {/* Service selection — professionals only */}
             {isProfessionnel && (
               <View style={styles.serviceSection}>
                 <Text style={styles.sectionTitle}>Services proposés *</Text>
-                {errors.selectedServices && <Text style={styles.errorText}>{errors.selectedServices}</Text>}
-                {errors.serviceId && <Text style={styles.errorText}>{errors.serviceId}</Text>}
-                
+                {errors.selectedServices ? (
+                  <Text style={styles.errorText}>{errors.selectedServices}</Text>
+                ) : null}
+
                 {loadingServices ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color={BLUE} />
@@ -315,21 +298,27 @@ export default function CreateAccountScreen({ navigation, route }) {
                   </View>
                 ) : (
                   <View style={styles.servicesContainer}>
-                    <ScrollView showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+                    <ScrollView showsVerticalScrollIndicator nestedScrollEnabled>
                       {services.map((service) => (
                         <TouchableOpacity
                           key={service.id}
                           style={[
                             styles.serviceItem,
-                            formData.selectedServices.includes(service.id) && styles.serviceItemSelected
+                            formData.selectedServices.includes(service.id) && styles.serviceItemSelected,
                           ]}
                           onPress={() => toggleService(service.id)}
                         >
                           <View style={styles.serviceItemContent}>
-                            <Ionicons 
-                              name={formData.selectedServices.includes(service.id) ? "checkmark-circle" : "ellipse-outline"} 
-                              size={20} 
-                              color={formData.selectedServices.includes(service.id) ? BLUE : "#9ca3af"} 
+                            <Ionicons
+                              name={
+                                formData.selectedServices.includes(service.id)
+                                  ? 'checkmark-circle'
+                                  : 'ellipse-outline'
+                              }
+                              size={20}
+                              color={
+                                formData.selectedServices.includes(service.id) ? BLUE : '#9ca3af'
+                              }
                             />
                             <View style={styles.serviceInfo}>
                               <Text style={styles.serviceName}>{service.name}</Text>
@@ -344,16 +333,20 @@ export default function CreateAccountScreen({ navigation, route }) {
               </View>
             )}
 
-            {/* Create account button */}
+            {/* Submit button — disabled until password is valid */}
             <TouchableOpacity
-              style={[styles.loginBtn, loading && { opacity: 0.7 }]}
+              style={[
+                styles.loginBtn,
+                (loading || !isPasswordValid(formData.motDePasse)) && styles.loginBtnDisabled,
+              ]}
               onPress={handleCreateAccount}
-              disabled={loading}
+              disabled={loading || !isPasswordValid(formData.motDePasse)}
             >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.loginBtnText}>Créer mon compte</Text>
-              }
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loginBtnText}>Créer mon compte</Text>
+              )}
             </TouchableOpacity>
 
             {/* Login link */}
@@ -397,10 +390,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 22, fontWeight: '800', color: '#111827', marginBottom: 4 },
   cardSub: { fontSize: 14, color: '#6b7280', marginBottom: 20 },
 
-  sectionDivider: {
-    marginTop: 8,
-    marginBottom: 16,
-  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -416,28 +405,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    marginBottom: 14,
+    marginBottom: 10,
     backgroundColor: '#f9fafb',
   },
-  textAreaBox: {
-    alignItems: 'flex-start',
-    paddingBottom: 8,
+  inputBoxFocused: {
+    borderColor: BLUE,
+    backgroundColor: '#f0f5ff',
   },
-  inputText: { 
-    flex: 1, 
-    fontSize: 15, 
+  inputText: {
+    flex: 1,
+    fontSize: 15,
     color: '#111827',
     minHeight: 20,
-  },
-  textArea: {
-    minHeight: 60,
-    textAlignVertical: 'top',
   },
 
   errorText: {
     fontSize: 12,
     color: '#ef4444',
-    marginTop: -8,
+    marginTop: -4,
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -450,13 +435,15 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     marginTop: 8,
   },
+  loginBtnDisabled: {
+    backgroundColor: '#93b4f0',
+  },
   loginBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
   registerRow: { flexDirection: 'row', justifyContent: 'center' },
   registerText: { fontSize: 14, color: '#6b7280' },
   registerLink: { fontSize: 14, fontWeight: '700', color: BLUE },
 
-  // Service selection styles
   serviceSection: {
     marginTop: 8,
     marginBottom: 20,
@@ -508,11 +495,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
     textTransform: 'capitalize',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginBottom: 8,
-    fontStyle: 'italic',
   },
 });

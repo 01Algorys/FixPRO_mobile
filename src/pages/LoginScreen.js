@@ -28,8 +28,17 @@ export default function LoginScreen({ navigation }) {
     }
     try {
       setLoading(true);
-      const result = await login({ [tab]: identifier, password });
-      // Navigation is handled by AuthContext/AppNavigator based on auth state
+      // Send the correct field name so the backend can identify the login method
+      const credentials = tab === 'phone'
+        ? { phone: identifier, password }
+        : { email: identifier, password };
+
+      const result = await login(credentials);
+
+      if (!result.success) {
+        Alert.alert('Erreur de connexion', result.error || 'Identifiants incorrects');
+      }
+      // On success, navigation is driven by isAuthenticated state in AppNavigator
     } catch (err) {
       Alert.alert('Erreur', err?.message ?? 'Identifiants incorrects');
     } finally {

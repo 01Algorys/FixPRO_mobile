@@ -65,7 +65,7 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
   avatarInitial: {
     fontSize: scale(32),
     fontWeight: '700',
-    color: '#667eea',
+    color: '#1a56db',
   },
   welcomeText: {
     fontSize: rf(22),
@@ -180,7 +180,7 @@ const WorkerDashboard = ({ navigation }) => {
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Ionicons name="briefcase" size={32} color="#667eea" />
+            <Ionicons name="briefcase" size={32} color="#1a56db" />
             <Text style={styles.statValue}>0</Text>
             <Text style={styles.statLabel}>Total Jobs</Text>
           </View>

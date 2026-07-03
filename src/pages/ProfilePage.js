@@ -9,6 +9,10 @@ import {
   Alert,
   RefreshControl,
   Image,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
@@ -17,13 +21,30 @@ import { Colors } from '../styles/theme';
 import * as ImagePicker from 'expo-image-picker';
 
 const ProfilePage = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+
+  // Edit profile modal
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Security (change password) modal
+  const [securityModalVisible, setSecurityModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -77,8 +98,8 @@ const ProfilePage = ({ navigation }) => {
         totalReviewsGiven,
         bio: userData.bio || 'Membre de la communauté FixNOW',
         preferences: userData.preferences || {},
-        location: userData.location || null,
-        phone: userData.phone || '',
+        location: userData.user?.location || null,
+        phone: userData.user?.phone || '',
         reviews: Array.isArray(reviews)
           ? reviews.map((review) => ({
               id: review.id,
@@ -161,6 +182,75 @@ const ProfilePage = ({ navigation }) => {
         },
       ]
     );
+  };
+
+  const handleOpenEditProfile = () => {
+    setEditName(profileData?.user?.name || '');
+    setEditPhone(profileData?.user?.phone || '');
+    setEditCity(profileData?.location?.city || '');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Erreur', 'Le nom est requis');
+      return;
+    }
+    try {
+      setSavingProfile(true);
+      const updateData = {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+      };
+      if (editCity.trim()) {
+        updateData.location = { city: editCity.trim() };
+      }
+      const result = await updateProfile(updateData);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      await loadProfile();
+      setEditModalVisible(false);
+      Alert.alert('Succès', 'Profil mis à jour avec succès');
+    } catch (err) {
+      console.error('Update profile error:', err);
+      Alert.alert('Erreur', 'Échec de la mise à jour. Réessayez.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleOpenSecurity = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setSecurityModalVisible(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    try {
+      setSavingPassword(true);
+      await apiService.changePassword({ currentPassword, newPassword });
+      setSecurityModalVisible(false);
+      Alert.alert('Succès', 'Mot de passe mis à jour avec succès');
+    } catch (err) {
+      console.error('Change password error:', err);
+      Alert.alert('Erreur', err?.message || 'Mot de passe actuel incorrect');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const getInitials = (name) => {
@@ -292,6 +382,7 @@ const ProfilePage = ({ navigation }) => {
   }
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       refreshControl={
@@ -439,8 +530,8 @@ const ProfilePage = ({ navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickActionCard}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#8b5cf615' }]}>
-              <Ionicons name="help-circle-outline" size={24} color="#8b5cf6" />
+            <View style={[styles.quickActionIcon, { backgroundColor: '#1a56db15' }]}>
+              <Ionicons name="help-circle-outline" size={24} color="#1a56db" />
             </View>
             <Text style={styles.quickActionText}>Aide</Text>
           </TouchableOpacity>
@@ -497,7 +588,7 @@ const ProfilePage = ({ navigation }) => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Compte</Text>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleOpenEditProfile}>
           <View style={styles.menuItemLeft}>
             <View style={[styles.menuItemIcon, { backgroundColor: Colors.primary + '15' }]}>
               <Ionicons name="person-outline" size={20} color={Colors.primary} />
@@ -507,10 +598,10 @@ const ProfilePage = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleOpenSecurity}>
           <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: '#3b82f615' }]}>
-              <Ionicons name="lock-closed-outline" size={20} color="#3b82f6" />
+            <View style={[styles.menuItemIcon, { backgroundColor: '#1a56db15' }]}>
+              <Ionicons name="lock-closed-outline" size={20} color="#1a56db" />
             </View>
             <Text style={styles.menuItemText}>Sécurité</Text>
           </View>
@@ -519,8 +610,8 @@ const ProfilePage = ({ navigation }) => {
 
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: '#8b5cf615' }]}>
-              <Ionicons name="card-outline" size={20} color="#8b5cf6" />
+            <View style={[styles.menuItemIcon, { backgroundColor: '#1a56db15' }]}>
+              <Ionicons name="card-outline" size={20} color="#1a56db" />
             </View>
             <Text style={styles.menuItemText}>Paiement</Text>
           </View>
@@ -550,6 +641,176 @@ const ProfilePage = ({ navigation }) => {
       {/* Bottom spacing */}
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    {/* Edit Profile Modal */}
+    <Modal
+      visible={editModalVisible}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setEditModalVisible(false)}
+    >
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Modifier le profil</Text>
+            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <Ionicons name="close" size={24} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Nom</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Votre nom"
+                  placeholderTextColor={Colors.textTertiary}
+                />
+              </View>
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Téléphone</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="call-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  placeholder="Votre numéro de téléphone"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Ville</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="location-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={editCity}
+                  onChangeText={setEditCity}
+                  placeholder="Votre ville"
+                  placeholderTextColor={Colors.textTertiary}
+                />
+              </View>
+            </View>
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.saveButton, savingProfile && styles.saveButtonDisabled]}
+            onPress={handleSaveProfile}
+            disabled={savingProfile}
+          >
+            {savingProfile ? (
+              <ActivityIndicator size="small" color={Colors.textLight} />
+            ) : (
+              <Text style={styles.saveButtonText}>Enregistrer</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+
+    {/* Security / Change Password Modal */}
+    <Modal
+      visible={securityModalVisible}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setSecurityModalVisible(false)}
+    >
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Sécurité</Text>
+            <TouchableOpacity onPress={() => setSecurityModalVisible(false)}>
+              <Ionicons name="close" size={24} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Mot de passe actuel</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Mot de passe actuel"
+                  placeholderTextColor={Colors.textTertiary}
+                  secureTextEntry={!showCurrentPw}
+                />
+                <TouchableOpacity onPress={() => setShowCurrentPw(!showCurrentPw)}>
+                  <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Nouveau mot de passe</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-open-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Nouveau mot de passe"
+                  placeholderTextColor={Colors.textTertiary}
+                  secureTextEntry={!showNewPw}
+                />
+                <TouchableOpacity onPress={() => setShowNewPw(!showNewPw)}>
+                  <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Confirmer le mot de passe</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-open-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirmer le mot de passe"
+                  placeholderTextColor={Colors.textTertiary}
+                  secureTextEntry={!showConfirmPw}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPw(!showConfirmPw)}>
+                  <Ionicons name={showConfirmPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.saveButton, savingPassword && styles.saveButtonDisabled]}
+            onPress={handleChangePassword}
+            disabled={savingPassword}
+          >
+            {savingPassword ? (
+              <ActivityIndicator size="small" color={Colors.textLight} />
+            ) : (
+              <Text style={styles.saveButtonText}>Mettre à jour le mot de passe</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+    </>
   );
 };
 
@@ -616,6 +877,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.headerBackground,
     alignItems: 'center',
     paddingBottom: 40,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   profilePictureContainer: {
     position: 'relative',
@@ -976,6 +1239,74 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#7f1d1d',
+  },
+
+  // Modals (Edit Profile / Security)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    marginBottom: 6,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: Colors.input,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: Colors.textLight,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

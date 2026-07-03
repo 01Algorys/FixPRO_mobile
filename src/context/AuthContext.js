@@ -13,6 +13,21 @@ export const useAuth = () => {
   return context;
 };
 
+// Map backend error codes / messages to user-facing French strings
+const mapLoginError = (rawMessage) => {
+  if (!rawMessage) return 'Identifiants incorrects';
+  if (rawMessage.includes('ACCOUNT_PENDING_APPROVAL')) {
+    return "Votre compte est en cours de validation par nos administrateurs. Veuillez patienter jusqu'à l'approbation de votre compte.";
+  }
+  if (rawMessage.includes('ACCOUNT_REJECTED')) {
+    return 'Votre demande de compte a été refusée. Veuillez contacter notre support pour plus d\'informations.';
+  }
+  if (rawMessage.toLowerCase().includes('invalid credentials')) {
+    return 'Identifiants incorrects. Vérifiez votre email/téléphone et mot de passe.';
+  }
+  return rawMessage;
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -26,7 +41,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
-      
+
       if (token && userData) {
         setUser(JSON.parse(userData));
         setIsAuthenticated(true);
@@ -47,23 +62,22 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await apiService.login(credentials);
       const { token, user: userData } = response.data || response;
-      
+
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      
+
       setUser(userData);
       setIsAuthenticated(true);
-      
+
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
       console.error('Login failed:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: mapLoginError(error.message) };
     }
   };
 
   const logout = async () => {
     try {
-      // Disconnect socket on logout
       socketService.disconnect();
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
@@ -77,14 +91,21 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       const response = await apiService.register(userData);
-      
-      // After successful registration, automatically log in
-      const loginResponse = await login({
+
+      // Workers NEVER get auto-logged in — they must wait for admin approval.
+      // We check both the backend flag and the role so this works even if the
+      // backend hasn't been redeployed yet (old backend returns a token for workers).
+      if (response.pendingApproval || userData.role === 'WORKER') {
+        return { success: true, pendingApproval: true };
+      }
+
+      // For regular users, auto-login after successful registration
+      const loginResult = await login({
         email: userData.email,
         password: userData.password,
       });
-      
-      return loginResponse;
+
+      return loginResult;
     } catch (error) {
       console.error('Signup failed:', error);
       return { success: false, error: error.message };
@@ -94,9 +115,10 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       const response = await apiService.updateUserProfile(profileData);
-      setUser(response.data || response);
-      await AsyncStorage.setItem('user', JSON.stringify(response.data || response));
-      return { success: true, user: response.data || response };
+      const updatedUser = response.data || response;
+      setUser(updatedUser);
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      return { success: true, user: updatedUser };
     } catch (error) {
       console.error('Profile update failed:', error);
       return { success: false, error: error.message };
@@ -105,13 +127,9 @@ export const AuthProvider = ({ children }) => {
 
   const updateAvatar = async (avatarBase64) => {
     try {
-      // Update user state with new avatar
       const updatedUser = { ...user, avatar: avatarBase64 };
       setUser(updatedUser);
-      
-      // Update AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      
       return { success: true, user: updatedUser };
     } catch (error) {
       console.error('Avatar update failed:', error);
@@ -120,16 +138,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
-      loading,
-      login, 
-      logout, 
-      signup,
-      updateProfile,
-      updateAvatar
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        loading,
+        login,
+        logout,
+        signup,
+        updateProfile,
+        updateAvatar,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

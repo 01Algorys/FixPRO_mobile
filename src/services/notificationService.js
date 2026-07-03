@@ -29,7 +29,7 @@ const setupAndroidChannel = async () => {
     name: 'Default Notifications',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#6366f1',
+    lightColor: '#1a56db',
     enableVibrate: true,
     showBadge: false,
     sound: true,

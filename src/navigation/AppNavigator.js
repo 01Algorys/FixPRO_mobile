@@ -14,6 +14,7 @@ import LoginScreen from '../pages/LoginScreen';
 import RoleSelectionScreen from '../pages/RoleSelectionScreen';
 import AuthPage from '../pages/AuthPage';
 import CreateAccountScreen from '../pages/CreateAccountScreen';
+import PendingApprovalScreen from '../pages/PendingApprovalScreen';
 import UserHomePage from '../pages/UserHomePage';
 import MessagesPage from '../pages/MessagesPage';
 import ReservationsPage from '../pages/ReservationsPage';
@@ -40,9 +41,8 @@ const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName;
-
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Messages') {
@@ -52,37 +52,42 @@ const MainTabs = () => {
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={26} color={color} />;
         },
-        tabBarActiveTintColor: '#667eea',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: '#1a56db',
+        tabBarInactiveTintColor: '#9ca3af',
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 12,
+          height: 60,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 8,
+        },
         headerShown: false,
       })}
     >
       <Tab.Screen name="Home" component={UserHomePage} />
-      <Tab.Screen 
-        name="Messages" 
-        component={MessagesPage} 
+      <Tab.Screen
+        name="Messages"
+        component={MessagesPage}
         options={{
           tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: '#FF3B30',
-            color: '#fff',
-            fontSize: 10,
-          }
+          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
         }}
       />
-      <Tab.Screen 
-        name="Reservations" 
+      <Tab.Screen
+        name="Reservations"
         component={ReservationsPage}
         options={{
           tabBarBadge: reservationUnread > 0 ? (reservationUnread > 99 ? '99+' : reservationUnread) : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: '#FF3B30',
-            color: '#fff',
-            fontSize: 10,
-          }
+          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
         }}
       />
       <Tab.Screen name="Profile" component={ProfilePage} />
@@ -95,7 +100,7 @@ const WorkerTabs = () => {
   return (
     <WorkerTab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName;
           if (route.name === 'Dashboard') {
             iconName = focused ? 'home' : 'home-outline';
@@ -106,36 +111,42 @@ const WorkerTabs = () => {
           } else {
             iconName = focused ? 'person' : 'person-outline';
           }
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={26} color={color} />;
         },
-        tabBarActiveTintColor: '#667eea',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: '#1a56db',
+        tabBarInactiveTintColor: '#9ca3af',
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 12,
+          height: 60,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 8,
+        },
         headerShown: false,
       })}
     >
       <WorkerTab.Screen name="Dashboard" component={WorkerHomePage} />
-      <WorkerTab.Screen 
-        name="Demandes" 
+      <WorkerTab.Screen
+        name="Demandes"
         component={WorkerReservationsPage}
         options={{
           tabBarBadge: reservationUnread > 0 ? (reservationUnread > 99 ? '99+' : reservationUnread) : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: '#FF3B30',
-            color: '#fff',
-            fontSize: 10,
-          }
+          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
         }}
       />
-      <WorkerTab.Screen 
-        name="Messages" 
+      <WorkerTab.Screen
+        name="Messages"
         component={WorkerMessagesPage}
         options={{
           tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: '#FF3B30',
-            color: '#fff',
-            fontSize: 10,
-          }
+          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
         }}
       />
       <WorkerTab.Screen name="Profil" component={WorkerProfilePage} />
@@ -149,7 +160,7 @@ const AppNavigator = forwardRef((props, ref) => {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }} edges={['top']}>
-        <ActivityIndicator size="large" color="#667eea" />
+        <ActivityIndicator size="large" color="#1a56db" />
       </SafeAreaView>
     );
   }
@@ -164,6 +175,7 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : user?.role === 'WORKER' ? (
           <>

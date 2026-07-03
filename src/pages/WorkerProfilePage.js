@@ -10,9 +10,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import ProfileImagePicker from '../components/ProfileImagePicker';
+import { getCurrentCoords } from '../utils/location';
 
 const { width } = Dimensions.get('window');
-const THEME = '#1a2f5e';
+const THEME = '#1a56db';
 
 export default function WorkerProfile({ navigation }) {
   const { logout, updateAvatar } = useAuth();
@@ -45,6 +46,10 @@ export default function WorkerProfile({ navigation }) {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
+  // Location (used to suggest this worker to nearby clients)
+  const [hasLocation, setHasLocation] = useState(false);
+  const [settingLocation, setSettingLocation] = useState(false);
+
   const fetchProfile = async () => {
     try {
       setError(null);
@@ -70,6 +75,11 @@ export default function WorkerProfile({ navigation }) {
       
       // Set current avatar URL
       setAvatarUrl(profileData?.user?.avatar ?? null);
+
+      // Location is used to suggest this worker to nearby clients
+      setHasLocation(
+        typeof profileData?.latitude === 'number' && typeof profileData?.longitude === 'number'
+      );
     } catch (err) {
       console.error('[Profile] fetchProfile error:', err);
       setError('Impossible de charger le profil');
@@ -123,6 +133,34 @@ export default function WorkerProfile({ navigation }) {
       Alert.alert('Erreur', 'Échec de la mise à jour. Réessayez.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSetLocation = async () => {
+    try {
+      setSettingLocation(true);
+      const coords = await getCurrentCoords();
+
+      if (!coords) {
+        Alert.alert(
+          'Position indisponible',
+          "Impossible d'accéder à votre position. Vérifiez que la localisation est activée pour FixPro dans les réglages."
+        );
+        return;
+      }
+
+      await api.updateWorkerProfile({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      setHasLocation(true);
+      Alert.alert('Succès', 'Votre position a été enregistrée. Les clients à proximité pourront désormais vous voir en priorité.');
+    } catch (err) {
+      console.error('[Profile] handleSetLocation error:', err);
+      Alert.alert('Erreur', "Échec de l'enregistrement de la position. Réessayez.");
+    } finally {
+      setSettingLocation(false);
     }
   };
 
@@ -264,7 +302,7 @@ export default function WorkerProfile({ navigation }) {
       >
 
         {/* ── HEADER ── */}
-        <LinearGradient colors={[THEME, '#2a4a8e']} style={styles.header}>
+        <LinearGradient colors={[THEME, '#1565c0']} style={styles.header}>
           <Text style={styles.headerTitle}>Profil du technicien</Text>
 
           {/* Avatar with ProfileImagePicker */}
@@ -326,6 +364,41 @@ export default function WorkerProfile({ navigation }) {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>À propos</Text>
             <Text style={styles.bioText}>{profile?.bio ?? '—'}</Text>
+          </View>
+
+          {/* ── MA POSITION ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Ma position</Text>
+            <View style={styles.locationRow}>
+              <View style={[styles.locationStatusIcon, hasLocation && styles.locationStatusIconActive]}>
+                <Ionicons
+                  name={hasLocation ? 'checkmark-circle' : 'location-outline'}
+                  size={20}
+                  color={hasLocation ? '#10b981' : '#9ca3af'}
+                />
+              </View>
+              <Text style={styles.locationStatusText}>
+                {hasLocation
+                  ? 'Position enregistrée — vous êtes suggéré aux clients à proximité.'
+                  : "Aucune position enregistrée. Activez-la pour apparaître dans les recherches d'urgence près de chez vous."}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.saveBtn, settingLocation && styles.saveBtnDisabled]}
+              onPress={handleSetLocation}
+              disabled={settingLocation}
+            >
+              {settingLocation ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="locate-outline" size={18} color="#fff" />
+                  <Text style={styles.saveBtnText}>
+                    {hasLocation ? 'Mettre à jour ma position' : 'Définir ma position'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* ── MODIFIER MES INFORMATIONS ── */}
@@ -589,6 +662,22 @@ const styles = StyleSheet.create({
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   bioText: { fontSize: 14, color: '#4b5563', lineHeight: 22 },
 
+  // Location card
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  locationStatusIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  locationStatusIconActive: { backgroundColor: '#d1fae5' },
+  locationStatusText: {
+    flex: 1, fontSize: 13, color: '#6b7280', lineHeight: 18,
+  },
+
   // Edit / Cancel buttons
   editBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -630,7 +719,7 @@ const styles = StyleSheet.create({
 
   // Password button
   passwordBtn: {
-    backgroundColor: '#2563eb', borderRadius: 14,
+    backgroundColor: '#1a56db', borderRadius: 14,
     paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
   },
 
