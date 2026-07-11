@@ -44,3 +44,23 @@ export const reverseGeocodeCity = async (latitude, longitude) => {
     return null;
   }
 };
+
+// Resolves coordinates to a street address / city / postal code using the
+// device's native geocoder (no API key required). Returns null if unavailable.
+export const reverseGeocodeAddress = async (latitude, longitude) => {
+  try {
+    const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const place = results?.[0];
+    if (!place) return null;
+
+    const streetParts = [place.streetNumber, place.street].filter(Boolean);
+    return {
+      address: streetParts.join(' ') || place.name || '',
+      city: place.city || place.subregion || place.region || '',
+      postalCode: place.postalCode || '',
+    };
+  } catch (error) {
+    console.error('reverseGeocodeAddress error:', error);
+    return null;
+  }
+};

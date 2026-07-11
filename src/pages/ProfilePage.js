@@ -14,8 +14,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
+import socketService from '../services/socketService';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,10 +48,6 @@ const ProfilePage = ({ navigation }) => {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -78,10 +76,10 @@ const ProfilePage = ({ navigation }) => {
 
       const totalReservations = Array.isArray(reservations) ? reservations.length : 0;
       const completedReservations = Array.isArray(reservations)
-        ? reservations.filter((r) => r.status === 'completed').length
+        ? reservations.filter((r) => r.status === 'COMPLETED').length
         : 0;
       const pendingReservations = Array.isArray(reservations)
-        ? reservations.filter((r) => r.status === 'pending').length
+        ? reservations.filter((r) => r.status === 'PENDING').length
         : 0;
       const totalReviewsGiven = Array.isArray(reviews) ? reviews.length : 0;
 
@@ -137,6 +135,22 @@ const ProfilePage = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+  // Refresh stats whenever this tab regains focus (e.g. after completing a
+  // reservation or submitting a review) so "Terminé"/"Avis donnés" stay current.
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
+  // Also refresh live when a reservation status changes while this screen is open.
+  useEffect(() => {
+    const unsubscribe = socketService.onReservationUpdate(() => {
+      loadProfile();
+    });
+    return unsubscribe;
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);

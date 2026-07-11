@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,11 @@ import { Colors } from '../styles/theme';
 import { useResponsive, wp, hp, rf, scale, getNumColumns } from '../utils/responsive';
 import { getCurrentCoords, reverseGeocodeCity } from '../utils/location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import SearchResultsOverlay from '../components/SearchResultsOverlay';
+
+const RECENT_SEARCHES_KEY = 'recentSearches';
+const MAX_RECENT_SEARCHES = 5;
 
 const CATEGORIES = [
   {
@@ -92,6 +97,11 @@ const UserHomePage = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState({ categories: [], services: [], workers: [], popular: [] });
+  const [recentSearches, setRecentSearches] = useState([]);
+  const searchDebounceRef = useRef(null);
   const [coords, setCoords] = useState(null);
   const [cityName, setCityName] = useState(null);
   const [locatingUser, setLocatingUser] = useState(false);
@@ -99,7 +109,85 @@ const UserHomePage = ({ navigation }) => {
   useEffect(() => {
     loadUserLocation();
     loadData();
+    loadRecentSearches();
   }, []);
+
+  const loadRecentSearches = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+      setRecentSearches(stored ? JSON.parse(stored) : []);
+    } catch (error) {
+      console.error('Failed to load recent searches:', error);
+    }
+  };
+
+  const persistRecentSearch = async (term) => {
+    if (!term?.trim()) return;
+    try {
+      const next = [term, ...recentSearches.filter((t) => t.toLowerCase() !== term.toLowerCase())].slice(0, MAX_RECENT_SEARCHES);
+      setRecentSearches(next);
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+    } catch (error) {
+      console.error('Failed to persist recent search:', error);
+    }
+  };
+
+  const clearRecentSearches = async () => {
+    setRecentSearches([]);
+    await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+  };
+
+  // Runs the initial "popular searches" fetch (empty q) when the search box
+  // gains focus, and again with debounced live results as the user types.
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    if (!searchQuery.trim()) {
+      if (searchFocused) {
+        apiService.search('').then((res) => setSearchResults(res.data || res)).catch(() => {});
+      }
+      return;
+    }
+
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        const res = await apiService.search(searchQuery.trim());
+        setSearchResults(res.data || res);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(searchDebounceRef.current);
+  }, [searchQuery, searchFocused]);
+
+  const handleSelectSearchCategory = (item) => {
+    persistRecentSearch(item.label);
+    setSearchFocused(false);
+    setSearchQuery('');
+    navigation.navigate('ServiceWorkers', { category: item.id.toLowerCase?.() || item.id });
+  };
+
+  const handleSelectSearchService = (item) => {
+    persistRecentSearch(item.label);
+    setSearchFocused(false);
+    setSearchQuery('');
+    navigation.navigate('ServiceWorkers', { category: item.category?.toLowerCase?.() });
+  };
+
+  const handleSelectSearchWorker = (item) => {
+    persistRecentSearch(item.label);
+    setSearchFocused(false);
+    setSearchQuery('');
+    navigation.navigate('WorkerProfile', { workerId: item.id });
+  };
+
+  const handleSelectRecentSearch = (term) => {
+    setSearchQuery(term);
+  };
 
   const loadCategoryCounts = async () => {
     try {
@@ -293,12 +381,33 @@ const UserHomePage = ({ navigation }) => {
                 placeholderTextColor={Colors.textSecondary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
               />
+              {!!searchQuery && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
             </View>
             <TouchableOpacity style={styles.filterButton}>
               <Ionicons name="options-outline" size={20} color={Colors.textLight} />
             </TouchableOpacity>
           </View>
+
+          {searchFocused && (
+            <SearchResultsOverlay
+              query={searchQuery}
+              loading={searchLoading}
+              results={searchResults}
+              recentSearches={recentSearches}
+              onSelectCategory={handleSelectSearchCategory}
+              onSelectService={handleSelectSearchService}
+              onSelectWorker={handleSelectSearchWorker}
+              onSelectRecent={handleSelectRecentSearch}
+              onClearRecent={clearRecentSearches}
+            />
+          )}
 
           {/* Location Bar */}
           <View style={styles.locationBar}>

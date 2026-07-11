@@ -20,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
 import { useResponsive, wp, hp, rf, scale } from '../utils/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getCurrentCoords, reverseGeocodeAddress } from '../utils/location';
+import LocationPickerModal from '../components/LocationPickerModal';
 
 const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
   container: {
@@ -330,6 +332,28 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
   buttonDisabled: {
     opacity: 0.7,
   },
+  locationSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: wp(5),
+  },
+  mapPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: wp(1.5),
+    marginTop: hp(1.5),
+    paddingVertical: hp(1.2),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  mapPickerButtonText: {
+    color: Colors.primary,
+    fontWeight: '600',
+    fontSize: rf(13),
+  },
 });
 
 const ReservationDetails = ({ route, navigation }) => {
@@ -358,6 +382,8 @@ const ReservationDetails = ({ route, navigation }) => {
     city: city || '',
     description: description || '',
     urgency: 'normal',
+    latitude: null,
+    longitude: null,
   });
 
   const [errors, setErrors] = useState({});
@@ -366,10 +392,55 @@ const ReservationDetails = ({ route, navigation }) => {
   const [submitting, setSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [locatingAddress, setLocatingAddress] = useState(false);
+  const [mapPickerVisible, setMapPickerVisible] = useState(false);
 
   useEffect(() => {
     loadWorker();
   }, [workerId]);
+
+  // Auto-detect the user's current location and pre-fill the address fields.
+  // Silently does nothing if permission is denied — the user can still type
+  // an address manually or open the map picker.
+  useEffect(() => {
+    const autoDetectLocation = async () => {
+      if (formData.address) return; // don't overwrite a pre-filled address (e.g. from route params)
+      try {
+        setLocatingAddress(true);
+        const coords = await getCurrentCoords();
+        if (!coords) return;
+
+        const resolved = await reverseGeocodeAddress(coords.latitude, coords.longitude);
+        setFormData((prev) => ({
+          ...prev,
+          address: prev.address || resolved?.address || prev.address,
+          city: prev.city || resolved?.city || prev.city,
+          postalCode: prev.postalCode || resolved?.postalCode || prev.postalCode,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        }));
+      } catch (error) {
+        console.error('Auto-detect location failed:', error);
+      } finally {
+        setLocatingAddress(false);
+      }
+    };
+    autoDetectLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleLocationPicked = ({ address: pickedAddress, latitude, longitude }) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: pickedAddress || prev.address,
+      latitude,
+      longitude,
+    }));
+    setMapPickerVisible(false);
+    if (errors.address) {
+      setErrors((prev) => ({ ...prev, address: '' }));
+    }
+  };
 
   const loadWorker = async () => {
     try {
@@ -486,6 +557,8 @@ const ReservationDetails = ({ route, navigation }) => {
           city: formData.city,
           state: '',
           zipCode: formData.postalCode,
+          latitude: formData.latitude || undefined,
+          longitude: formData.longitude || undefined,
         },
         description: formData.description,
         emergency: formData.urgency === 'high' || formData.urgency === 'emergency',
@@ -648,7 +721,12 @@ const ReservationDetails = ({ route, navigation }) => {
 
         {/* Location Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Localisation</Text>
+          <View style={styles.locationSectionHeader}>
+            <Text style={styles.sectionTitle}>Localisation</Text>
+            {locatingAddress && (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            )}
+          </View>
           <View style={styles.card}>
             <Text style={styles.label}>
               <Ionicons name="location-outline" size={14} color={Colors.primary} /> Adresse
@@ -661,6 +739,14 @@ const ReservationDetails = ({ route, navigation }) => {
               onChangeText={(value) => handleInputChange('address', value)}
             />
             {errors.address && <Text style={styles.fieldError}>{errors.address}</Text>}
+
+            <TouchableOpacity
+              style={styles.mapPickerButton}
+              onPress={() => setMapPickerVisible(true)}
+            >
+              <Ionicons name="map-outline" size={16} color={Colors.primary} />
+              <Text style={styles.mapPickerButtonText}>Choisir sur la carte</Text>
+            </TouchableOpacity>
 
             <View style={styles.formRow}>
               <View style={styles.formHalf}>
@@ -828,6 +914,17 @@ const ReservationDetails = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+
+      <LocationPickerModal
+        visible={mapPickerVisible}
+        initialCoords={
+          formData.latitude && formData.longitude
+            ? { latitude: formData.latitude, longitude: formData.longitude }
+            : null
+        }
+        onConfirm={handleLocationPicked}
+        onClose={() => setMapPickerVisible(false)}
+      />
     </SafeAreaView>
   );
 };

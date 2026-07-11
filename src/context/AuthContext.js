@@ -45,6 +45,7 @@ export const AuthProvider = ({ children }) => {
       if (token && userData) {
         setUser(JSON.parse(userData));
         setIsAuthenticated(true);
+        socketService.connect();
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -68,6 +69,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userData);
       setIsAuthenticated(true);
+      socketService.connect();
 
       return { success: true, user: userData, role: userData.role };
     } catch (error) {

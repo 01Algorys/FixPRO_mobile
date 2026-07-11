@@ -91,6 +91,11 @@
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#1a56db"
       },
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_GOOGLE_MAPS_ANDROID_API_KEY"
+        }
+      },
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",

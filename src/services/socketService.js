@@ -8,6 +8,7 @@ class SocketService {
     this.connected = false;
     this.onlineUsers = new Set();
     this.presenceListeners = new Set();
+    this.reservationListeners = new Set();
   }
 
   async connect() {
@@ -92,9 +93,18 @@ class SocketService {
         this.connected = false;
       });
 
-      // Listen for reservation updates
-      this.socket.on('reservation_update', (data) => {
-        console.log('Reservation update received:', data);
+      // Listen for reservation lifecycle events and fan them out to subscribers
+      const notifyReservationListeners = (eventType, data) => {
+        this.reservationListeners.forEach((cb) => cb({ ...data, eventType }));
+      };
+      this.socket.on('reservation_status_changed', (data) => {
+        notifyReservationListeners('status_changed', data);
+      });
+      this.socket.on('reservation_cancelled', (data) => {
+        notifyReservationListeners('cancelled', data);
+      });
+      this.socket.on('job_completed', (data) => {
+        notifyReservationListeners('job_completed', data);
       });
 
       // Listen for new messages
@@ -261,6 +271,13 @@ class SocketService {
 
   isOnline(userId) {
     return this.onlineUsers.has(userId);
+  }
+
+  // Reservation lifecycle methods
+  // callback receives { reservationId, eventType: 'status_changed'|'cancelled'|'job_completed', newStatus?, ... }
+  onReservationUpdate(callback) {
+    this.reservationListeners.add(callback);
+    return () => this.reservationListeners.delete(callback); // returns unsubscribe fn
   }
 }
 

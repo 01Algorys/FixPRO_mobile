@@ -7,21 +7,63 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
+import socketService from '../services/socketService';
+import ConfirmModal from '../components/ConfirmModal';
 import { Colors } from '../styles/theme';
 
 const OrderTracking = ({ route, navigation }) => {
   const { reservationId } = route.params || {};
   const [reservation, setReservation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (reservationId) {
       loadReservationDetails();
     }
   }, [reservationId]);
+
+  // Real-time: join this reservation's room and reflect status changes live.
+  useEffect(() => {
+    if (!reservationId) return;
+
+    socketService.joinReservation(reservationId);
+    const unsubscribe = socketService.onReservationUpdate((data) => {
+      if (data.reservationId !== Number(reservationId)) return;
+      setReservation((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: data.eventType === 'cancelled' ? 'CANCELLED' : (data.newStatus || prev.status),
+            }
+          : prev
+      );
+    });
+
+    return () => {
+      socketService.leaveReservation(reservationId);
+      unsubscribe();
+    };
+  }, [reservationId]);
+
+  const handleCancelReservation = async () => {
+    try {
+      setCancelling(true);
+      await apiService.cancelReservation(reservationId);
+      setReservation((prev) => (prev ? { ...prev, status: 'CANCELLED' } : prev));
+      setCancelModalVisible(false);
+    } catch (error) {
+      console.error('Failed to cancel reservation:', error);
+      Alert.alert('Erreur', error.message || "Impossible d'annuler cette réservation.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const loadReservationDetails = async () => {
     try {
@@ -47,6 +89,7 @@ const OrderTracking = ({ route, navigation }) => {
       completed: { color: '#22c55e', bg: '#dcfce7', text: 'Terminé', icon: 'checkmark-done-circle' },
       cancelled: { color: '#ef4444', bg: '#fee2e2', text: 'Annulé', icon: 'close-circle' },
       rejected: { color: '#ef4444', bg: '#fee2e2', text: 'Refusé', icon: 'close-circle' },
+      expired: { color: '#6b7280', bg: '#f3f4f6', text: 'Expiré', icon: 'hourglass-outline' },
     };
     return configs[statusLower] || configs.pending;
   };
@@ -86,13 +129,14 @@ const OrderTracking = ({ route, navigation }) => {
       }
     ];
 
-    // Handle cancelled/rejected status
-    if (statusLower === 'cancelled' || statusLower === 'rejected') {
+    // Handle cancelled/rejected/expired status
+    if (statusLower === 'cancelled' || statusLower === 'rejected' || statusLower === 'expired') {
+      const labels = { cancelled: 'Annulé', rejected: 'Refusé', expired: 'Expiré' };
       return [
         baseTimeline[0],
         {
-          title: statusLower === 'cancelled' ? 'Annulé' : 'Refusé',
-          time: statusLower === 'cancelled' ? 'Annulé' : 'Refusé',
+          title: labels[statusLower],
+          time: labels[statusLower],
           completed: true
         }
       ];
@@ -253,7 +297,7 @@ const OrderTracking = ({ route, navigation }) => {
             <View style={styles.detailRow}>
               <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
               <Text style={styles.detailText}>
-                {reservation.address || 'Adresse non spécifiée'}
+                {reservation.location?.address || reservation.address || 'Adresse non spécifiée'}
               </Text>
             </View>
           </View>
@@ -267,8 +311,30 @@ const OrderTracking = ({ route, navigation }) => {
               </View>
             </View>
           )}
+
+          {reservation.status?.toUpperCase() === 'PENDING' && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setCancelModalVisible(true)}
+            >
+              <Ionicons name="close-circle-outline" size={18} color={Colors.error} />
+              <Text style={styles.cancelButtonText}>Annuler la réservation</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={cancelModalVisible}
+        title="Annuler la réservation ?"
+        message="Êtes-vous sûr de vouloir annuler cette réservation ? Cette action est irréversible."
+        confirmLabel="Oui, annuler"
+        cancelLabel="Retour"
+        destructive
+        loading={cancelling}
+        onConfirm={handleCancelReservation}
+        onCancel={() => setCancelModalVisible(false)}
+      />
     </View>
   );
 };
@@ -460,6 +526,22 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: Colors.textSecondary,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
+  cancelButtonText: {
+    color: Colors.error,
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

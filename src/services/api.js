@@ -96,6 +96,11 @@ class ApiService {
     return this.request(endpoint);
   }
 
+  async search(query = '') {
+    const endpoint = query ? `/search?q=${encodeURIComponent(query)}` : '/search';
+    return this.request(endpoint);
+  }
+
   async getWorker(id) {
     return this.request(`/workers/${id}`);
   }

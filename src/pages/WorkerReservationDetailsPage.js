@@ -1,11 +1,31 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
+import socketService from '../services/socketService';
 import { Colors } from '../styles/theme';
 
 const WorkerReservationDetailsPage = ({ route, navigation }) => {
-  const { reservation } = route.params || {};
+  const [reservation, setReservation] = useState(route.params?.reservation || null);
+
+  // Real-time: join this reservation's room and reflect status changes live.
+  useEffect(() => {
+    if (!reservation?.id) return;
+
+    socketService.joinReservation(reservation.id);
+    const unsubscribe = socketService.onReservationUpdate((data) => {
+      if (data.reservationId !== reservation.id) return;
+      setReservation((prev) => ({
+        ...prev,
+        status: data.eventType === 'cancelled' ? 'CANCELLED' : (data.newStatus || prev.status),
+      }));
+    });
+
+    return () => {
+      socketService.leaveReservation(reservation.id);
+      unsubscribe();
+    };
+  }, [reservation?.id]);
 
   if (!reservation) {
     return (
@@ -18,17 +38,18 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
   const updateStatus = async (status) => {
     try {
       await apiService.updateReservationStatus(reservation.id, status);
-      
+
       // If accepting reservation, navigate to messages
       if (status === 'accepted') {
-        navigation.navigate('Messages', { 
-          conversationId: reservation.id 
+        navigation.navigate('Messages', {
+          conversationId: reservation.id
         });
       } else {
         navigation.goBack();
       }
     } catch (error) {
       console.error('Failed to update reservation from details:', error);
+      Alert.alert('Erreur', "Impossible de mettre à jour le statut de la réservation.");
     }
   };
 
@@ -60,7 +81,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
       </ScrollView>
       {(reservation.status === 'pending' || reservation.status === 'PENDING') && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.decline} onPress={() => updateStatus('cancelled')}>
+          <TouchableOpacity style={styles.decline} onPress={() => updateStatus('rejected')}>
             <Text style={styles.actionText}>Décliner</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.accept} onPress={() => updateStatus('accepted')}>

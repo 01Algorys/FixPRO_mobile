@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api';
+import socketService from '../services/socketService';
 import { Colors } from '../styles/theme';
 import { responsiveStyles, responsive } from '../styles/responsiveStyles';
 import { useNotifications } from '../context/NotificationContext';
@@ -44,6 +45,25 @@ const WorkerReservationsPage = ({ navigation }) => {
     loadReservations();
   }, []);
 
+  // Real-time: patch the matching reservation in place when the backend
+  // emits a status change instead of requiring a manual pull-to-refresh.
+  useEffect(() => {
+    const unsubscribe = socketService.onReservationUpdate((data) => {
+      setReservations((prev) =>
+        prev.map((r) =>
+          r.id === data.reservationId
+            ? {
+                ...r,
+                status: data.eventType === 'cancelled' ? 'CANCELLED' : (data.newStatus || r.status),
+                cancellationReason: data.eventType === 'cancelled' ? data.reason : r.cancellationReason,
+              }
+            : r
+        )
+      );
+    });
+    return unsubscribe;
+  }, []);
+
   // Reset reservation badge when entering this tab
   useFocusEffect(
     React.useCallback(() => {
@@ -66,6 +86,7 @@ const WorkerReservationsPage = ({ navigation }) => {
       completed: { color: '#22c55e', bg: '#dcfce7', text: 'Terminé', icon: 'checkmark-done-circle' },
       cancelled: { color: '#ef4444', bg: '#fee2e2', text: 'Annulé', icon: 'close-circle' },
       rejected: { color: '#ef4444', bg: '#fee2e2', text: 'Refusé', icon: 'close-circle' },
+      expired: { color: '#6b7280', bg: '#f3f4f6', text: 'Expiré', icon: 'hourglass-outline' },
     };
     return configs[statusLower] || configs.pending;
   };
@@ -188,7 +209,7 @@ const WorkerReservationsPage = ({ navigation }) => {
                   <View style={styles.detailRow}>
                     <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
                     <Text style={styles.detailText} numberOfLines={1}>
-                      {reservation.address || 'Adresse non spécifiée'}
+                      {reservation.location?.address || reservation.address || 'Adresse non spécifiée'}
                     </Text>
                   </View>
                 </View>
@@ -228,7 +249,7 @@ const WorkerReservationsPage = ({ navigation }) => {
                     <>
                       <TouchableOpacity
                         style={styles.declineButton}
-                        onPress={() => onUpdateStatus(reservation.id, 'cancelled')}
+                        onPress={() => onUpdateStatus(reservation.id, 'rejected')}
                       >
                         <Ionicons name="close-circle" size={18} color={Colors.textLight} />
                         <Text style={styles.declineButtonText}>Décliner</Text>
