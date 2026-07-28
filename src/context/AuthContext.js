@@ -31,6 +31,7 @@ const mapLoginError = (rawMessage) => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,10 +46,13 @@ export const AuthProvider = ({ children }) => {
       if (token && userData) {
         setUser(JSON.parse(userData));
         setIsAuthenticated(true);
+        setIsGuest(false);
         socketService.connect();
       } else {
         setUser(null);
         setIsAuthenticated(false);
+        const guestFlag = await AsyncStorage.getItem('isGuest');
+        setIsGuest(guestFlag === 'true');
       }
     } catch (error) {
       console.error('Error loading stored auth:', error);
@@ -59,6 +63,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const continueAsGuest = async () => {
+    try {
+      await AsyncStorage.setItem('isGuest', 'true');
+    } catch (error) {
+      console.error('Failed to persist guest mode:', error);
+    }
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsGuest(true);
+  };
+
   const login = async (credentials) => {
     try {
       const response = await apiService.login(credentials);
@@ -66,9 +81,11 @@ export const AuthProvider = ({ children }) => {
 
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await AsyncStorage.removeItem('isGuest');
 
       setUser(userData);
       setIsAuthenticated(true);
+      setIsGuest(false);
       socketService.connect();
 
       return { success: true, user: userData, role: userData.role };
@@ -83,8 +100,10 @@ export const AuthProvider = ({ children }) => {
       socketService.disconnect();
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('isGuest');
       setUser(null);
       setIsAuthenticated(false);
+      setIsGuest(false);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -144,10 +163,12 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         isAuthenticated,
+        isGuest,
         loading,
         login,
         logout,
         signup,
+        continueAsGuest,
         updateProfile,
         updateAvatar,
       }}

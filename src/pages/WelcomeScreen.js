@@ -5,11 +5,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Poppins_900Black } from '@expo-google-fonts/poppins';
+import { useAuth } from '../context/AuthContext';
 const { width, height } = Dimensions.get('window');
 const BLUE = '#1a56db';
 
 export default function WelcomeScreen({ navigation }) {
   const [fontsLoaded] = useFonts({ Poppins_900Black });
+  const { continueAsGuest } = useAuth();
 
   if (!fontsLoaded) {
     return null;
@@ -66,6 +68,14 @@ export default function WelcomeScreen({ navigation }) {
           activeOpacity={0.85}
         >
           <Text style={styles.registerBtnText} numberOfLines={0}>Créer un compte</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.guestBtn}
+          onPress={continueAsGuest}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.guestBtnText} numberOfLines={0}>Continuer en tant qu'invité</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -160,6 +170,18 @@ const styles = StyleSheet.create({
     fontSize: width * 0.045,
     fontWeight: '700',
     color: '#fff',
+    flexShrink: 1,
+  },
+  guestBtn: {
+    alignItems: 'center',
+    paddingVertical: height * 0.012,
+  },
+  guestBtnText: {
+    fontSize: width * 0.038,
+    fontWeight: '600',
+    color: '#fff',
+    opacity: 0.85,
+    textDecorationLine: 'underline',
     flexShrink: 1,
   },
 });

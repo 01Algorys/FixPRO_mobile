@@ -31,10 +31,12 @@ import WorkerReservationsPage from '../pages/WorkerReservationsPage';
 import WorkerMessagesPage from '../pages/WorkerMessagesPage';
 import WorkerProfilePage from '../pages/WorkerProfilePage';
 import WorkerReservationDetailsPage from '../pages/WorkerReservationDetailsPage';
+import LockedScreen from '../components/LockedScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const WorkerTab = createBottomTabNavigator();
+const GuestTab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const { unreadMessages, reservationUnread } = useNotifications();
@@ -92,6 +94,50 @@ const MainTabs = () => {
       />
       <Tab.Screen name="Profile" component={ProfilePage} />
     </Tab.Navigator>
+  );
+};
+
+const GuestTabs = () => {
+  return (
+    <GuestTab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color }) => {
+          let iconName;
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Messages') {
+            iconName = 'lock-closed';
+          } else if (route.name === 'Reservations') {
+            iconName = 'lock-closed';
+          } else if (route.name === 'Profile') {
+            iconName = 'lock-closed';
+          }
+          return <Ionicons name={iconName} size={26} color={color} />;
+        },
+        tabBarActiveTintColor: '#1a56db',
+        tabBarInactiveTintColor: '#9ca3af',
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 12,
+          height: 60,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 8,
+        },
+        headerShown: false,
+      })}
+    >
+      <GuestTab.Screen name="Home" component={UserHomePage} />
+      <GuestTab.Screen name="Messages" component={LockedScreen} initialParams={{ title: 'Messagerie réservée', message: 'Connectez-vous pour discuter avec les professionnels.' }} />
+      <GuestTab.Screen name="Reservations" component={LockedScreen} initialParams={{ title: 'Réservations réservées', message: 'Connectez-vous pour voir et gérer vos réservations.' }} />
+      <GuestTab.Screen name="Profile" component={LockedScreen} initialParams={{ title: 'Profil réservé', message: 'Connectez-vous pour accéder à votre profil.' }} />
+    </GuestTab.Navigator>
   );
 };
 
@@ -155,7 +201,7 @@ const WorkerTabs = () => {
 };
 
 const AppNavigator = forwardRef((props, ref) => {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, isGuest, loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -168,7 +214,7 @@ const AppNavigator = forwardRef((props, ref) => {
   return (
     <NavigationContainer ref={ref}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
+        {!isAuthenticated && !isGuest ? (
           <>
             <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
@@ -176,6 +222,14 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
             <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
+          </>
+        ) : !isAuthenticated && isGuest ? (
+          <>
+            <Stack.Screen name="GuestMain" component={GuestTabs} />
+            <Stack.Screen name="Login" component={LoginScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="Auth" component={AuthPage} />
+            <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
           </>
         ) : user?.role === 'WORKER' ? (
           <>

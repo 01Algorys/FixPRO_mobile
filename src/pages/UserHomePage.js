@@ -84,7 +84,7 @@ const CATEGORIES = [
 ];
 
 const UserHomePage = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, isGuest } = useAuth();
   const { unreadMessages } = useNotifications();
   const { width, height, isTablet, isSmallPhone, getSpacing } = useResponsive();
   const insets = useSafeAreaInsets();
@@ -164,25 +164,40 @@ const UserHomePage = ({ navigation }) => {
     return () => clearTimeout(searchDebounceRef.current);
   }, [searchQuery, searchFocused]);
 
+  const guardedNavigate = (screen, params) => {
+    if (isGuest) {
+      Alert.alert(
+        'Connexion requise',
+        'Connectez-vous ou créez un compte pour accéder à cette fonctionnalité.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Se connecter', onPress: () => navigation.navigate('Login') },
+        ]
+      );
+      return;
+    }
+    navigation.navigate(screen, params);
+  };
+
   const handleSelectSearchCategory = (item) => {
     persistRecentSearch(item.label);
     setSearchFocused(false);
     setSearchQuery('');
-    navigation.navigate('ServiceWorkers', { category: item.id.toLowerCase?.() || item.id });
+    guardedNavigate('ServiceWorkers', { category: item.id.toLowerCase?.() || item.id });
   };
 
   const handleSelectSearchService = (item) => {
     persistRecentSearch(item.label);
     setSearchFocused(false);
     setSearchQuery('');
-    navigation.navigate('ServiceWorkers', { category: item.category?.toLowerCase?.() });
+    guardedNavigate('ServiceWorkers', { category: item.category?.toLowerCase?.() });
   };
 
   const handleSelectSearchWorker = (item) => {
     persistRecentSearch(item.label);
     setSearchFocused(false);
     setSearchQuery('');
-    navigation.navigate('WorkerProfile', { workerId: item.id });
+    guardedNavigate('WorkerProfile', { workerId: item.id });
   };
 
   const handleSelectRecentSearch = (term) => {
@@ -298,11 +313,11 @@ const UserHomePage = ({ navigation }) => {
   };
 
   const handleWorkerClick = (worker) => {
-    navigation.navigate('WorkerProfile', { workerId: worker.id });
+    guardedNavigate('WorkerProfile', { workerId: worker.id });
   };
 
   const handleReservePress = (worker) => {
-    navigation.navigate('ReservationDetails', { workerId: worker.id || worker.userId });
+    guardedNavigate('ReservationDetails', { workerId: worker.id || worker.userId });
   };
 
   const renderStars = (rating) => {
@@ -322,18 +337,18 @@ const UserHomePage = ({ navigation }) => {
   };
 
   const handleCategoryClick = (categoryId) => {
-    navigation.navigate('ServiceWorkers', { category: categoryId });
+    guardedNavigate('ServiceWorkers', { category: categoryId });
   };
 
   const handleSeeAllProfessionals = () => {
-    navigation.navigate('Professionals');
+    guardedNavigate('Professionals');
   };
 
   const displayCityName = cityName
     || userData?.user?.location?.city
     || userData?.location?.city
     || 'Position non définie';
-  const firstName = userData?.user?.name || user?.name || '';
+  const firstName = userData?.user?.name || user?.name || (isGuest ? 'Invité' : '');
 
   if (loading) {
     return (
@@ -360,7 +375,7 @@ const UserHomePage = ({ navigation }) => {
             </View>
             <TouchableOpacity
               style={styles.notificationButton}
-              onPress={() => navigation.navigate('Messages')}
+              onPress={() => guardedNavigate('Messages')}
             >
               <Ionicons name="notifications" size={24} color={Colors.textLight} />
               {unreadMessages > 0 && <View style={styles.notificationBadge} />}

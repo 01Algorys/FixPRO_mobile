@@ -89,7 +89,7 @@
       "package": "com.fixpro.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#1a56db"
+        "backgroundColor": "#000000"
       },
       "config": {
         "googleMaps": {
