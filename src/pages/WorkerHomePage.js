@@ -42,9 +42,14 @@ export default function WorkerHomePage({ navigation }) {
       const reservationsList = reservationsData.data?.reservations || reservationsData.reservations || reservationsData.data || reservationsData || [];
       const reservationsArray = Array.isArray(reservationsList) ? reservationsList : [];
 
+      // Credits only count reservations that were accepted or completed
+      const creditEligibleCount = reservationsArray.filter((r) =>
+        ['accepted', 'completed'].includes((r.status || '').toLowerCase())
+      ).length;
+
       // Derive stats from profile and reservations
       const derivedStats = {
-        credits: profileResponse?.credits || 0,
+        credits: creditEligibleCount * 2,
         totalMissions: reservationsArray.length,
       };
       setStats(derivedStats);
@@ -164,7 +169,7 @@ export default function WorkerHomePage({ navigation }) {
             >
               <Ionicons name="wallet-outline" size={28} color="#fff" />
               <Text style={styles.statLabelLight}>Crédits</Text>
-              <Text style={styles.statValueLight}>{stats?.totalMissions * 2 ?? 0} TND</Text>
+              <Text style={styles.statValueLight}>{stats?.credits ?? 0} TND</Text>
             </LinearGradient>
 
             {/* Missions */}
