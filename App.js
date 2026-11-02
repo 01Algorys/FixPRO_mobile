@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { SafeAreaView, ActivityIndicator, View, Alert } from 'react-native';
+import { ActivityIndicator, View, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -226,7 +227,10 @@ function AppContent() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a56db' }} edges={['top', 'bottom']}>
+    // Signed-in screens end with a white tab bar, so the home-indicator strip
+    // below them is white; the auth screens keep the brand blue.
+    <SafeAreaView style={{ flex: 1, backgroundColor: user ? '#ffffff' : '#1a56db' }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a56db' }} edges={['top']}>
       <AppNavigator ref={navigationRef} />
       {toast.visible && (
         <MessageToast
@@ -237,6 +241,7 @@ function AppContent() {
           onDismiss={handleToastDismiss}
         />
       )}
+    </SafeAreaView>
     </SafeAreaView>
   );
 }

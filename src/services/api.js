@@ -201,6 +201,11 @@ class ApiService {
     return this.request('/services/categories');
   }
 
+  // Active categories managed from the admin dashboard, with technician counts
+  async getPublicCategories() {
+    return this.request('/categories');
+  }
+
   // Reservations endpoints
   async createReservation(reservationData) {
     return this.request('/reservations', {

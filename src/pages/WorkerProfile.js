@@ -8,11 +8,31 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Share,
+  StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../styles/theme';
 import apiService from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { professionTitle } from '../utils/categoryMeta';
+
+const PRIMARY = '#1d5ff0';
+const NAVY = '#0b2f86';
+const REVIEWS_PREVIEW = 3;
+
+const timeAgo = (date) => {
+  if (!date) return '';
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+  if (days <= 0) return "Aujourd'hui";
+  if (days === 1) return 'Hier';
+  if (days < 30) return `Il y a ${days} jours`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `Il y a ${months} mois`;
+  const years = Math.floor(months / 12);
+  return `Il y a ${years} an${years > 1 ? 's' : ''}`;
+};
 
 const WorkerProfile = ({ route, navigation }) => {
   const { workerId } = route.params || {};
@@ -20,9 +40,9 @@ const WorkerProfile = ({ route, navigation }) => {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const handleReservePress = () => {
-    console.log(workerId);
     navigation.navigate('ReservationDetails', { workerId });
   };
 
@@ -60,6 +80,12 @@ const WorkerProfile = ({ route, navigation }) => {
     );
   };
 
+  const handleShare = () => {
+    Share.share({
+      message: `Découvrez ${worker?.user?.name || 'ce technicien'} sur FixPro, ${worker?.profession?.toLowerCase()}.`,
+    }).catch(() => {});
+  };
+
   useEffect(() => {
     loadWorkerProfile();
   }, [workerId]);
@@ -73,79 +99,66 @@ const WorkerProfile = ({ route, navigation }) => {
       setError(null);
 
       const workerResponse = await apiService.getWorkerById(workerId);
-      workerData = workerResponse.data || workerResponse;
-      console.log("workerData:  ",workerData)
+      const payload = workerResponse.data || workerResponse;
+      workerData = payload.worker || payload;
       const actualWorkerId = workerData.id || workerId;
+
+      // Some endpoints return service ids only; resolve the first one so the
+      // profession title can be derived from its category.
+      let services = Array.isArray(workerData.services) ? workerData.services : [];
+      if (services.length && typeof services[0] !== 'object') {
+        const first = await apiService.getService(services[0]).catch(() => null);
+        const service = first?.data?.service || first?.data || first;
+        services = service?.category ? [service] : [];
+      }
 
       let reviews = [];
       try {
-        if (typeof apiService.getWorkerReviewsPublic === 'function') {
-          const reviewsResponse =
-            await apiService.getWorkerReviewsPublic(actualWorkerId);
-          reviews =
-            reviewsResponse.data?.reviews ||
-            reviewsResponse.reviews ||
-            reviewsResponse.data ||
-            reviewsResponse ||
-            [];
-        } else {
-          console.log(
-            'getWorkerReviewsPublic is not available in apiService'
-          );
-        }
+        const reviewsResponse = await apiService.getWorkerReviewsPublic(actualWorkerId);
+        reviews =
+          reviewsResponse.data?.reviews ||
+          reviewsResponse.reviews ||
+          reviewsResponse.data ||
+          [];
       } catch (reviewError) {
-        console.log(
-          'No reviews found or error fetching reviews:',
-          reviewError
-        );
+        console.log('No reviews found or error fetching reviews:', reviewError);
       }
 
       let dashboardData = {};
       try {
-        const dashboardResponse =
-          await apiService.getWorkerDashboard(actualWorkerId);
-        dashboardData = dashboardResponse.data || dashboardResponse || {};
+        const dashboardResponse = await apiService.getWorkerDashboard(actualWorkerId);
+        dashboardData = dashboardResponse.data?.stats || dashboardResponse.data || {};
       } catch (dashboardError) {
         console.log('Error fetching dashboard:', dashboardError);
       }
 
+      const reviewList = Array.isArray(reviews) ? reviews : [];
+      const happy = reviewList.filter((r) => (r.rating || 0) >= 4).length;
+
       combinedWorkerData = {
         ...workerData,
-        interventions:
-          dashboardData.interventions ||
-          dashboardData.totalJobs ||
-          workerData.jobsCompleted ||
-          0,
-        rating:
-          dashboardData.rating ||
-          workerData.averageRating ||
-          workerData.rating ||
-          0,
-        satisfactionRate:
-          dashboardData.satisfactionRate ||
-          workerData.satisfactionRate ||
-          0,
-        experience:
-          dashboardData.experience || workerData.experience || 0,
-        totalReviews: reviews.length || workerData.totalReviews || 0,
-        reviews: Array.isArray(reviews)
-          ? reviews.map((review) => ({
-            id: review.id,
-            name: review.user?.name || review.reviewerName || review.name || 'Client',
-            avatar: review.user?.avatar || review.avatar || null,
-            rating: review.rating || 5,
-            comment: review.comment || review.text || '',
-          }))
-          : [],
+        services,
+        profession: professionTitle(services[0]?.category),
+        interventions: dashboardData.totalJobs || workerData.jobsCompleted || 0,
+        rating: Number(workerData.averageRating || dashboardData.averageRating || 0),
+        satisfactionRate: reviewList.length ? Math.round((happy / reviewList.length) * 100) : null,
+        experience: workerData.experience || 0,
+        totalReviews: workerData.totalReviews || reviewList.length || 0,
+        reviews: reviewList.map((review) => ({
+          id: review.id,
+          name: review.user?.name || review.reviewerName || review.name || 'Client',
+          avatar: review.user?.avatar || review.avatar || null,
+          rating: review.rating || 5,
+          comment: review.comment || review.text || '',
+          createdAt: review.createdAt,
+        })),
       };
 
       setWorker(combinedWorkerData);
     } catch (error) {
       console.error('Failed to load worker profile:', error);
       if (!workerData) {
-        setError(
-          'Impossible de charger le profil du technicien. Veuillez réessayer.'
-        );
+        setError('Impossible de charger le profil du technicien. Veuillez réessayer.');
       } else {
         setWorker(combinedWorkerData || workerData);
       }
@@ -154,26 +167,10 @@ const WorkerProfile = ({ route, navigation }) => {
     }
   };
 
-  const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
-    const stars = [];
-    for (let i = 0; i < 5; i++) {
-      stars.push(
-        <Ionicons
-          key={i}
-          name={i < fullStars ? 'star' : 'star-outline'}
-          size={16}
-          color={Colors.star}
-        />
-      );
-    }
-    return stars;
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={PRIMARY} />
       </View>
     );
   }
@@ -183,10 +180,7 @@ const WorkerProfile = ({ route, navigation }) => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle" size={48} color={Colors.error} />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={loadWorkerProfile}
-        >
+        <TouchableOpacity style={styles.retryButton} onPress={loadWorkerProfile}>
           <Text style={styles.retryButtonText}>Réessayer</Text>
         </TouchableOpacity>
       </View>
@@ -196,185 +190,170 @@ const WorkerProfile = ({ route, navigation }) => {
   if (!worker) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons
-          name="person-off"
-          size={48}
-          color={Colors.textTertiary}
-        />
+        <Ionicons name="person-remove-outline" size={48} color={Colors.textTertiary} />
         <Text style={styles.errorText}>Technicien non trouvé</Text>
       </View>
     );
   }
 
+  const avatar = worker.user?.avatar || worker.avatar;
+  const name = worker.user?.name || worker.name || 'Technicien';
+  const reviews = worker.reviews || [];
+  const visibleReviews = showAllReviews ? reviews : reviews.slice(0, REVIEWS_PREVIEW);
+
   return (
     <View style={styles.container}>
-      <ScrollView>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color={Colors.textLight}
-            />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profil du technicien</Text>
-        </View>
+        <LinearGradient colors={['#1a56db', NAVY]} style={styles.header}>
+          <View style={styles.headerBar}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={26} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profil du technicien</Text>
+            <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
+              <Ionicons name="share-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
-        {/* Profile Picture Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.profilePictureContainer}>
-            {worker.user?.avatar || worker.avatar ? (
-              <Image
-                source={{ uri: worker.user?.avatar || worker.avatar }}
-                style={styles.profilePictureImage}
-              />
-            ) : (
-              <Text style={styles.profilePictureInitial}>
-                {(worker.user?.name || worker.name || 'W')?.[0]?.toUpperCase()}
-              </Text>
-            )}
+          <View style={styles.avatarArea}>
+            <View style={styles.avatarRing}>
+              {avatar ? (
+                <Image source={{ uri: avatar }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarFallback]}>
+                  <Text style={styles.avatarInitial}>{name[0]?.toUpperCase()}</Text>
+                </View>
+              )}
+              {worker.isVerified && (
+                <View style={styles.verifiedCheck}>
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                </View>
+              )}
+            </View>
             {worker.isVerified && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>Certifié</Text>
+              <View style={styles.certifiedPill}>
+                <MaterialCommunityIcons name="check-decagram" size={15} color="#fff" />
+                <Text style={styles.certifiedText}>Certifié</Text>
               </View>
             )}
           </View>
-        </View>
+        </LinearGradient>
 
-        {/* Worker Details Card */}
-        <View style={styles.detailsCard}>
-          <Text style={styles.workerName}>{worker.user?.name}</Text>
-          <Text style={styles.workerProfession}>
-            {worker.skills?.[0] || 'Technicien'}
-          </Text>
-
+        {/* Main card */}
+        <View style={styles.card}>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.profession}>{worker.profession}</Text>
           <View style={styles.ratingRow}>
-            <View style={styles.stars}>
-              {renderStars(worker.rating || 0)}
-            </View>
+            <Ionicons name="star" size={17} color={Colors.star} />
             <Text style={styles.ratingText}>
-              {worker.rating} ({worker.totalReviews} avis) ·{' '}
-              {worker.experience} ans d'expérience
+              {worker.rating.toFixed(1)} ({worker.totalReviews} avis)
+              {worker.experience > 0 && ` • ${worker.experience} ans d'expérience`}
             </Text>
           </View>
 
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {worker.interventions}
-              </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{worker.interventions}</Text>
               <Text style={styles.statLabel}>Interventions</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{worker.rating}</Text>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{worker.rating.toFixed(1)}</Text>
               <Text style={styles.statLabel}>Note moyenne</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {worker.satisfactionRate}%
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>
+                {worker.satisfactionRate === null ? '—' : `${worker.satisfactionRate}%`}
               </Text>
               <Text style={styles.statLabel}>Clients satisfaits</Text>
             </View>
           </View>
-        </View>
 
-        {/* About Section */}
-        <View style={styles.section}>
           <Text style={styles.sectionTitle}>À propos</Text>
-          <Text style={styles.aboutText}>{worker.bio}</Text>
-        </View>
+          <Text style={styles.aboutText}>
+            {worker.bio?.trim() || "Ce technicien n'a pas encore ajouté de description."}
+          </Text>
 
-        {/* Reviews Section */}
-        <View style={styles.section}>
+          <View style={styles.divider} />
+
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Avis clients</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-            </TouchableOpacity>
+            {reviews.length > REVIEWS_PREVIEW && (
+              <TouchableOpacity onPress={() => setShowAllReviews((v) => !v)}>
+                <Text style={styles.seeAllText}>{showAllReviews ? 'Réduire' : 'Voir tout'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {worker.reviews?.length > 0 ? (
-            worker.reviews.map((review) => (
+          {visibleReviews.length > 0 ? (
+            visibleReviews.map((review) => (
               <View key={review.id} style={styles.reviewCard}>
                 <View style={styles.reviewHeader}>
-                  <View style={styles.reviewerAvatar}>
-                    {review.avatar ? (
-                      <Image source={{ uri: review.avatar }} style={styles.reviewerAvatarImage} />
-                    ) : (
-                      <Text style={styles.reviewerAvatarInitial}>
-                        {(review.name || 'C')?.[0]?.toUpperCase()}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.reviewerInfo}>
-                    <Text style={styles.reviewerName}>
-                      {review.name}
-                    </Text>
-                    <View style={styles.reviewStars}>
-                      {renderStars(review.rating || 0)}
+                  {review.avatar ? (
+                    <Image source={{ uri: review.avatar }} style={styles.reviewAvatar} />
+                  ) : (
+                    <View style={[styles.reviewAvatar, styles.avatarFallback]}>
+                      <Text style={styles.reviewInitial}>{review.name[0]?.toUpperCase()}</Text>
                     </View>
+                  )}
+                  <View style={styles.reviewMeta}>
+                    <Text style={styles.reviewName}>{review.name}</Text>
+                    <Text style={styles.reviewDate}>{timeAgo(review.createdAt)}</Text>
+                  </View>
+                  <View style={styles.reviewRating}>
+                    <Ionicons name="star" size={14} color={Colors.star} />
+                    <Text style={styles.reviewRatingText}>{Number(review.rating).toFixed(1)}</Text>
                   </View>
                 </View>
-                <Text style={styles.reviewComment}>
-                  {review.comment}
-                </Text>
+                {!!review.comment && <Text style={styles.reviewComment}>{review.comment}</Text>}
               </View>
             ))
           ) : (
-            <View style={styles.noReviewsContainer}>
-              <Ionicons
-                name="star-outline"
-                size={48}
-                color={Colors.textTertiary}
-              />
-              <Text style={styles.noReviewsText}>
-                Aucun avis pour le moment
-              </Text>
+            <View style={styles.noReviews}>
+              <Ionicons name="chatbubble-ellipses-outline" size={36} color="#cbd5e1" />
+              <Text style={styles.noReviewsText}>Aucun avis pour le moment</Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity
-          style={styles.reservationButton}
-          onPress={handleReservePress}
-        >
-          <Text style={styles.reservationButtonText}>Réserver</Text>
+      {/* Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.reserveButton} onPress={handleReservePress} activeOpacity={0.85}>
+          <Ionicons name="calendar-outline" size={19} color="#fff" />
+          <Text style={styles.actionText}>Réserver</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.nowButton}
-          onPress={handleImmediateReserve}
-        >
-          <Text style={styles.nowButtonText}>Maintenant</Text>
+        <TouchableOpacity style={styles.nowButton} onPress={handleImmediateReserve} activeOpacity={0.85}>
+          <Ionicons name="flash" size={19} color="#fff" />
+          <Text style={styles.actionText}>Maintenant</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
+const AVATAR = 124;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#f4f7fc',
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: '#f4f7fc',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: '#f4f7fc',
     paddingHorizontal: 20,
   },
   errorText: {
@@ -384,260 +363,301 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   retryButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: PRIMARY,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: Colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    backgroundColor: Colors.headerBackground,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.textLight,
-  },
-  profileSection: {
-    backgroundColor: Colors.headerBackground,
-    alignItems: 'center',
-    paddingBottom: 40,
-  },
-  profilePictureContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  profilePictureImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-  },
-  profilePictureInitial: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: 0,
-    backgroundColor: Colors.success,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
     borderRadius: 12,
   },
-  verifiedText: {
-    color: Colors.textLight,
-    fontSize: 12,
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
-  detailsCard: {
-    backgroundColor: Colors.card,
-    marginHorizontal: 20,
+
+  // Header
+  header: {
+    paddingBottom: 70,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+  },
+  headerButton: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  avatarArea: {
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  avatarRing: {
+    width: AVATAR + 10,
+    height: AVATAR + 10,
+    borderRadius: (AVATAR + 10) / 2,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  avatar: {
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
+    backgroundColor: '#e8effd',
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 46,
+    fontWeight: '700',
+    color: PRIMARY,
+  },
+  verifiedCheck: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    padding: 20,
-    marginTop: -20,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: PRIMARY,
+    borderWidth: 3,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  workerName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.text,
+  certifiedPill: {
+    position: 'absolute',
+    bottom: 18,
+    left: '50%',
+    marginLeft: AVATAR / 2 + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#14b8a6',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  certifiedText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Card
+  card: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: -50,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 18,
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  name: {
+    fontSize: 25,
+    fontWeight: '800',
+    color: '#111827',
     textAlign: 'center',
-    marginBottom: 4,
   },
-  workerProfession: {
+  profession: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    fontWeight: '600',
+    color: PRIMARY,
     textAlign: 'center',
-    marginBottom: 16,
+    marginTop: 4,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-  },
-  stars: {
-    flexDirection: 'row',
-    marginRight: 8,
+    gap: 5,
+    marginTop: 8,
   },
   ratingText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+    fontSize: 14.5,
+    color: '#374151',
+    fontWeight: '500',
   },
-  statsContainer: {
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    gap: 10,
+    marginTop: 20,
+    marginBottom: 22,
   },
-  statItem: {
+  statTile: {
+    flex: 1,
     alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#eef2f7',
   },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 4,
+  statValue: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#111827',
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+    color: '#4b5563',
+    marginTop: 4,
+    fontWeight: '500',
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 8,
   },
   seeAllText: {
-    fontSize: 16,
-    color: Colors.primary,
+    fontSize: 14.5,
     fontWeight: '600',
+    color: PRIMARY,
+    marginBottom: 8,
   },
   aboutText: {
-    fontSize: 16,
-    color: Colors.text,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#374151',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#eef2f7',
+    marginVertical: 18,
   },
   reviewCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#eef2f7',
   },
   reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  reviewerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+  reviewAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#e8effd',
     marginRight: 12,
-    overflow: 'hidden',
   },
-  reviewerAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  reviewerAvatarInitial: {
-    fontSize: 16,
+  reviewInitial: {
+    fontSize: 17,
     fontWeight: '700',
-    color: Colors.primary,
+    color: PRIMARY,
   },
-  reviewerInfo: {
+  reviewMeta: {
     flex: 1,
   },
-  reviewerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
+  reviewName: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: '#111827',
   },
-  reviewStars: {
+  reviewDate: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  reviewRating: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reviewRatingText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
   },
   reviewComment: {
     fontSize: 14,
-    color: Colors.text,
     lineHeight: 20,
+    color: '#374151',
+    marginTop: 10,
   },
-  noReviewsContainer: {
+  noReviews: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 22,
   },
   noReviewsText: {
-    fontSize: 16,
-    color: Colors.textTertiary,
-    marginTop: 12,
+    fontSize: 14.5,
+    color: '#94a3b8',
+    marginTop: 8,
   },
-  actionButtonsContainer: {
+
+  // Actions
+  actions: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border || Colors.card,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 10,
   },
-  reservationButton: {
+  reserveButton: {
     flex: 1,
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginRight: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  reservationButtonText: {
-    color: Colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: PRIMARY,
+    paddingVertical: 15,
+    borderRadius: 28,
   },
   nowButton: {
     flex: 1,
-    backgroundColor: Colors.success,
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginLeft: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#16a34a',
+    paddingVertical: 15,
+    borderRadius: 28,
   },
-  nowButtonText: {
-    color: Colors.textLight,
+  actionText: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 
