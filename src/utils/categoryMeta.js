@@ -2,16 +2,16 @@
 // Categories themselves come from the API (/categories, managed in the admin
 // dashboard); this only decides how a known key looks in the app.
 const META = {
-  PLUMBING: { icon: 'water', lib: 'ionicons', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' },
-  ELECTRICAL: { icon: 'flash', lib: 'ionicons', color: '#f5b400', bg: '#fff6dc', profession: 'Électricien' },
-  HVAC: { icon: 'snowflake', lib: 'mci', color: '#1a73e8', bg: '#e6f4fd', profession: 'Frigoriste' },
-  LOCKSMITH: { icon: 'key-variant', lib: 'mci', color: '#7c3aed', bg: '#f1eafe', profession: 'Serrurier' },
-  PAINTING: { icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', profession: 'Peintre' },
-  HANDYMAN: { icon: 'tools', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' },
-  APPLIANCE: { icon: 'washing-machine', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Réparateur électroménager' },
-  CLEANING: { icon: 'broom', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' },
-  GARDENING: { icon: 'leaf', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', profession: 'Jardinier' },
-  CARPENTRY: { icon: 'hammer', lib: 'mci', color: '#a16207', bg: '#f8efe1', profession: 'Menuisier' },
+  PLUMBING: { label: 'Plomberie', icon: 'water', lib: 'ionicons', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' },
+  ELECTRICAL: { label: 'Électricité', icon: 'flash', lib: 'ionicons', color: '#f5b400', bg: '#fff6dc', profession: 'Électricien' },
+  HVAC: { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#1a73e8', bg: '#e6f4fd', profession: 'Frigoriste' },
+  LOCKSMITH: { label: 'Serrurerie', icon: 'key-variant', lib: 'mci', color: '#7c3aed', bg: '#f1eafe', profession: 'Serrurier' },
+  PAINTING: { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', profession: 'Peintre' },
+  HANDYMAN: { label: 'Bricolage', icon: 'tools', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' },
+  APPLIANCE: { label: 'Électroménager', icon: 'washing-machine', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Réparateur électroménager' },
+  CLEANING: { label: 'Nettoyage', icon: 'broom', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' },
+  GARDENING: { label: 'Jardinage', icon: 'leaf', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', profession: 'Jardinier' },
+  CARPENTRY: { label: 'Menuiserie', icon: 'hammer', lib: 'mci', color: '#a16207', bg: '#f8efe1', profession: 'Menuisier' },
 };
 
 // Fallback for categories created in the dashboard that the app doesn't know yet.
@@ -24,14 +24,22 @@ export const categoryMeta = (key, apiCategory) => {
     lib: 'ionicons',
     color,
     bg: color + '1a',
+    label: apiCategory?.name || 'Service',
     profession: apiCategory?.name || 'Technicien',
   };
 };
 
-export const professionTitle = (key) => {
+// `fallbackName` (usually the service's own name) covers categories the app
+// doesn't know, e.g. ones created later in the dashboard.
+export const professionTitle = (key, fallbackName) => {
   const meta = META[String(key || '').toUpperCase()];
-  return meta ? `${meta.profession} professionnel` : 'Technicien professionnel';
+  if (meta) return `${meta.profession} professionnel`;
+  return fallbackName ? `${fallbackName} professionnel` : 'Technicien professionnel';
 };
+
+// "adem benslama" -> "Adem Benslama"
+export const titleCase = (name) =>
+  String(name || '').replace(/(^|\s)(\S)/g, (m, space, ch) => space + ch.toUpperCase());
 
 // "Karim Ben Salah" -> "Karim B."
 export const shortName = (name) => {

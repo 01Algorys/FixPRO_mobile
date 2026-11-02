@@ -84,56 +84,19 @@ const WorkerTabs = () => {
   const { unreadMessages, reservationUnread } = useNotifications();
   return (
     <WorkerTab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color }) => {
-          let iconName;
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'Demandes') {
-            iconName = focused ? 'clipboard' : 'clipboard-outline';
-          } else {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-          return <Ionicons name={iconName} size={26} color={color} />;
-        },
-        tabBarActiveTintColor: '#1a56db',
-        tabBarInactiveTintColor: '#9ca3af',
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 12,
-          height: 60,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 8,
-        },
-        headerShown: false,
-      })}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <ClientTabBar
+          {...props}
+          fabLabel="Nouvelle demande"
+          badges={{ Messages: unreadMessages, Demandes: reservationUnread }}
+          onNewRequest={() => props.navigation.navigate('Demandes')}
+        />
+      )}
     >
       <WorkerTab.Screen name="Dashboard" component={WorkerHomePage} />
-      <WorkerTab.Screen
-        name="Demandes"
-        component={WorkerReservationsPage}
-        options={{
-          tabBarBadge: reservationUnread > 0 ? (reservationUnread > 99 ? '99+' : reservationUnread) : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
-        }}
-      />
-      <WorkerTab.Screen
-        name="Messages"
-        component={WorkerMessagesPage}
-        options={{
-          tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
-        }}
-      />
+      <WorkerTab.Screen name="Demandes" component={WorkerReservationsPage} />
+      <WorkerTab.Screen name="Messages" component={WorkerMessagesPage} />
       <WorkerTab.Screen name="Profil" component={WorkerProfilePage} />
     </WorkerTab.Navigator>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import PressableScale from './ui/PressableScale';
 
 const ACTIVE = '#1d5ff0';
 const INACTIVE = '#6b7280';
@@ -10,13 +11,17 @@ const TABS = {
   Messages: { label: 'Messages', icon: 'chatbubble-ellipses', iconOff: 'chatbubble-outline' },
   Reservations: { label: 'Mes demandes', icon: 'calendar', iconOff: 'calendar-outline' },
   Profile: { label: 'Profil', icon: 'person', iconOff: 'person-outline' },
+  // Technician routes
+  Dashboard: { label: 'Accueil', icon: 'home', iconOff: 'home-outline' },
+  Demandes: { label: 'Demandes', icon: 'document-text', iconOff: 'document-text-outline' },
+  Profil: { label: 'Profil', icon: 'person', iconOff: 'person-outline' },
 };
 
 // Client bottom bar: four labelled tabs with a raised "Demande" button in the
 // middle. `badges` maps a route name to its unread count; `locked` routes show
 // a padlock (guest mode).
 // The root view already pads the home-indicator area, so the bar adds none.
-const ClientTabBar = ({ state, navigation, onNewRequest, badges = {}, locked = [] }) => {
+const ClientTabBar = ({ state, navigation, onNewRequest, fabLabel = 'Demande', badges = {}, locked = [] }) => {
 
   const renderTab = (route, index) => {
     const tab = TABS[route.name] || { label: route.name, icon: 'ellipse', iconOff: 'ellipse-outline' };
@@ -57,10 +62,10 @@ const ClientTabBar = ({ state, navigation, onNewRequest, badges = {}, locked = [
     <View style={styles.bar}>
       {state.routes.slice(0, half).map((route, i) => renderTab(route, i))}
       <View style={styles.tab}>
-        <TouchableOpacity style={styles.fab} onPress={onNewRequest} activeOpacity={0.85}>
+        <PressableScale style={styles.fab} scaleTo={0.92} onPress={onNewRequest}>
           <Ionicons name="add" size={36} color="#fff" />
-        </TouchableOpacity>
-        <Text style={[styles.label, styles.fabLabel]}>Demande</Text>
+        </PressableScale>
+        <Text style={[styles.label, styles.fabLabel]} numberOfLines={1} adjustsFontSizeToFit>{fabLabel}</Text>
       </View>
       {state.routes.slice(half).map((route, i) => renderTab(route, i + half))}
     </View>

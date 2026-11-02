@@ -154,10 +154,10 @@ class ApiService {
     }
   }
 
-  async getWorkerReservations(workerId = null) {
+  async getWorkerReservations(workerId = null, params = {}) {
     if (workerId) {
-      console.log('Getting worker reservations for worker ID:', workerId);
-      return this.request(`/reservations/worker/${workerId}`);
+      const query = new URLSearchParams(params).toString();
+      return this.request(`/reservations/worker/${workerId}${query ? `?${query}` : ''}`);
     }
     return this.request('/workers/reservations');
   }

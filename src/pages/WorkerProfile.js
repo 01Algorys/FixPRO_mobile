@@ -138,7 +138,7 @@ const WorkerProfile = ({ route, navigation }) => {
       combinedWorkerData = {
         ...workerData,
         services,
-        profession: professionTitle(services[0]?.category),
+        profession: professionTitle(services[0]?.category, services[0]?.name),
         interventions: dashboardData.totalJobs || workerData.jobsCompleted || 0,
         rating: Number(workerData.averageRating || dashboardData.averageRating || 0),
         satisfactionRate: reviewList.length ? Math.round((happy / reviewList.length) * 100) : null,
