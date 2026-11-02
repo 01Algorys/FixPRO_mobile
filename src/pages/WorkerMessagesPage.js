@@ -23,7 +23,7 @@ import OnlineBadge from '../components/OnlineBadge';
 import OnlineStatusText from '../components/OnlineStatusText';
 import { usePresence } from '../hooks/usePresence';
 
-const WorkerMessagesPage = ({ route }) => {
+const WorkerMessagesPage = ({ route, navigation }) => {
   const { conversationId, reservationId } = route.params || {};
   const { user } = useAuth();
   const { resetUnreadMessages, newConversation, setNewConversation, setCurrentConversation, decrementUnreadByCount } = useNotifications();
@@ -75,21 +75,24 @@ const WorkerMessagesPage = ({ route }) => {
     });
   };
 
-  const loadConversations = async () => {
+  // Returns the loaded list so callers can look a conversation up right away.
+  // `silent` refreshes in the background without the full-screen spinner.
+  const loadConversations = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await apiService.getConversations();
       const conversations = response.data?.conversations || response.conversations || response.data || response || [];
-      const mapped = conversations.map(conv => ({
+      const mapped = sortConversations(conversations.map(conv => ({
         ...conv,
         unreadCount: conv.unreadCount || conv.unread_count || 0
-      }));
-      setConversations(sortConversations(mapped));
+      })));
+      setConversations(mapped);
+      return mapped;
     } catch (error) {
       console.error('Failed to load conversations:', error);
-      setConversations([]);
+      return null;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -149,36 +152,40 @@ const WorkerMessagesPage = ({ route }) => {
     };
   }, [activeConversationId]);
 
-  useEffect(() => {
-    if (conversationId) {
-      setActiveConversationId(conversationId);
-      loadMessages(conversationId);
-      socketService.joinReservation(conversationId);
-    } else if (reservationId) {
-      // Handle reservationId param from Contacter button
-      console.log('WorkerMessagesPage - reservationId param received:', reservationId);
-
-      // Handle reservationId param - load conversations first if needed
-      if (conversations.length === 0) {
-        loadConversations().then(() => {
-          const conv = conversations.find(c => c.id === reservationId);
-          if (conv) {
-            console.log('WorkerMessagesPage - opening conversation for reservation:', reservationId);
-            openConversation(reservationId);
-          } else {
-            console.log('WorkerMessagesPage - conversation not found for reservation:', reservationId);
-          }
-        });
-      } else {
-        const conv = conversations.find(c => c.id === reservationId);
-        if (conv) {
-          console.log('WorkerMessagesPage - opening conversation for reservation:', reservationId);
-          openConversation(reservationId);
-        } else {
-          console.log('WorkerMessagesPage - conversation not found for reservation:', reservationId);
+  // Opened from "Accepter" or "Contacter": the conversation list on screen may
+  // predate the reservation, so reload it first, and fall back to the
+  // reservation itself if the list still doesn't have it.
+  const openFromParams = async (id) => {
+    const list = (await loadConversations({ silent: true })) || [];
+    if (!list.some((c) => c.id === id)) {
+      try {
+        const res = await apiService.getReservation(id);
+        const r = res.data?.reservation || res.data || res;
+        if (r?.id) {
+          setConversations((prev) => sortConversations([{
+            id: r.id,
+            reservationId: r.id,
+            user: r.user,
+            service: r.service,
+            serviceName: r.service?.name,
+            status: r.status,
+            updatedAt: r.updatedAt,
+            unreadCount: 0,
+          }, ...prev.filter((c) => c.id !== r.id)]));
         }
+      } catch (error) {
+        console.error('Failed to load reservation for conversation:', error);
       }
     }
+    openConversation(id);
+  };
+
+  useEffect(() => {
+    const targetId = Number(conversationId || reservationId);
+    if (!targetId) return;
+    openFromParams(targetId);
+    // Consume the param so coming back to this tab later doesn't reopen the chat
+    navigation.setParams({ conversationId: undefined, reservationId: undefined });
   }, [conversationId, reservationId]);
 
   // Listen for new conversations from socket
@@ -212,11 +219,9 @@ const WorkerMessagesPage = ({ route }) => {
   useFocusEffect(
     useCallback(() => {
       resetUnreadMessages();
-      // Only reload conversations if not currently viewing a chat
-      if (!activeConversationId) {
-        loadConversations();
-      }
-    }, [resetUnreadMessages, activeConversationId])
+      // Refresh in the background so new or just-accepted reservations show up
+      loadConversations({ silent: true });
+    }, [resetUnreadMessages])
   );
 
   const filteredConversations = useMemo(() => {
@@ -236,7 +241,6 @@ const WorkerMessagesPage = ({ route }) => {
   }, [conversations, search]);
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
-  console.log('activeConversation', activeConversation)
   const handleBack = () => {
     socketService.leaveReservation(activeConversationId);
     setActiveConversationId(null);

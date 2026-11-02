@@ -398,7 +398,7 @@ export default function WorkerHomePage({ navigation }) {
                     <View style={styles.requestBody}>
                       <CategoryTile category={r.service?.category} />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.jobTitle} numberOfLines={1}>{categoryMeta(r.service?.category).label}</Text>
+                        <Text style={styles.jobTitle} numberOfLines={1}>{categoryMeta(r.service?.category, { name: r.service?.name }).label}</Text>
                         <Text style={styles.jobDesc} numberOfLines={1}>{r.description || r.service?.name || 'Service'}</Text>
                         <View style={styles.metaRow}>
                           <Ionicons name="location" size={14} color={PRIMARY} />
@@ -486,7 +486,7 @@ export default function WorkerHomePage({ navigation }) {
                   <PressableScale key={r.id} scaleTo={0.985} style={[styles.card, styles.jobCard]} onPress={() => openReservation(r)}>
                     <CategoryTile category={r.service?.category} size={50} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.jobTitle} numberOfLines={1}>{categoryMeta(r.service?.category).label}</Text>
+                      <Text style={styles.jobTitle} numberOfLines={1}>{categoryMeta(r.service?.category, { name: r.service?.name }).label}</Text>
                       <Text style={styles.jobDesc} numberOfLines={1}>{r.description || r.service?.name || 'Service'}</Text>
                       <View style={styles.metaRow}>
                         <Ionicons name="calendar-outline" size={13} color={MUTED} />
