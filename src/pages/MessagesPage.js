@@ -24,6 +24,10 @@ import { useResponsive, wp, hp, rf, scale } from '../utils/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OnlineBadge from '../components/OnlineBadge';
 import OnlineStatusText from '../components/OnlineStatusText';
+import ChatView from '../components/chat/ChatView';
+import ConversationList from '../components/chat/ConversationList';
+
+const QUICK_REPLIES = ['Bonjour !', 'Quand pouvez-vous venir ?', "Je vous envoie l'adresse exacte", 'Merci beaucoup !'];
 
 const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
   container: {
@@ -421,7 +425,7 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
   },
 });
 
-const MessagesPage = ({ route }) => {
+const MessagesPage = ({ route, navigation }) => {
   const { conversationId, reservationId } = route.params || {};
   const { width, height, isTablet, isSmallPhone } = useResponsive();
   const insets = useSafeAreaInsets();
@@ -435,6 +439,7 @@ const MessagesPage = ({ route }) => {
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const activeConversationRef = useRef(null);
   const messagesScrollViewRef = useRef(null);
   const isSendingRef = useRef(false);
@@ -477,21 +482,24 @@ const MessagesPage = ({ route }) => {
     });
   };
 
-  const loadConversations = async () => {
+  // Returns the loaded list so callers can look a conversation up right away.
+  // `silent` refreshes in the background without the full-screen spinner.
+  const loadConversations = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await apiService.getConversations();
       const conversations = response.data?.conversations || response.conversations || response.data || response || [];
-      const mapped = conversations.map(conv => ({
+      const mapped = sortConversations(conversations.map(conv => ({
         ...conv,
         unreadCount: conv.unreadCount || conv.unread_count || 0
-      }));
-      setConversations(sortConversations(mapped));
+      })));
+      setConversations(mapped);
+      return mapped;
     } catch (error) {
       console.error('Failed to load conversations:', error);
-      setConversations([]);
+      return null;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -551,27 +559,13 @@ const MessagesPage = ({ route }) => {
     };
   }, [activeConversationId]);
 
+  // Opened from a notification or a "Contacter" button: the list on screen may
+  // predate the conversation, so reload it before opening the chat.
   useEffect(() => {
-    if (conversationId) {
-      setActiveConversationId(conversationId);
-      loadMessages(conversationId);
-      socketService.joinReservation(conversationId);
-    } else if (reservationId) {
-      // Handle reservationId param - load conversations first if needed
-      if (conversations.length === 0) {
-        loadConversations().then(() => {
-          const conv = conversations.find(c => c.id === reservationId);
-          if (conv) {
-            onOpenConversation(reservationId);
-          }
-        });
-      } else {
-        const conv = conversations.find(c => c.id === reservationId);
-        if (conv) {
-          onOpenConversation(reservationId);
-        }
-      }
-    }
+    const targetId = Number(conversationId || reservationId);
+    if (!targetId) return;
+    loadConversations({ silent: true }).then(() => onOpenConversation(targetId));
+    navigation.setParams({ conversationId: undefined, reservationId: undefined });
   }, [conversationId, reservationId]);
 
   // Listen for new conversations from socket
@@ -605,11 +599,9 @@ const MessagesPage = ({ route }) => {
   useFocusEffect(
     useCallback(() => {
       resetUnreadMessages();
-      // Only reload conversations if not currently viewing a chat
-      if (!activeConversationId) {
-        loadConversations();
-      }
-    }, [resetUnreadMessages, activeConversationId])
+      // Refresh in the background so new conversations show up
+      loadConversations({ silent: true });
+    }, [resetUnreadMessages])
   );
 
   const filteredConversations = useMemo(() => {
@@ -633,6 +625,10 @@ const MessagesPage = ({ route }) => {
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
 
   const handleBack = () => {
+    // Messages that arrived while the chat was open have been seen
+    const leavingId = activeConversationId;
+    apiService.markConversationAsRead(leavingId).catch(() => {});
+    setConversations((prev) => prev.map((c) => (c.id === leavingId ? { ...c, unreadCount: 0 } : c)));
     socketService.leaveReservation(activeConversationId);
     setActiveConversationId(null);
     activeConversationRef.current = null;
@@ -685,11 +681,12 @@ const MessagesPage = ({ route }) => {
     }
   };
 
-  const onSend = async () => {
-    if (!activeConversationId || !draft.trim() || sending) return;
+  // `text` comes from a quick reply; otherwise the draft is sent
+  const onSend = async (text) => {
+    const messageContent = (typeof text === 'string' ? text : draft).trim();
+    if (!activeConversationId || !messageContent || sending) return;
     if (isSendingRef.current) return; // Prevent duplicate sends
-    
-    const messageContent = draft.trim();
+
     setDraft('');
     setSending(true);
     isSendingRef.current = true;
@@ -742,6 +739,11 @@ const MessagesPage = ({ route }) => {
     }
   }, [messages]);
 
+  // Full-screen chat: hide the tab bar while a conversation is open
+  useEffect(() => {
+    navigation.setOptions({ tabBarStyle: activeConversation ? { display: 'none' } : undefined });
+  }, [!!activeConversation]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -750,201 +752,41 @@ const MessagesPage = ({ route }) => {
     );
   }
 
+  const participantOf = (c) => ({
+    name: c.worker?.user?.name || c.workerName || c.worker?.name || c.participantName || 'Technicien',
+    avatar: c.worker?.user?.avatar || c.workerAvatar || c.worker?.avatar || c.participantAvatar,
+    userId: c.worker?.userId || c.worker?.id,
+  });
+
+  if (activeConversation) {
+    return (
+      <ChatView
+        participant={participantOf(activeConversation)}
+        subtitle={activeConversation.service?.name || activeConversation.serviceName}
+        status={activeConversation.status}
+        messages={messages}
+        isMine={(m) => !!m._localId || (user?.id ? m.senderId === user.id : m.sender?.role === 'USER')}
+        draft={draft}
+        onChangeDraft={setDraft}
+        onSend={onSend}
+        sending={sending}
+        onBack={handleBack}
+        quickReplies={QUICK_REPLIES}
+      />
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.card} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.bottom}
-      >
-      {!activeConversation ? (
-        <View style={styles.sidebar}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Messages</Text>
-            <Text style={styles.headerSubtitle}>{filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}</Text>
-          </View>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={16} color={Colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher..."
-              placeholderTextColor={Colors.textSecondary}
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')} style={styles.clearButton}>
-                <Ionicons name="close" size={16} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.conversationsList}>
-            {filteredConversations.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIcon}>
-                  <Ionicons name="chatbubbles-outline" size={32} color={Colors.primary} />
-                </View>
-                <Text style={styles.emptyTitle}>Aucune conversation</Text>
-                <Text style={styles.emptySubtitle}>Commencez une conversation avec un travailleur</Text>
-              </View>
-            ) : (
-              filteredConversations.map((conversation) => {
-                // For regular users, show worker's name
-                const participantName = conversation.worker?.user?.name || conversation.workerName || conversation.worker?.name || conversation.participantName || 'Worker';
-                const participantAvatar = conversation.worker?.user?.avatar || conversation.workerAvatar || conversation.worker?.avatar || conversation.participantAvatar;
-                const isUnread = conversation.unreadCount > 0;
-                
-                return (
-                  <TouchableOpacity
-                    key={conversation.id}
-                    style={[styles.threadCard, isUnread && styles.threadCardUnread]}
-                    onPress={() => onOpenConversation(conversation.id)}
-                  >
-                    <View style={styles.avatarContainer}>
-                      <View style={styles.avatar}>
-                        {participantAvatar ? (
-                          <Image source={{ uri: participantAvatar }} style={styles.avatarImage} />
-                        ) : (
-                          <Text style={styles.avatarText}>{participantName.charAt(0).toUpperCase()}</Text>
-                        )}
-                      </View>
-                      <OnlineBadge userId={conversation.worker?.userId || conversation.worker?.id} size={12} borderColor="#fff" />
-                    </View>
-                    <View style={styles.threadContent}>
-                      <View style={styles.threadHeader}>
-                        <Text style={[styles.threadName, isUnread && styles.threadNameUnread]} numberOfLines={1}>
-                          {participantName}
-                        </Text>
-                        <Text style={[styles.threadTime, isUnread && styles.threadTimeUnread]}>
-                          {formatDate(conversation.lastMessage?.createdAt || conversation.updatedAt)}
-                        </Text>
-                      </View>
-                      <Text style={[styles.threadPreview, isUnread && styles.threadPreviewUnread]} numberOfLines={1}>
-                        {conversation.lastMessage?.content || 'No messages yet'}
-                      </Text>
-                      <Text style={styles.serviceTag}>📋 {conversation.service?.name || 'Service'}</Text>
-                    </View>
-                    {isUnread && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadCount}>{conversation.unreadCount}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
-      ) : (
-        <View style={styles.chatPanel}>
-          <View style={styles.chatHeader}>
-            <TouchableOpacity onPress={handleBack} style={styles.chatBackButton}>
-              <Ionicons name="arrow-back" size={20} color={Colors.textLight} />
-            </TouchableOpacity>
-            <View style={styles.chatHeaderInfo}>
-              <View style={styles.chatAvatar}>
-                {activeConversation.participantAvatar || activeConversation.worker?.user?.avatar || activeConversation.worker?.avatar ? (
-                  <Image
-                    source={{ uri: activeConversation.participantAvatar || activeConversation.worker?.user?.avatar || activeConversation.worker?.avatar }}
-                    style={styles.chatAvatarImage}
-                  />
-                ) : (
-                  <Text style={styles.chatAvatarText}>
-                    {activeConversation.participantName?.charAt(0).toUpperCase() || 'W'}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.chatHeaderText}>
-                <Text style={styles.chatTitle}>{activeConversation.participantName}</Text>
-                <Text style={styles.chatSubtitle}>{activeConversation.serviceName}</Text>
-                <OnlineStatusText userId={activeConversation.worker?.userId || activeConversation.worker?.id} />
-              </View>
-            </View>
-            {activeConversation.status === 'COMPLETED' && (
-              <View style={styles.completedBadge}>
-                <Text style={styles.completedText}>Terminé</Text>
-              </View>
-            )}
-          </View>
-          <ScrollView 
-            ref={messagesScrollViewRef} 
-            style={styles.messagesList} 
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {messages.map((message) => {
-              const isSystem = message.type === 'system' || message.isSystem === true;
-              if (isSystem) {
-                return (
-                  <View key={message.id} style={styles.systemMessageContainer}>
-                    <Ionicons name="checkmark-circle" size={14} color={Colors.textSecondary} style={styles.systemIcon} />
-                    <Text style={styles.systemMessageText}>{message.content}</Text>
-                  </View>
-                );
-              }
-              const isUser = message.sender?.role === 'USER';
-              const isLocal = !!message._localId;
-              return (
-                <View
-                  key={message.id}
-                  style={[styles.messageRow, isUser ? styles.messageUserRow : styles.messageOtherRow]}
-                >
-                  {isUser && (
-                    <View style={styles.messageAvatar}>
-                      {message.sender?.avatar ? (
-                        <Image source={{ uri: message.sender.avatar }} style={styles.messageAvatarImage} />
-                      ) : (
-                        <Text style={styles.messageAvatarText}>
-                          {message.sender?.name?.charAt(0).toUpperCase() || 'U'}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                  <View style={[styles.bubble, isUser ? styles.userBubble : styles.otherBubble]}>
-                    <Text style={[styles.messageText, isUser && styles.userMessageText]}>
-                      {message.content}
-                    </Text>
-                  </View>
-                  <Text style={[styles.messageTime, isUser ? styles.messageTimeRight : styles.messageTimeLeft]}>
-                    {formatTime(message.createdAt)}{isLocal ? ' (Envoi...)' : ''}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
-          {activeConversation.status === 'COMPLETED' ? (
-            <View style={styles.completedBar}>
-              <Ionicons name="lock-closed" size={16} color={Colors.textSecondary} />
-              <Text style={styles.completedBarText}>Cette conversation est terminée</Text>
-            </View>
-          ) : (
-            <View style={styles.composer}>
-              <TextInput
-                style={styles.composerInput}
-                placeholder="Écrire un message..."
-                placeholderTextColor={Colors.textSecondary}
-                value={draft}
-                onChangeText={setDraft}
-                multiline
-              />
-              <TouchableOpacity 
-                style={[styles.sendButton, (!draft.trim() || sending) && styles.sendButtonDisabled]} 
-                onPress={onSend}
-                disabled={!draft.trim() || sending}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={Colors.textLight} />
-                ) : (
-                  <Ionicons name="send" size={20} color={Colors.textLight} />
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <ConversationList
+      conversations={filteredConversations}
+      search={search}
+      onSearch={setSearch}
+      onOpen={onOpenConversation}
+      getParticipant={participantOf}
+      emptyText="Vos échanges avec les techniciens apparaîtront ici dès qu'une réservation est acceptée."
+      refreshing={refreshing}
+      onRefresh={async () => { setRefreshing(true); await loadConversations({ silent: true }); setRefreshing(false); }}
+    />
   );
 };
 

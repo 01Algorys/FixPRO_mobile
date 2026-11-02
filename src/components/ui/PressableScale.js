@@ -4,7 +4,7 @@ import { Animated, Pressable, StyleSheet } from 'react-native';
 // Styles that size/position the element in its parent; they belong on the outer
 // Pressable so `flex: 1` etc. work exactly as on a plain View.
 const OUTER_KEYS = [
-  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'width', 'maxWidth', 'minWidth',
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'width', 'maxWidth', 'minWidth', 'height',
   'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical',
   'position', 'top', 'bottom', 'left', 'right', 'zIndex',
 ];
@@ -28,7 +28,8 @@ const PressableScale = ({ children, style, scaleTo = 0.97, disabled, ...props })
   Object.keys(flat).forEach((key) => {
     (OUTER_KEYS.includes(key) ? outer : inner)[key] = flat[key];
   });
-  if (outer.flex || outer.width) inner.flexGrow = 1;
+  // Fill the outer box when it has a size of its own
+  if (outer.flex || outer.height) inner.flexGrow = 1;
 
   return (
     <Pressable

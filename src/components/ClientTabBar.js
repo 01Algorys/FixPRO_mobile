@@ -21,7 +21,10 @@ const TABS = {
 // middle. `badges` maps a route name to its unread count; `locked` routes show
 // a padlock (guest mode).
 // The root view already pads the home-indicator area, so the bar adds none.
-const ClientTabBar = ({ state, navigation, onNewRequest, fabLabel = 'Demande', badges = {}, locked = [] }) => {
+const ClientTabBar = ({ state, descriptors, navigation, onNewRequest, fabLabel = 'Demande', badges = {}, locked = [] }) => {
+  // A screen can hide the bar (e.g. a full-screen chat) with tabBarStyle: { display: 'none' }
+  const focusedOptions = descriptors?.[state.routes[state.index].key]?.options;
+  if (focusedOptions?.tabBarStyle?.display === 'none') return null;
 
   const renderTab = (route, index) => {
     const tab = TABS[route.name] || { label: route.name, icon: 'ellipse', iconOff: 'ellipse-outline' };

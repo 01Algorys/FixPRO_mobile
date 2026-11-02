@@ -22,6 +22,10 @@ import { Colors } from '../styles/theme';
 import OnlineBadge from '../components/OnlineBadge';
 import OnlineStatusText from '../components/OnlineStatusText';
 import { usePresence } from '../hooks/usePresence';
+import ChatView from '../components/chat/ChatView';
+import ConversationList from '../components/chat/ConversationList';
+
+const QUICK_REPLIES = ['Bonjour, je suis en route 🚗', "J'arrive dans 15 min", "Pouvez-vous m'envoyer une photo du problème ?", "Merci, à bientôt !"];
 
 const WorkerMessagesPage = ({ route, navigation }) => {
   const { conversationId, reservationId } = route.params || {};
@@ -34,6 +38,7 @@ const WorkerMessagesPage = ({ route, navigation }) => {
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const activeConversationRef = useRef(null);
   const messagesScrollViewRef = useRef(null);
 
@@ -242,6 +247,10 @@ const WorkerMessagesPage = ({ route, navigation }) => {
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
   const handleBack = () => {
+    // Messages that arrived while the chat was open have been seen
+    const leavingId = activeConversationId;
+    apiService.markConversationAsRead(leavingId).catch(() => {});
+    setConversations((prev) => prev.map((c) => (c.id === leavingId ? { ...c, unreadCount: 0 } : c)));
     socketService.leaveReservation(activeConversationId);
     setActiveConversationId(null);
     activeConversationRef.current = null;
@@ -296,9 +305,10 @@ const WorkerMessagesPage = ({ route, navigation }) => {
     }
   };
 
-  const onSend = async () => {
-    if (!activeConversationId || !draft.trim() || sending) return;
-    const messageContent = draft.trim();
+  // `text` comes from a quick reply; otherwise the draft is sent
+  const onSend = async (text) => {
+    const messageContent = (typeof text === 'string' ? text : draft).trim();
+    if (!activeConversationId || !messageContent || sending) return;
     setDraft('');
     setSending(true);
 
@@ -349,6 +359,11 @@ const WorkerMessagesPage = ({ route, navigation }) => {
     }
   }, [messages]);
 
+  // Full-screen chat: hide the tab bar while a conversation is open
+  useEffect(() => {
+    navigation.setOptions({ tabBarStyle: activeConversation ? { display: 'none' } : undefined });
+  }, [!!activeConversation]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -357,200 +372,43 @@ const WorkerMessagesPage = ({ route, navigation }) => {
     );
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.card} />
-      {!activeConversation ? (
-        <View style={styles.sidebar}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Messages</Text>
-            <Text style={styles.headerSubtitle}>{filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}</Text>
-          </View>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={16} color={Colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher..."
-              placeholderTextColor={Colors.textSecondary}
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')} style={styles.clearButton}>
-                <Ionicons name="close" size={16} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.conversationsList}>
-            {filteredConversations.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIcon}>
-                  <Ionicons name="chatbubbles-outline" size={32} color={Colors.primary} />
-                </View>
-                <Text style={styles.emptyTitle}>Aucune conversation</Text>
-                <Text style={styles.emptySubtitle}>Commencez une conversation avec un client</Text>
-              </View>
-            ) : (
-              filteredConversations.map((conversation) => {
-                // For workers, show user's name
-                const participantName = conversation.user?.name || conversation.participantName || 'Client';
-                console.log(participantName.charAt(0).toUpperCase())
-                const participantAvatar = conversation.user?.avatar || conversation.participantAvatar;
-                const isUnread = conversation.unreadCount > 0;
+  if (activeConversation) {
+    return (
+      <ChatView
+        participant={{
+          name: activeConversation.user?.name || activeConversation.participantName || 'Client',
+          avatar: activeConversation.user?.avatar || activeConversation.participantAvatar,
+          userId: activeConversation.user?.id,
+        }}
+        subtitle={activeConversation.service?.name || activeConversation.serviceName}
+        status={activeConversation.status}
+        messages={messages}
+        isMine={(m) => !!m._localId || (user?.id ? m.senderId === user.id : m.sender?.role === 'WORKER')}
+        draft={draft}
+        onChangeDraft={setDraft}
+        onSend={onSend}
+        sending={sending}
+        onBack={handleBack}
+        quickReplies={QUICK_REPLIES}
+      />
+    );
+  }
 
-                return (
-                  <TouchableOpacity
-                    key={conversation.id}
-                    style={[styles.threadCard, isUnread && styles.threadCardUnread]}
-                    onPress={() => openConversation(conversation.id)}
-                  >
-                    <View style={styles.avatarContainer}>
-                      <View style={styles.avatar}>
-                        {participantAvatar ? (
-                          <Image source={{ uri: participantAvatar }} style={styles.avatarImage} />
-                        ) : (
-                          <Text style={styles.avatarText}>{participantName.charAt(0).toUpperCase()}</Text>
-                        )}
-                      </View>
-                      <OnlineBadge userId={conversation.user?.id} size={10} borderColor="#fff" />
-                    </View>
-                    <View style={styles.threadContent}>
-                      <View style={styles.threadHeader}>
-                        <Text style={[styles.threadName, isUnread && styles.threadNameUnread]} numberOfLines={1}>
-                          {participantName}
-                        </Text>
-                        <Text style={[styles.threadTime, isUnread && styles.threadTimeUnread]}>
-                          {formatDate(conversation.lastMessage?.createdAt || conversation.updatedAt)}
-                        </Text>
-                      </View>
-                      <Text style={[styles.threadPreview, isUnread && styles.threadPreviewUnread]} numberOfLines={1}>
-                        {conversation.lastMessage?.content || 'No messages yet'}
-                      </Text>
-                      <Text style={styles.serviceTag}>📋 {conversation.service?.name || 'Service'}</Text>
-                    </View>
-                    {isUnread && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadCount}>{conversation.unreadCount}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
-      ) : (
-        <View style={styles.chatPanel}>
-          <View style={styles.chatHeader}>
-            <TouchableOpacity onPress={handleBack} style={styles.chatBackButton}>
-              <Ionicons name="arrow-back" size={20} color={Colors.text} />
-            </TouchableOpacity>
-            <View style={styles.chatHeaderInfo}>
-              <View style={styles.chatAvatar}>
-                {activeConversation.user?.avatar || activeConversation.participantAvatar ? (
-                  <Image
-                    source={{ uri: activeConversation.user?.avatar || activeConversation.participantAvatar }}
-                    style={styles.chatAvatarImage}
-                  />
-                ) : (
-                  <Text style={styles.chatAvatarText}>
-                    {activeConversation.user?.name?.charAt(0).toUpperCase() || 'C'}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.chatHeaderText}>
-                <Text style={styles.chatTitle}>{activeConversation.user?.name || activeConversation.participantName || 'Client'}</Text>
-                <Text style={styles.chatSubtitle}>{activeConversation.serviceName}</Text>
-                <OnlineStatusText userId={activeConversation.user?.id} />
-              </View>
-            </View>
-            {activeConversation.status === 'COMPLETED' && (
-              <View style={styles.completedBadge}>
-                <Text style={styles.completedText}>Terminé</Text>
-              </View>
-            )}
-          </View>
-          <ScrollView
-            ref={messagesScrollViewRef}
-            style={styles.messagesList}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {messages.map((message) => {
-              const isSystem = message.type === 'system' || message.isSystem === true;
-              if (isSystem) {
-                return (
-                  <View key={message.id} style={styles.systemMessageContainer}>
-                    <Ionicons name="checkmark-circle" size={14} color={Colors.textSecondary} style={styles.systemIcon} />
-                    <Text style={styles.systemMessageText}>{message.content}</Text>
-                  </View>
-                );
-              }
-              const isWorker = message.sender?.role === 'WORKER';
-              const isLocal = !!message._localId;
-              return (
-                <View
-                  key={message.id}
-                  style={[styles.messageRow, isWorker ? styles.messageWorkerRow : styles.messageUserRow]}
-                >
-                  {!isWorker && (
-                    <View style={styles.messageAvatar}>
-                      {message.sender?.avatar ? (
-                        <Image source={{ uri: message.sender.avatar }} style={styles.messageAvatarImage} />
-                      ) : (
-                        <Text style={styles.messageAvatarText}>
-                          {message.sender?.name?.charAt(0).toUpperCase() || 'C'}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                  <View style={[styles.bubble, isWorker ? styles.workerBubble : styles.userBubble]}>
-                    <Text style={[styles.messageText, isWorker && styles.workerMessageText]}>
-                      {message.content}
-                    </Text>
-                  </View>
-                  <Text style={[styles.messageTime, isWorker ? styles.messageTimeRight : styles.messageTimeLeft]}>
-                    {formatTime(message.createdAt)}{isLocal ? ' (Envoi...)' : ''}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
-          {activeConversation.status === 'COMPLETED' ? (
-            <View style={styles.completedBar}>
-              <Ionicons name="lock-closed" size={16} color={Colors.textSecondary} />
-              <Text style={styles.completedBarText}>Cette conversation est terminée</Text>
-            </View>
-          ) : (
-            <View style={styles.composer}>
-              <TextInput
-                style={styles.composerInput}
-                placeholder="Écrire un message..."
-                placeholderTextColor={Colors.textSecondary}
-                value={draft}
-                onChangeText={setDraft}
-                multiline
-              />
-              <TouchableOpacity
-                style={[styles.sendButton, (!draft.trim() || sending) && styles.sendButtonDisabled]}
-                onPress={onSend}
-                disabled={!draft.trim() || sending}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={Colors.textLight} />
-                ) : (
-                  <Ionicons name="send" size={20} color={Colors.textLight} />
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-    </KeyboardAvoidingView>
+  return (
+    <ConversationList
+      conversations={filteredConversations}
+      search={search}
+      onSearch={setSearch}
+      onOpen={openConversation}
+      getParticipant={(c) => ({
+        name: c.user?.name || c.participantName || 'Client',
+        avatar: c.user?.avatar || c.participantAvatar,
+        userId: c.user?.id,
+      })}
+      emptyText="Vos échanges avec les clients apparaîtront ici dès que vous acceptez une demande."
+      refreshing={refreshing}
+      onRefresh={async () => { setRefreshing(true); await loadConversations({ silent: true }); setRefreshing(false); }}
+    />
   );
 };
 

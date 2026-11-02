@@ -15,7 +15,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../styles/theme';
 import apiService from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { professionTitle } from '../utils/categoryMeta';
 
 const PRIMARY = '#1d5ff0';
@@ -36,7 +35,6 @@ const timeAgo = (date) => {
 
 const WorkerProfile = ({ route, navigation }) => {
   const { workerId } = route.params || {};
-  const { user } = useAuth();
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,38 +44,10 @@ const WorkerProfile = ({ route, navigation }) => {
     navigation.navigate('ReservationDetails', { workerId });
   };
 
-  const handleImmediateReserve = async () => {
-    Alert.alert(
-      'Réservation immédiate',
-      `Voulez-vous réserver immédiatement avec ${worker?.user?.name || 'ce technicien'}?`,
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-        },
-        {
-          text: 'Confirmer',
-          onPress: () => {
-            // Navigate to reservation details with pre-filled data
-            const now = new Date();
-            const preFilledData = {
-              workerId: workerId,
-              service: worker?.services?.[0]?.id, // Use worker's actual service with fallback
-              date: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
-              time: now.toTimeString().slice(0, 5),
-              duration: 60,
-              address: user?.location?.address || 'awoirjawad',
-              city: user?.location?.city || 'awpoijdaw',
-              postalCode: user?.location?.zipCode || '7080',
-              description: 'Réservation immédiate - ' + (worker?.skills?.[0] || 'Service'),
-              urgency: 'emergency',
-              immediate: true
-            };
-            navigation.navigate('ReservationDetails', preFilledData);
-          },
-        },
-      ]
-    );
+  // "Maintenant": the booking form opens with today, "as soon as possible" and
+  // urgent preselected; the address comes from the client's position.
+  const handleImmediateReserve = () => {
+    navigation.navigate('ReservationDetails', { workerId, immediate: true });
   };
 
   const handleShare = () => {
