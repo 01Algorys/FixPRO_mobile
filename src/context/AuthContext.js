@@ -37,6 +37,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     loadStoredAuth();
+    // The API reports a rejected token; drop the dead session (back to welcome)
+    apiService.onUnauthorized = () => logout();
+    return () => { apiService.onUnauthorized = null; };
   }, []);
 
   const loadStoredAuth = async () => {

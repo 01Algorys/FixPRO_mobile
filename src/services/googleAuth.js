@@ -37,6 +37,9 @@ export const getGoogleAccessToken = async () => {
     return accessToken;
   } catch (error) {
     if (error instanceof GoogleSignInCancelled || isCancelled(error)) throw new GoogleSignInCancelled();
+    // Keep Google's code in the logs: on Android "10" (DEVELOPER_ERROR) means the
+    // build's signing-key SHA-1 isn't registered on an Android OAuth client.
+    console.warn('Google sign-in error', error?.code, error?.message);
     throw new Error('Connexion Google impossible. Réessayez.');
   }
 };

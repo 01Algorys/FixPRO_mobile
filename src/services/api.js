@@ -26,6 +26,11 @@ class ApiService {
       
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
+        // A stored session the server no longer accepts (expired, or issued by
+        // another server): sign out instead of failing every screen.
+        if (response.status === 401 && token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google')) {
+          this.onUnauthorized?.();
+        }
         throw new Error(error.message || `HTTP error! status: ${response.status}`);
       }
 
