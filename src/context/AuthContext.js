@@ -122,6 +122,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       if (error instanceof GoogleSignInCancelled) return { cancelled: true };
       console.error('Google sign-in failed:', error);
+      // A server without the Google endpoint answers as if login were required
+      if (/no token provided|not found/i.test(error.message || '')) {
+        return { success: false, error: "La connexion Google n'est pas encore disponible. Utilisez votre téléphone ou votre email." };
+      }
       return { success: false, error: mapLoginError(error.message) };
     }
   };
