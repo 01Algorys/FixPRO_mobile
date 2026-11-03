@@ -94,6 +94,9 @@ const WorkerReservationsPage = ({ navigation }) => {
     }, [resetReservationUnread])
   );
 
+  // A request the client cancelled is gone for the technician
+  const visibleReservations = reservations.filter((r) => r.status?.toUpperCase() !== 'CANCELLED');
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadReservations({ silent: true });
@@ -168,7 +171,7 @@ const WorkerReservationsPage = ({ navigation }) => {
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
       >
-        {reservations.length === 0 ? (
+        {visibleReservations.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
               <Ionicons name="clipboard-outline" size={64} color={Colors.textTertiary} />
@@ -179,7 +182,7 @@ const WorkerReservationsPage = ({ navigation }) => {
             </Text>
           </View>
         ) : (
-          reservations.map((reservation) => {
+          visibleReservations.map((reservation) => {
             const statusConfig = getStatusConfig(reservation.status);
             
             return (

@@ -82,9 +82,11 @@ export const NotificationProvider = ({ children }) => {
       });
     };
 
-    // Status changes and finished jobs bump the reservations badge; the
-    // banners and the review screen are handled in App.js
-    const handleReservationUpdate = () => {
+    // Status changes and finished jobs bump the reservations badge (not a
+    // cancellation: that request just disappears); the banners and the
+    // review screen are handled in App.js
+    const handleReservationUpdate = (data) => {
+      if (data.eventType === 'cancelled') return;
       setReservationUnread(prev => {
         const newCount = prev + 1;
         AsyncStorage.setItem('reservationUnreadCount', String(newCount));

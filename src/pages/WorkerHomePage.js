@@ -139,8 +139,9 @@ export default function WorkerHomePage({ navigation }) {
     }, [])
   );
 
-  // Real-time: a client just sent a request, show it straight away
+  // Real-time: a client just sent a request, or cancelled or changed one
   useEffect(() => socketService.onNewReservation(() => fetchAll()), []);
+  useEffect(() => socketService.onReservationUpdate(() => fetchAll()), []);
 
   const onRefresh = () => {
     setRefreshing(true);
