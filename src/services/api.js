@@ -28,10 +28,12 @@ class ApiService {
         const error = await response.json().catch(() => ({}));
         // A stored session the server no longer accepts (expired, or issued by
         // another server): sign out instead of failing every screen.
-        if (response.status === 401 && token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google')) {
+        if (response.status === 401 && token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google') && !endpoint.startsWith('/auth/apple')) {
           this.onUnauthorized?.();
         }
-        throw new Error(error.message || `HTTP error! status: ${response.status}`);
+        const failure = new Error(error.message || `HTTP error! status: ${response.status}`);
+        failure.code = error.code;
+        throw failure;
       }
 
       return await response.json();
@@ -69,6 +71,14 @@ class ApiService {
   // "Continuer avec Google": body = { accessToken, role?, phone?, services? }
   async googleAuth(body) {
     return this.request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  // "Continuer avec Apple": body = { identityToken, fullName?, role?, phone?, services? }
+  async appleAuth(body) {
+    return this.request('/auth/apple', {
       method: 'POST',
       body: JSON.stringify(body),
     });

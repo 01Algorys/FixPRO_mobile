@@ -10,12 +10,12 @@ import { isPasswordValid } from '../utils/passwordValidation';
 import ServicePicker from '../components/auth/ServicePicker';
 import FadeIn from '../components/ui/FadeIn';
 import {
-  AuthHeader, GoogleButton, Divider, PrimaryButton, Field, PhonePrefix, PRIMARY, INK, MUTED,
+  AuthHeader, SocialButtons, Divider, PrimaryButton, Field, PhonePrefix, PRIMARY, INK, MUTED,
 } from '../components/auth/AuthUI';
 
 export default function CreateAccountScreen({ navigation, route }) {
   useScreenChrome('#ffffff');
-  const { signup, loginWithGoogle } = useAuth();
+  const { signup, loginWithSocial } = useAuth();
   const { role } = route.params || {};
   const isWorker = role === 'WORKER';
 
@@ -29,7 +29,7 @@ export default function CreateAccountScreen({ navigation, route }) {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(null);
 
   const clearError = (key) => errors[key] && setErrors((prev) => ({ ...prev, [key]: '' }));
 
@@ -71,16 +71,16 @@ export default function CreateAccountScreen({ navigation, route }) {
     }
   };
 
-  const handleGoogle = async () => {
-    setGoogleLoading(true);
-    const result = await loginWithGoogle({ role });
-    setGoogleLoading(false);
+  const handleSocial = async (provider) => {
+    setSocialLoading(provider);
+    const result = await loginWithSocial(provider, { role });
+    setSocialLoading(null);
     if (result.needsWorkerDetails) {
-      navigation.navigate('GoogleWorkerSetup', { accessToken: result.accessToken, profile: result.profile });
+      navigation.navigate('SocialWorkerSetup', { provider, credentials: result.credentials, profile: result.profile });
     } else if (result.pendingApproval) {
       navigation.replace('PendingApproval');
     } else if (result.success === false) {
-      Alert.alert('Connexion Google', result.error);
+      Alert.alert('Inscription impossible', result.error);
     }
   };
 
@@ -98,7 +98,7 @@ export default function CreateAccountScreen({ navigation, route }) {
           />
 
           <FadeIn>
-            <GoogleButton label="S'inscrire avec Google" onPress={handleGoogle} loading={googleLoading} disabled={loading} />
+            <SocialButtons signup onPress={handleSocial} loading={socialLoading} disabled={loading} />
             <Divider label="ou avec votre email" />
           </FadeIn>
 
@@ -182,7 +182,7 @@ export default function CreateAccountScreen({ navigation, route }) {
               label={isWorker ? 'Envoyer ma candidature' : 'Créer mon compte'}
               onPress={handleCreate}
               loading={loading}
-              disabled={googleLoading}
+              disabled={!!socialLoading}
             />
             <Text style={styles.legal}>
               En continuant, vous acceptez les conditions d'utilisation de FixPro.

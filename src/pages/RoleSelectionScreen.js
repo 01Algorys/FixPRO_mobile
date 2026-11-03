@@ -24,31 +24,32 @@ const ROLES = [
   },
 ];
 
-// Sign-up step 1. With route.params.google (a new Google account) the choice
-// finishes the Google sign-up instead of opening the email form.
+// Sign-up step 1. With route.params.social (a new Google / Apple account:
+// { provider, credentials, profile }) the choice finishes that sign-up
+// instead of opening the email form.
 export default function RoleSelectionScreen({ navigation, route }) {
   useScreenChrome('#ffffff');
-  const { loginWithGoogle } = useAuth();
-  const google = route.params?.google;
+  const { loginWithSocial } = useAuth();
+  const social = route.params?.social;
   const [busyRole, setBusyRole] = useState(null);
 
   const choose = async (role) => {
-    if (!google) {
+    if (!social) {
       navigation.navigate('CreateAccount', { role });
       return;
     }
     if (role === 'WORKER') {
-      navigation.navigate('GoogleWorkerSetup', google);
+      navigation.navigate('SocialWorkerSetup', social);
       return;
     }
     setBusyRole(role);
-    const result = await loginWithGoogle({ accessToken: google.accessToken, role });
+    const result = await loginWithSocial(social.provider, { credentials: social.credentials, role });
     setBusyRole(null);
-    if (result.success === false) Alert.alert('Connexion Google', result.error);
+    if (result.success === false) Alert.alert('Connexion impossible', result.error);
     // On success the navigator switches to the signed-in app
   };
 
-  const firstName = google?.profile?.name?.split(' ')[0];
+  const firstName = social?.profile?.name?.split(' ')[0];
 
   return (
     <View style={styles.container}>
@@ -83,7 +84,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
           </FadeIn>
         ))}
 
-        {!google && (
+        {!social && (
           <View style={styles.footer}>
             <Text style={styles.footerText}>Déjà inscrit ?</Text>
             <Text style={styles.footerLink} onPress={() => navigation.navigate('Login')}>Se connecter</Text>

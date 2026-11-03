@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from '../ui/PressableScale';
+import { isAppleSignInAvailable } from '../../services/appleAuth';
 
 export const PRIMARY = '#1d5ff0';
 export const INK = '#0f172a';
@@ -36,6 +37,44 @@ export const GoogleButton = ({ label = 'Continuer avec Google', onPress, loading
     )}
   </PressableScale>
 );
+
+// Black "Sign in with Apple" button, per Apple's design guidelines
+export const AppleButton = ({ label = 'Continuer avec Apple', onPress, loading, disabled }) => (
+  <PressableScale style={[styles.appleBtn, (disabled || loading) && { opacity: 0.6 }]} onPress={onPress} disabled={disabled || loading}>
+    {loading ? <ActivityIndicator color="#fff" /> : (
+      <>
+        <Ionicons name="logo-apple" size={21} color="#fff" />
+        <Text style={styles.appleText}>{label}</Text>
+      </>
+    )}
+  </PressableScale>
+);
+
+// Apple (on iOS devices that support it) and Google sign-in buttons.
+// `loading` is the provider in progress ('google' | 'apple' | null).
+export const SocialButtons = ({ signup, loading, disabled, onPress }) => {
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  useEffect(() => { isAppleSignInAvailable().then(setAppleAvailable); }, []);
+  const verb = signup ? "S'inscrire" : 'Continuer';
+  return (
+    <View style={styles.socialButtons}>
+      {appleAvailable && (
+        <AppleButton
+          label={`${verb} avec Apple`}
+          onPress={() => onPress('apple')}
+          loading={loading === 'apple'}
+          disabled={disabled || !!loading}
+        />
+      )}
+      <GoogleButton
+        label={`${verb} avec Google`}
+        onPress={() => onPress('google')}
+        loading={loading === 'google'}
+        disabled={disabled || !!loading}
+      />
+    </View>
+  );
+};
 
 export const Divider = ({ label = 'ou' }) => (
   <View style={styles.divider}>
@@ -96,6 +135,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   googleText: { fontSize: 16, fontWeight: '700', color: INK },
+  appleBtn: {
+    height: 54, borderRadius: 16, backgroundColor: '#000',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+  },
+  appleText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  socialButtons: { gap: 12 },
 
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#e2e8f0' },

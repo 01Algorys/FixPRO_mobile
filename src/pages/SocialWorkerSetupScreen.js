@@ -8,13 +8,13 @@ import ServicePicker from '../components/auth/ServicePicker';
 import FadeIn from '../components/ui/FadeIn';
 import { AuthHeader, PrimaryButton, Field, PhonePrefix, INK, MUTED } from '../components/auth/AuthUI';
 
-// Last step of a technician's Google sign-up: Google gives us their name and
-// email; we still need a phone number and the services they offer before the
+// Last step of a technician's Google / Apple sign-up: the provider gives us
+// their name and email; we still need a phone number and the services they offer before the
 // account is created (it then waits for admin approval).
-export default function GoogleWorkerSetupScreen({ navigation, route }) {
+export default function SocialWorkerSetupScreen({ navigation, route }) {
   useScreenChrome('#ffffff');
-  const { loginWithGoogle } = useAuth();
-  const { accessToken, profile } = route.params || {};
+  const { loginWithSocial } = useAuth();
+  const { provider, credentials, profile } = route.params || {};
   const [phone, setPhone] = useState('');
   const [services, setServices] = useState([]);
   const [errors, setErrors] = useState({});
@@ -28,7 +28,7 @@ export default function GoogleWorkerSetupScreen({ navigation, route }) {
     if (Object.keys(e).length) return;
 
     setLoading(true);
-    const result = await loginWithGoogle({ accessToken, role: 'WORKER', phone: phone.trim(), services });
+    const result = await loginWithSocial(provider, { credentials, role: 'WORKER', phone: phone.trim(), services });
     setLoading(false);
 
     if (result.pendingApproval) {
@@ -36,7 +36,7 @@ export default function GoogleWorkerSetupScreen({ navigation, route }) {
     } else if (result.success === false) {
       Alert.alert('Inscription impossible', result.error);
     }
-    // An existing account (same Google email) is simply signed in
+    // An existing account (same email) is simply signed in
   };
 
   return (

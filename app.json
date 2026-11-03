@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.fixpro.mobile",
+      "usesAppleSignIn": true,
       "buildNumber": "1",
       "minimumOsVersion": "16.0",
       "infoPlist": {
@@ -120,6 +121,7 @@
         }
       ],
       "expo-font",
+      "expo-apple-authentication",
       [
         "expo-image-picker",
         {

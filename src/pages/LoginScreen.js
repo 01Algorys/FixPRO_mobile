@@ -8,19 +8,19 @@ import { useScreenChrome } from '../context/ChromeContext';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import {
-  AuthHeader, GoogleButton, Divider, PrimaryButton, Field, PhonePrefix, PRIMARY, INK, MUTED,
+  AuthHeader, SocialButtons, Divider, PrimaryButton, Field, PhonePrefix, PRIMARY, INK, MUTED,
 } from '../components/auth/AuthUI';
 
 export default function LoginScreen({ navigation }) {
   useScreenChrome('#ffffff');
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithSocial } = useAuth();
   const [tab, setTab] = useState('phone');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(null);
 
   const handleLogin = async () => {
     const identifier = tab === 'phone' ? phone.trim() : email.trim();
@@ -44,19 +44,20 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const handleGoogle = async () => {
-    setGoogleLoading(true);
-    const result = await loginWithGoogle();
-    setGoogleLoading(false);
+  const handleSocial = async (provider) => {
+    setSocialLoading(provider);
+    const result = await loginWithSocial(provider);
+    setSocialLoading(null);
+    const social = { provider, credentials: result.credentials, profile: result.profile };
     if (result.needsRole) {
-      // New Google account: ask whether they're a client or a technician
-      navigation.navigate('RoleSelection', { google: { accessToken: result.accessToken, profile: result.profile } });
+      // New Google / Apple account: ask whether they're a client or a technician
+      navigation.navigate('RoleSelection', { social });
     } else if (result.needsWorkerDetails) {
-      navigation.navigate('GoogleWorkerSetup', { accessToken: result.accessToken, profile: result.profile });
+      navigation.navigate('SocialWorkerSetup', social);
     } else if (result.pendingApproval) {
       navigation.navigate('PendingApproval');
     } else if (result.success === false) {
-      Alert.alert('Connexion Google', result.error);
+      Alert.alert('Connexion impossible', result.error);
     }
   };
 
@@ -72,7 +73,7 @@ export default function LoginScreen({ navigation }) {
           />
 
           <FadeIn>
-            <GoogleButton onPress={handleGoogle} loading={googleLoading} disabled={loading} />
+            <SocialButtons onPress={handleSocial} loading={socialLoading} disabled={loading} />
             <Divider label="ou avec votre compte" />
           </FadeIn>
 
@@ -136,7 +137,7 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
 
-            <PrimaryButton label="Se connecter" onPress={handleLogin} loading={loading} disabled={googleLoading} />
+            <PrimaryButton label="Se connecter" onPress={handleLogin} loading={loading} disabled={!!socialLoading} />
           </FadeIn>
 
           <View style={styles.footer}>
