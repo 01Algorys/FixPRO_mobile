@@ -41,7 +41,11 @@ export const getAppleCredentials = async () => {
     const fullName = [givenName, familyName].filter(Boolean).join(' ') || undefined;
     return { identityToken: credential.identityToken, authorizationCode: credential.authorizationCode, fullName };
   } catch (error) {
-    if (error?.code === 'ERR_REQUEST_CANCELED') throw new AppleSignInCancelled();
+    // "Unknown" is what Apple returns when the user closes its own "sign in to
+    // your Apple Account" prompt; iOS already explained, so treat it as a cancel
+    if (error?.code === 'ERR_REQUEST_CANCELED' || error?.code === 'ERR_REQUEST_UNKNOWN') {
+      throw new AppleSignInCancelled();
+    }
     console.warn('Apple sign-in error', error?.code, error?.message);
     throw new Error('Connexion Apple impossible. Réessayez.');
   }
