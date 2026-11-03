@@ -16,12 +16,16 @@ export const hasPushToken = () => pushTokenSaved;
 // not available in Expo Go
 // ─────────────────────────────────────────────────────────────
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  // In the foreground a finished job opens the review screen instead (App.js)
+  handleNotification: async (notification) => {
+    const opensReview = notification.request.content.data?.type === 'JOB_COMPLETED';
+    return {
+      shouldShowBanner: !opensReview,
+      shouldShowList: true,
+      shouldPlaySound: !opensReview,
+      shouldSetBadge: false,
+    };
+  },
 });
  
 // ─────────────────────────────────────────────────────────────

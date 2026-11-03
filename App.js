@@ -21,6 +21,14 @@ import {
 import { Colors } from './src/styles/theme';
 import MessageToast from './src/components/MessageToast';
 
+// Opens the review screen for a finished job (once, even if the push and the
+// live event both arrive)
+const openReview = ({ reservationId, workerId, workerName }) => {
+  const current = navigationRef.current?.getCurrentRoute();
+  if (current?.name === 'Rating' && current.params?.reservationId === reservationId) return;
+  navigationRef.current?.navigate('Rating', { reservationId, workerId, workerName });
+};
+
 // Inner component that uses auth context
 function AppContent() {
   const { user } = useAuth();
@@ -109,42 +117,52 @@ function AppContent() {
       );
     };
 
-    // RESERVATION STATUS CHANGED
-    const handleStatusChanged = (data) => {
-      const labels = {
-        ACCEPTED: { title: '✅ Réservation acceptée', body: 'Votre réservation a été acceptée par le prestataire' },
-        COMPLETED: { title: '🏁 Réservation terminée', body: 'Votre réservation est maintenant terminée' },
-        CANCELLED: { title: '❌ Réservation annulée', body: 'Une réservation a été annulée' },
-        PENDING: null,
+    // RESERVATION UPDATES. The client hears about the technician's actions;
+    // the server pushes them, so a local notification is only a fallback for
+    // devices without a push token. A finished job opens the review screen.
+    const handleReservationUpdate = (data) => {
+      const isClient = user.role !== 'WORKER';
+      if (data.eventType === 'job_completed') {
+        if (isClient) openReview(data);
+        return;
+      }
+      if (hasPushToken()) return;
+      const who = data.workerName || 'Votre technicien';
+      const clientLabels = {
+        ACCEPTED: ['✅ Demande acceptée', `${who} a accepté votre demande.`],
+        REJECTED: ['❌ Demande refusée', `${who} ne peut pas assurer votre demande.`],
+        IN_PROGRESS: ['🔧 Intervention commencée', `${who} a commencé l'intervention.`],
       };
-      const notif = labels[data.status];
+      const notif = data.eventType === 'cancelled'
+        ? ['❌ Réservation annulée', 'Une réservation a été annulée.']
+        : isClient && clientLabels[data.newStatus];
       if (!notif) return;
-      showLocalNotification(notif.title, notif.body, {
+      showLocalNotification(notif[0], notif[1], {
         reservationId: data.reservationId,
         type: 'RESERVATION_STATUS',
       });
     };
 
-    // RESERVATION CANCELLED
-    const handleCancelled = (data) => {
-      showLocalNotification(
-        '❌ Réservation annulée',
-        'Une réservation a été annulée',
-        { reservationId: data.reservationId, type: 'RESERVATION_CANCELLED' }
-      );
-    };
-
     socketService.on('new_message', handleNewMessage);
     const unsubscribeNewReservation = socketService.onNewReservation(handleNewReservation);
-    socketService.on('reservation_status_changed', handleStatusChanged);
-    socketService.on('reservation_cancelled', handleCancelled);
+    const unsubscribeReservationUpdate = socketService.onReservationUpdate(handleReservationUpdate);
 
     return () => {
       socketService.off('new_message', handleNewMessage);
       unsubscribeNewReservation();
-      socketService.off('reservation_status_changed', handleStatusChanged);
-      socketService.off('reservation_cancelled', handleCancelled);
+      unsubscribeReservationUpdate();
     };
+  }, [user]);
+
+  // A finished-job push received while the app is open opens the review
+  // (covers a socket that missed job_completed)
+  useEffect(() => {
+    if (!user || user.role === 'WORKER') return;
+    const subscription = addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data;
+      if (data?.type === 'JOB_COMPLETED' && data.reservationId) openReview(data);
+    });
+    return () => subscription.remove();
   }, [user]);
 
   // Handle notification tap to navigate
@@ -161,6 +179,7 @@ function AppContent() {
       if (data.type === 'RESERVATION_STATUS' && data.reservationId) {
         navigationRef.current?.navigate(user?.role === 'WORKER' ? 'Demandes' : 'Reservations');
       }
+      if (data.type === 'JOB_COMPLETED' && data.reservationId) openReview(data);
     };
     const subscription = addNotificationTapListener(openFromNotification);
 

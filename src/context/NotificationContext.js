@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socketService';
-import { Alert } from 'react-native';
 import apiService from '../services/api';
 import { useAuth } from './AuthContext';
-import { navigate } from '../navigation/RootNavigation';
 
 const NotificationContext = createContext();
 
@@ -84,68 +82,14 @@ export const NotificationProvider = ({ children }) => {
       });
     };
 
-    // reservation_status_changed listener for users and workers
-    const handleStatusChanged = async (data) => {
+    // Status changes and finished jobs bump the reservations badge; the
+    // banners and the review screen are handled in App.js
+    const handleReservationUpdate = () => {
       setReservationUnread(prev => {
         const newCount = prev + 1;
         AsyncStorage.setItem('reservationUnreadCount', String(newCount));
         return newCount;
       });
-
-      // Show alert based on status
-      const { newStatus, workerName, userName, serviceType } = data;
-      let message = '';
-      
-      switch (newStatus) {
-        case 'ACCEPTED':
-          message = `Your reservation has been accepted by ${workerName}`;
-          break;
-        case 'REJECTED':
-          message = `Your reservation was declined by ${workerName}`;
-          break;
-        case 'COMPLETED':
-          message = `Your job has been marked as completed`;
-          break;
-        case 'CANCELLED':
-          message = `Your reservation was cancelled`;
-          break;
-        default:
-          message = `Reservation status changed to ${newStatus}`;
-      }
-
-      Alert.alert('Reservation Update', message);
-    };
-
-    // job_completed listener with review prompt
-    const handleJobCompleted = async (data) => {
-      const { reservationId, workerId, workerName, serviceType } = data;
-      
-      Alert.alert(
-        'Job Completed!',
-        `${workerName} has completed your ${serviceType} job. Would you like to leave a review?`,
-        [
-          {
-            text: 'Later',
-            onPress: async () => {
-              // Store pending review for later
-              await AsyncStorage.setItem('pendingReview', JSON.stringify({
-                reservationId,
-                workerId,
-                workerName,
-                serviceType
-              }));
-            },
-            style: 'cancel'
-          },
-          {
-            text: 'Review Now',
-            onPress: async () => {
-              await AsyncStorage.removeItem('pendingReview');
-              navigate('Rating', { reservationId, workerId, workerName });
-            }
-          }
-        ]
-      );
     };
 
     // conversation_started listener for real-time conversation updates
@@ -158,20 +102,17 @@ export const NotificationProvider = ({ children }) => {
     const registerListeners = () => {
       socketService.off('new_message', handleNewMessage);
       socketService.off('new_message_badge', handleNewMessageBadge);
-      socketService.off('reservation_status_changed', handleStatusChanged);
-      socketService.off('job_completed', handleJobCompleted);
       socketService.off('conversation_started', handleConversationStarted);
       
       socketService.on('new_message', handleNewMessage);
       socketService.on('new_message_badge', handleNewMessageBadge);
-      socketService.on('reservation_status_changed', handleStatusChanged);
-      socketService.on('job_completed', handleJobCompleted);
       socketService.on('conversation_started', handleConversationStarted);
       
       console.log('All notification listeners registered');
     };
 
     const unsubscribeNewReservation = socketService.onNewReservation(handleNewReservation);
+    const unsubscribeReservationUpdate = socketService.onReservationUpdate(handleReservationUpdate);
 
     // Listen to connect event to register listeners
     socketService.on('connect', registerListeners);
@@ -183,11 +124,10 @@ export const NotificationProvider = ({ children }) => {
 
     return () => {
       unsubscribeNewReservation();
+      unsubscribeReservationUpdate();
       socketService.off('connect', registerListeners);
       socketService.off('new_message', handleNewMessage);
       socketService.off('new_message_badge', handleNewMessageBadge);
-      socketService.off('reservation_status_changed', handleStatusChanged);
-      socketService.off('job_completed', handleJobCompleted);
       socketService.off('conversation_started', handleConversationStarted);
     };
   }, []);
