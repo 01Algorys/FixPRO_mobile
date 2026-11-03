@@ -24,6 +24,8 @@ import { categoryMeta, shortName, formatDistance } from '../utils/categoryMeta';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SearchResultsOverlay from '../components/SearchResultsOverlay';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -32,11 +34,11 @@ const FAVORITES_KEY = 'favoriteWorkers';
 const ACCENT = '#38d6f5';
 const NAVY = '#0b3fb3';
 
-const CategoryIcon = ({ meta, size }) =>
+const CategoryIcon = ({ meta, size, color = meta.color }) =>
   meta.lib === 'mci' ? (
-    <MaterialCommunityIcons name={meta.icon} size={size} color={meta.color} />
+    <MaterialCommunityIcons name={meta.icon} size={size} color={color} />
   ) : (
-    <Ionicons name={meta.icon} size={size} color={meta.color} />
+    <Ionicons name={meta.icon} size={size} color={color} />
   );
 
 const UserHomePage = ({ navigation }) => {
@@ -376,26 +378,37 @@ const UserHomePage = ({ navigation }) => {
         </LinearGradient>
 
         {/* Categories */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Nos services</Text>
+        </View>
         <View style={styles.categoriesGrid}>
-          {categories.map((category) => {
+          {categories.map((category, i) => {
             const meta = categoryMeta(category.key, category);
+            const pros = category.technicianCount ?? 0;
             return (
-              <TouchableOpacity
-                key={category.id}
-                style={styles.categoryCard}
-                onPress={() => handleCategoryClick(category)}
-                activeOpacity={0.85}
-              >
-                <View style={[styles.categoryIcon, { backgroundColor: meta.bg }]}>
-                  <CategoryIcon meta={meta} size={scale(30)} />
-                </View>
-                <Text style={styles.categoryTitle} numberOfLines={1} adjustsFontSizeToFit>
-                  {category.name}
-                </Text>
-                <Text style={styles.categoryCount}>
-                  {category.technicianCount ?? 0} pros
-                </Text>
-              </TouchableOpacity>
+              <FadeIn key={category.id} delay={Math.min(i, 8) * 35} style={styles.categoryCell}>
+                <PressableScale
+                  style={styles.categoryCard}
+                  scaleTo={0.94}
+                  onPress={() => handleCategoryClick(category)}
+                >
+                  <LinearGradient
+                    colors={meta.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.categoryIcon, { shadowColor: meta.gradient[1] }]}
+                  >
+                    <View style={styles.categoryGloss} />
+                    <CategoryIcon meta={meta} size={scale(30)} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.categoryTitle} numberOfLines={1} adjustsFontSizeToFit>
+                    {category.name}
+                  </Text>
+                  <Text style={[styles.categoryCount, !pros && styles.categorySoon]}>
+                    {pros ? `${pros} pro${pros > 1 ? 's' : ''}` : 'Bientôt'}
+                  </Text>
+                </PressableScale>
+              </FadeIn>
             );
           })}
         </View>
@@ -525,6 +538,7 @@ const UserHomePage = ({ navigation }) => {
 const createStyles = (width, insets) => {
   const gutter = wp(5);
   const cardWidth = (width - gutter * 2 - scale(12)) / 2;
+  const tileGap = scale(10);
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -683,30 +697,47 @@ const createStyles = (width, insets) => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       paddingHorizontal: gutter,
-      marginTop: scale(20),
-      gap: scale(10),
+      gap: tileGap,
+    },
+    categoryCell: {
+      // floor: rounded widths can add up to a hair more than the row and wrap
+      width: Math.floor((width - gutter * 2 - tileGap * 3) / 4),
     },
     categoryCard: {
-      width: (width - gutter * 2 - scale(30)) / 4,
       backgroundColor: '#fff',
-      borderRadius: scale(18),
-      paddingTop: scale(8),
+      borderRadius: scale(20),
+      paddingTop: scale(12),
       paddingBottom: scale(10),
-      paddingHorizontal: scale(6),
+      paddingHorizontal: scale(4),
       alignItems: 'center',
       shadowColor: '#1e3a8a',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.07,
+      shadowOpacity: 0.06,
       shadowRadius: 10,
       elevation: 2,
     },
     categoryIcon: {
-      width: '100%',
-      aspectRatio: 1.35,
-      borderRadius: scale(14),
+      width: scale(54),
+      height: scale(54),
+      borderRadius: scale(18),
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: scale(8),
+      overflow: 'visible',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    categoryGloss: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '48%',
+      borderTopLeftRadius: scale(18),
+      borderTopRightRadius: scale(18),
+      backgroundColor: 'rgba(255,255,255,0.18)',
     },
     categoryTitle: {
       fontSize: rf(12.5),
@@ -718,6 +749,11 @@ const createStyles = (width, insets) => {
       fontSize: rf(11.5),
       color: '#6b7280',
       marginTop: scale(2),
+      fontWeight: '500',
+    },
+    categorySoon: {
+      color: '#f97316',
+      fontWeight: '700',
     },
 
     // Urgence banner

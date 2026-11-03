@@ -3,14 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 // Visual identity for each service category (icon, colors, profession title).
 // Categories themselves come from the API (/categories, managed in the admin
 // dashboard); this only decides how a known key looks in the app.
-const PLUMBING = { label: 'Plomberie', icon: 'faucet', lib: 'mci', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' };
-const HANDYMAN = { label: 'Bricolage', icon: 'tools', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' };
-const ELECTRICAL = { label: 'Électricité', icon: 'lightning-bolt', lib: 'mci', color: '#f5b400', bg: '#fff6dc', profession: 'Électricien' };
-const HVAC = { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#0ea5e9', bg: '#e6f4fd', profession: 'Frigoriste' };
-const PAINTING = { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', profession: 'Peintre' };
-const CLEANING = { label: 'Nettoyage', icon: 'bucket-outline', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' };
-const TRANSPORT = { label: 'Transporteur', icon: 'truck-fast', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Transporteur' };
-const GARDENING = { label: 'Jardinage', icon: 'sprout', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', profession: 'Jardinier' };
+const PLUMBING = { label: 'Plomberie', icon: 'faucet', lib: 'mci', color: '#1a73e8', bg: '#e8f1fe', gradient: ['#4f9cff', '#1a5fe0'], profession: 'Plombier' };
+const HANDYMAN = { label: 'Bricolage', icon: 'tools', lib: 'mci', color: '#f97316', bg: '#fff0e3', gradient: ['#ffb057', '#f26a1b'], profession: 'Bricoleur' };
+const ELECTRICAL = { label: 'Électricité', icon: 'lightning-bolt', lib: 'mci', color: '#f5b400', bg: '#fff6dc', gradient: ['#ffd84d', '#f59e0b'], profession: 'Électricien' };
+const HVAC = { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#0ea5e9', bg: '#e6f4fd', gradient: ['#67d8ff', '#0b8fd8'], profession: 'Frigoriste' };
+const PAINTING = { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', gradient: ['#ff7aa2', '#e0315f'], profession: 'Peintre' };
+const CLEANING = { label: 'Nettoyage', icon: 'spray-bottle', lib: 'mci', color: '#10b981', bg: '#e3f8f0', gradient: ['#4fe3b4', '#0e9f74'], profession: 'Agent de nettoyage' };
+const TRANSPORT = { label: 'Transporteur', icon: 'truck-fast', lib: 'mci', color: '#6d4aff', bg: '#efeaff', gradient: ['#a08bff', '#5b3df0'], profession: 'Transporteur' };
+const GARDENING = { label: 'Jardinage', icon: 'sprout', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', gradient: ['#7ee06a', '#23a043'], profession: 'Jardinier' };
 
 // Keys are generated from the category name when it is created in the dashboard
 // and never change, so a category keeps its original key after a rename
@@ -40,6 +40,7 @@ export const categoryMeta = (key, apiCategory) => {
     lib: 'ionicons',
     color,
     bg: color + '1a',
+    gradient: [color + 'b3', color],
     label: apiCategory?.name || 'Service',
     profession: apiCategory?.name || 'Technicien',
   };
