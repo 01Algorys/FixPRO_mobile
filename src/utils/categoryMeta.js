@@ -3,17 +3,28 @@ import { Ionicons } from '@expo/vector-icons';
 // Visual identity for each service category (icon, colors, profession title).
 // Categories themselves come from the API (/categories, managed in the admin
 // dashboard); this only decides how a known key looks in the app.
+const PLUMBING = { label: 'Plomberie', icon: 'faucet', lib: 'mci', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' };
+const HANDYMAN = { label: 'Bricolage', icon: 'tools', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' };
+const ELECTRICAL = { label: 'Électricité', icon: 'lightning-bolt', lib: 'mci', color: '#f5b400', bg: '#fff6dc', profession: 'Électricien' };
+const HVAC = { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#0ea5e9', bg: '#e6f4fd', profession: 'Frigoriste' };
+const PAINTING = { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', profession: 'Peintre' };
+const CLEANING = { label: 'Nettoyage', icon: 'bucket-outline', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' };
+const TRANSPORT = { label: 'Transporteur', icon: 'truck-fast', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Transporteur' };
+const GARDENING = { label: 'Jardinage', icon: 'sprout', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', profession: 'Jardinier' };
+
+// Keys are generated from the category name when it is created in the dashboard
+// and never change, so a category keeps its original key after a rename
+// (e.g. "Serrurerie" renamed "Transporteur" is still LOCKSMITH).
 const META = {
-  PLUMBING: { label: 'Plomberie', icon: 'water-pump', lib: 'mci', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' },
-  ELECTRICAL: { label: 'Électricité', icon: 'flash', lib: 'ionicons', color: '#f5b400', bg: '#fff6dc', profession: 'Électricien' },
-  HVAC: { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#1a73e8', bg: '#e6f4fd', profession: 'Frigoriste' },
-  LOCKSMITH: { label: 'Serrurerie', icon: 'key-variant', lib: 'mci', color: '#7c3aed', bg: '#f1eafe', profession: 'Serrurier' },
-  PAINTING: { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', profession: 'Peintre' },
-  HANDYMAN: { label: 'Bricolage', icon: 'hammer-wrench', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' },
+  PLUMBING, PLOMBERIE: PLUMBING,
+  HANDYMAN, BRICOLAGE: HANDYMAN,
+  ELECTRICAL, ELECTRICITE: ELECTRICAL,
+  HVAC, CLIMATISATION: HVAC,
+  PAINTING, PEINTURE: PAINTING,
+  CLEANING, NETTOYAGE: CLEANING,
+  TRANSPORT, TRANSPORTEUR: TRANSPORT, LOCKSMITH: TRANSPORT,
+  GARDENING, JARDINAGE: GARDENING, JARDINIER: GARDENING,
   APPLIANCE: { label: 'Électroménager', icon: 'washing-machine', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Réparateur électroménager' },
-  CLEANING: { label: 'Nettoyage', icon: 'spray-bottle', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' },
-  GARDENING: { label: 'Jardinage', icon: 'leaf', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', profession: 'Jardinier' },
-  TRANSPORT: { label: 'Transporteur', icon: 'truck-fast', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Transporteur' },
   CARPENTRY: { label: 'Menuiserie', icon: 'hammer', lib: 'mci', color: '#a16207', bg: '#f8efe1', profession: 'Menuisier' },
 };
 
