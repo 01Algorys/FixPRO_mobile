@@ -76,7 +76,7 @@ class ApiService {
     });
   }
 
-  // "Continuer avec Apple": body = { identityToken, fullName?, role?, phone?, services? }
+  // "Continuer avec Apple": body = { identityToken, authorizationCode?, fullName?, role?, phone?, services? }
   async appleAuth(body) {
     return this.request('/auth/apple', {
       method: 'POST',
