@@ -4,15 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 // Categories themselves come from the API (/categories, managed in the admin
 // dashboard); this only decides how a known key looks in the app.
 const META = {
-  PLUMBING: { label: 'Plomberie', icon: 'water', lib: 'ionicons', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' },
+  PLUMBING: { label: 'Plomberie', icon: 'water-pump', lib: 'mci', color: '#1a73e8', bg: '#e8f1fe', profession: 'Plombier' },
   ELECTRICAL: { label: 'Électricité', icon: 'flash', lib: 'ionicons', color: '#f5b400', bg: '#fff6dc', profession: 'Électricien' },
   HVAC: { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#1a73e8', bg: '#e6f4fd', profession: 'Frigoriste' },
   LOCKSMITH: { label: 'Serrurerie', icon: 'key-variant', lib: 'mci', color: '#7c3aed', bg: '#f1eafe', profession: 'Serrurier' },
   PAINTING: { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', profession: 'Peintre' },
-  HANDYMAN: { label: 'Bricolage', icon: 'tools', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' },
+  HANDYMAN: { label: 'Bricolage', icon: 'hammer-wrench', lib: 'mci', color: '#f97316', bg: '#fff0e3', profession: 'Bricoleur' },
   APPLIANCE: { label: 'Électroménager', icon: 'washing-machine', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Réparateur électroménager' },
-  CLEANING: { label: 'Nettoyage', icon: 'broom', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' },
+  CLEANING: { label: 'Nettoyage', icon: 'spray-bottle', lib: 'mci', color: '#10b981', bg: '#e3f8f0', profession: 'Agent de nettoyage' },
   GARDENING: { label: 'Jardinage', icon: 'leaf', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', profession: 'Jardinier' },
+  TRANSPORT: { label: 'Transporteur', icon: 'truck-fast', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Transporteur' },
   CARPENTRY: { label: 'Menuiserie', icon: 'hammer', lib: 'mci', color: '#a16207', bg: '#f8efe1', profession: 'Menuisier' },
 };
 
