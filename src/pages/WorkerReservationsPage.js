@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Dimensions, Image, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api';
@@ -16,9 +16,11 @@ const WorkerReservationsPage = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [reservations, setReservations] = useState([]);
 
-  const loadReservations = async () => {
+  // `silent` refreshes in the background (new request, back on the tab)
+  // without swapping the list for a spinner
+  const loadReservations = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       // Get worker profile first to obtain worker ID
       const workerProfile = await apiService.getWorkerProfile();
       const workerId = workerProfile.data?.userId || workerProfile.id;
@@ -64,16 +66,37 @@ const WorkerReservationsPage = ({ navigation }) => {
     return unsubscribe;
   }, []);
 
-  // Reset reservation badge when entering this tab
+  // Real-time: a client just sent a request, show it straight away
+  useEffect(() => {
+    const unsubscribe = socketService.onNewReservation(() => {
+      loadReservations({ silent: true });
+      // Seen already if this tab is on screen; otherwise keep the tab badge
+      if (navigation.isFocused()) resetReservationUnread();
+    });
+    // Back from the background (e.g. tapping the push): the socket was asleep
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadReservations({ silent: true });
+    });
+    return () => {
+      unsubscribe();
+      appState.remove();
+    };
+  }, []);
+
+  // Reset reservation badge when entering this tab, and catch up on requests
+  // that came in while the app was in the background
+  const isFirstFocus = React.useRef(true);
   useFocusEffect(
     React.useCallback(() => {
       resetReservationUnread();
+      if (isFirstFocus.current) isFirstFocus.current = false;
+      else loadReservations({ silent: true });
     }, [resetReservationUnread])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadReservations();
+    await loadReservations({ silent: true });
     setRefreshing(false);
   };
 

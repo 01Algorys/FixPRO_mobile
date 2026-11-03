@@ -3,6 +3,11 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import apiService from './api';
+
+// Whether the backend has this device's push token, i.e. it will receive
+// server push notifications (not the case in a simulator or without permission)
+let pushTokenSaved = false;
+export const hasPushToken = () => pushTokenSaved;
  
 // ─────────────────────────────────────────────────────────────
 // NOTIFICATION HANDLER
@@ -75,6 +80,7 @@ export const requestNotificationPermissions = async () => {
       if (projectId) {
         const pushTokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         await apiService.savePushToken(pushTokenData.data);
+        pushTokenSaved = true;
       }
     } catch (tokenError) {
       console.warn('[Notifications] Failed to save push token:', tokenError);
@@ -127,6 +133,20 @@ export const addNotificationTapListener = (callback) => {
   });
 };
  
+// ─────────────────────────────────────────────────────────────
+// The notification the user tapped to open the app from closed, if any
+// ─────────────────────────────────────────────────────────────
+export const getLaunchNotificationData = async () => {
+  try {
+    const response = await Notifications.getLastNotificationResponseAsync();
+    // Handle it once, not again on the next sign-in
+    Notifications.clearLastNotificationResponse();
+    return response?.notification?.request?.content?.data || null;
+  } catch (error) {
+    return null;
+  }
+};
+
 // ─────────────────────────────────────────────────────────────
 // REMOVE SUBSCRIPTION
 // ─────────────────────────────────────────────────────────────

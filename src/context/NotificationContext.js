@@ -158,20 +158,20 @@ export const NotificationProvider = ({ children }) => {
     const registerListeners = () => {
       socketService.off('new_message', handleNewMessage);
       socketService.off('new_message_badge', handleNewMessageBadge);
-      socketService.off('new_reservation', handleNewReservation);
       socketService.off('reservation_status_changed', handleStatusChanged);
       socketService.off('job_completed', handleJobCompleted);
       socketService.off('conversation_started', handleConversationStarted);
       
       socketService.on('new_message', handleNewMessage);
       socketService.on('new_message_badge', handleNewMessageBadge);
-      socketService.on('new_reservation', handleNewReservation);
       socketService.on('reservation_status_changed', handleStatusChanged);
       socketService.on('job_completed', handleJobCompleted);
       socketService.on('conversation_started', handleConversationStarted);
       
       console.log('All notification listeners registered');
     };
+
+    const unsubscribeNewReservation = socketService.onNewReservation(handleNewReservation);
 
     // Listen to connect event to register listeners
     socketService.on('connect', registerListeners);
@@ -182,10 +182,10 @@ export const NotificationProvider = ({ children }) => {
     }
 
     return () => {
+      unsubscribeNewReservation();
       socketService.off('connect', registerListeners);
       socketService.off('new_message', handleNewMessage);
       socketService.off('new_message_badge', handleNewMessageBadge);
-      socketService.off('new_reservation', handleNewReservation);
       socketService.off('reservation_status_changed', handleStatusChanged);
       socketService.off('job_completed', handleJobCompleted);
       socketService.off('conversation_started', handleConversationStarted);

@@ -9,6 +9,7 @@ class SocketService {
     this.onlineUsers = new Set();
     this.presenceListeners = new Set();
     this.reservationListeners = new Set();
+    this.newReservationListeners = new Set();
   }
 
   async connect() {
@@ -105,6 +106,11 @@ class SocketService {
       });
       this.socket.on('job_completed', (data) => {
         notifyReservationListeners('job_completed', data);
+      });
+
+      // A client just sent this technician a request
+      this.socket.on('new_reservation', (data) => {
+        this.newReservationListeners.forEach((cb) => cb(data));
       });
 
       // Listen for new messages
@@ -278,6 +284,12 @@ class SocketService {
   onReservationUpdate(callback) {
     this.reservationListeners.add(callback);
     return () => this.reservationListeners.delete(callback); // returns unsubscribe fn
+  }
+
+  // Works before the socket connects and across reconnects
+  onNewReservation(callback) {
+    this.newReservationListeners.add(callback);
+    return () => this.newReservationListeners.delete(callback); // returns unsubscribe fn
   }
 }
 

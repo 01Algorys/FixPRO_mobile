@@ -14,6 +14,9 @@ import {
   addNotificationReceivedListener,
   addNotificationTapListener,
   removeNotificationSubscription,
+  showLocalNotification,
+  hasPushToken,
+  getLaunchNotificationData,
 } from './src/services/notificationService';
 import { Colors } from './src/styles/theme';
 import MessageToast from './src/components/MessageToast';
@@ -92,14 +95,17 @@ function AppContent() {
       );
     };
 
-    // NEW RESERVATION (worker receives this)
+    // NEW RESERVATION (worker receives this). The server also sends a push,
+    // which shows even in the foreground; only fall back to a local
+    // notification when this device gets no pushes (simulator, permission off).
     const handleNewReservation = (data) => {
-      const clientName = data.reservation?.user?.name || 'Un client';
-      const serviceName = data.reservation?.service?.name || 'un service';
+      if (hasPushToken()) return;
+      const clientName = data.userName || data.reservation?.user?.name || 'Un client';
+      const serviceName = data.serviceType || data.reservation?.service?.name || 'un service';
       showLocalNotification(
-        '🔔 Nouvelle demande',
-        `${clientName} a demandé ${serviceName}`,
-        { reservationId: data.reservation?.id, type: 'NEW_RESERVATION' }
+        data.title || '🔔 Nouvelle demande',
+        data.message || `${clientName} a demandé ${serviceName}`,
+        { reservationId: data.reservationId, type: 'NEW_RESERVATION' }
       );
     };
 
@@ -129,13 +135,13 @@ function AppContent() {
     };
 
     socketService.on('new_message', handleNewMessage);
-    socketService.on('new_reservation', handleNewReservation);
+    const unsubscribeNewReservation = socketService.onNewReservation(handleNewReservation);
     socketService.on('reservation_status_changed', handleStatusChanged);
     socketService.on('reservation_cancelled', handleCancelled);
 
     return () => {
       socketService.off('new_message', handleNewMessage);
-      socketService.off('new_reservation', handleNewReservation);
+      unsubscribeNewReservation();
       socketService.off('reservation_status_changed', handleStatusChanged);
       socketService.off('reservation_cancelled', handleCancelled);
     };
@@ -143,7 +149,8 @@ function AppContent() {
 
   // Handle notification tap to navigate
   useEffect(() => {
-    const subscription = addNotificationTapListener((data) => {
+    if (!user) return;
+    const openFromNotification = (data) => {
       if (!data?.type) return;
       if (data.type === 'NEW_MESSAGE' && data.reservationId) {
         navigationRef.current?.navigate('Messages', { reservationId: data.reservationId });
@@ -154,8 +161,24 @@ function AppContent() {
       if (data.type === 'RESERVATION_STATUS' && data.reservationId) {
         navigationRef.current?.navigate(user?.role === 'WORKER' ? 'Demandes' : 'Reservations');
       }
+    };
+    const subscription = addNotificationTapListener(openFromNotification);
+
+    // A tap that opened the app from closed fires before this listener exists;
+    // handle it once the signed-in screens are mounted
+    let timer;
+    getLaunchNotificationData().then((data) => {
+      if (!data) return;
+      const openWhenReady = (attempt = 0) => {
+        if (navigationRef.current?.isReady()) openFromNotification(data);
+        else if (attempt < 20) timer = setTimeout(() => openWhenReady(attempt + 1), 250);
+      };
+      openWhenReady();
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      clearTimeout(timer);
+    };
   }, [user]);
 
 

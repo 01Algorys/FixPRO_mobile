@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, RefreshControl,
   StyleSheet, ActivityIndicator, StatusBar, Image, Alert, Dimensions,
@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
+import socketService from '../services/socketService';
 import { categoryMeta } from '../utils/categoryMeta';
 import { reverseGeocodeCity } from '../utils/location';
 import PressableScale from '../components/ui/PressableScale';
@@ -137,6 +138,9 @@ export default function WorkerHomePage({ navigation }) {
       fetchAll();
     }, [])
   );
+
+  // Real-time: a client just sent a request, show it straight away
+  useEffect(() => socketService.onNewReservation(() => fetchAll()), []);
 
   const onRefresh = () => {
     setRefreshing(true);
