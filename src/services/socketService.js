@@ -12,13 +12,22 @@ class SocketService {
     this.newReservationListeners = new Set();
   }
 
-  async connect() {
+  // Sign-in, app start and App.js all call this, often at the same moment;
+  // share one attempt so only one socket exists (otherwise every event
+  // arrives several times)
+  connect() {
+    // `active`: connected or still reconnecting on its own
+    if (this.socket?.active) return Promise.resolve();
+    if (!this.connecting) {
+      // A socket that gave up reconnecting is replaced
+      if (this.socket) this.disconnect();
+      this.connecting = this.openSocket().finally(() => { this.connecting = null; });
+    }
+    return this.connecting;
+  }
+
+  async openSocket() {
     try {
-      // Guard: if already connected, return early
-      if (this.socket && this.connected) {
-        if (__DEV__) console.log('Socket already connected, skipping');
-        return;
-      }
 
       const token = await AsyncStorage.getItem('token');
 

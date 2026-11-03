@@ -48,11 +48,6 @@ export const requestNotificationPermissions = async () => {
   try {
     await setupAndroidChannel();
  
-    if (!Device.isDevice) {
-      console.warn('[Notifications] Must use a physical device');
-      return false;
-    }
- 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
  
@@ -71,6 +66,9 @@ export const requestNotificationPermissions = async () => {
       console.warn('[Notifications] Permission denied by user');
       return false;
     }
+
+    // Simulators can show local notifications but get no push token
+    if (!Device.isDevice) return true;
 
     // Obtain Expo push token and save to backend
     try {
