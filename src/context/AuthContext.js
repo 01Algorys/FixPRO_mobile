@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
+import { getGoogleAccessToken, signOutGoogle, GoogleSignInCancelled } from '../services/googleAuth';
 
 const AuthContext = createContext();
 
@@ -74,20 +75,22 @@ export const AuthProvider = ({ children }) => {
     setIsGuest(true);
   };
 
+  const startSession = async (token, userData) => {
+    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('user', JSON.stringify(userData));
+    await AsyncStorage.removeItem('isGuest');
+
+    setUser(userData);
+    setIsAuthenticated(true);
+    setIsGuest(false);
+    socketService.connect();
+  };
+
   const login = async (credentials) => {
     try {
       const response = await apiService.login(credentials);
       const { token, user: userData } = response.data || response;
-
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.removeItem('isGuest');
-
-      setUser(userData);
-      setIsAuthenticated(true);
-      setIsGuest(false);
-      socketService.connect();
-
+      await startSession(token, userData);
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
       console.error('Login failed:', error);
@@ -95,8 +98,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // "Continuer avec Google". Pass the accessToken back on the follow-up calls
+  // (role choice, technician details) so Google's picker isn't shown again.
+  // Returns one of: { success } (signed in), { needsRole, profile, accessToken },
+  // { needsWorkerDetails, profile, accessToken }, { pendingApproval },
+  // { cancelled } or { success: false, error }.
+  const loginWithGoogle = async ({ accessToken, role, phone, services } = {}) => {
+    let googleToken = accessToken;
+    try {
+      if (!googleToken) googleToken = await getGoogleAccessToken();
+      const response = await apiService.googleAuth({ accessToken: googleToken, role, phone, services });
+      const data = response.data || {};
+
+      if (response.pendingApproval) return { pendingApproval: true };
+      if (data.needsRole) return { needsRole: true, profile: data.profile, accessToken: googleToken };
+      if (data.needsWorkerDetails) return { needsWorkerDetails: true, profile: data.profile, accessToken: googleToken };
+
+      await startSession(data.token, data.user);
+      return { success: true, user: data.user, role: data.user.role };
+    } catch (error) {
+      if (error instanceof GoogleSignInCancelled) return { cancelled: true };
+      console.error('Google sign-in failed:', error);
+      return { success: false, error: mapLoginError(error.message) };
+    }
+  };
+
   const logout = async () => {
     try {
+      signOutGoogle();
       socketService.disconnect();
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
@@ -166,6 +195,7 @@ export const AuthProvider = ({ children }) => {
         isGuest,
         loading,
         login,
+        loginWithGoogle,
         logout,
         signup,
         continueAsGuest,

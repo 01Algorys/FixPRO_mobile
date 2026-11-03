@@ -1,29 +1,31 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator, Alert, Dimensions,
+  View, Text, StyleSheet, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, TouchableOpacity,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-
-const { width } = Dimensions.get('window');
-const BLUE = '#1a56db';
+import { useScreenChrome } from '../context/ChromeContext';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
+import {
+  AuthHeader, GoogleButton, Divider, PrimaryButton, Field, PhonePrefix, PRIMARY, INK, MUTED,
+} from '../components/auth/AuthUI';
 
 export default function LoginScreen({ navigation }) {
-  const { login } = useAuth();
+  useScreenChrome('#ffffff');
+  const { login, loginWithGoogle } = useAuth();
   const [tab, setTab] = useState('phone');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     const identifier = tab === 'phone' ? phone.trim() : email.trim();
     if (!identifier || !password) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      Alert.alert('Champs manquants', 'Renseignez votre identifiant et votre mot de passe.');
       return;
     }
     try {
@@ -32,219 +34,137 @@ export default function LoginScreen({ navigation }) {
       const credentials = tab === 'phone'
         ? { phone: identifier, password }
         : { email: identifier, password };
-
       const result = await login(credentials);
-
       if (!result.success) {
-        Alert.alert('Erreur de connexion', result.error || 'Identifiants incorrects');
+        Alert.alert('Connexion impossible', result.error || 'Identifiants incorrects');
       }
       // On success, navigation is driven by isAuthenticated state in AppNavigator
-    } catch (err) {
-      Alert.alert('Erreur', err?.message ?? 'Identifiants incorrects');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    const result = await loginWithGoogle();
+    setGoogleLoading(false);
+    if (result.needsRole) {
+      // New Google account: ask whether they're a client or a technician
+      navigation.navigate('RoleSelection', { google: { accessToken: result.accessToken, profile: result.profile } });
+    } else if (result.needsWorkerDetails) {
+      navigation.navigate('GoogleWorkerSetup', { accessToken: result.accessToken, profile: result.profile });
+    } else if (result.pendingApproval) {
+      navigation.navigate('PendingApproval');
+    } else if (result.success === false) {
+      Alert.alert('Connexion Google', result.error);
+    }
+  };
+
   return (
-    <LinearGradient colors={['#1a56db', '#1565c0']} style={styles.bg}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <AuthHeader
+            title="Bon retour 👋"
+            subtitle="Connectez-vous pour réserver ou gérer vos interventions."
+            onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+          />
 
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Text style={styles.topTitle}>Connexion</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
+          <FadeIn>
+            <GoogleButton onPress={handleGoogle} loading={googleLoading} disabled={loading} />
+            <Divider label="ou avec votre compte" />
+          </FadeIn>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* White card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Bienvenue chez FixPro !</Text>
-            <Text style={styles.cardSub}>Connectez-vous pour continuer</Text>
-
-            {/* Tabs */}
-            <View style={styles.tabRow}>
-              <TouchableOpacity
-                style={[styles.tab, tab === 'phone' && styles.tabActive]}
-                onPress={() => setTab('phone')}
-              >
-                <Text style={[styles.tabText, tab === 'phone' && styles.tabTextActive]}>
-                  Téléphone
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, tab === 'email' && styles.tabActive]}
-                onPress={() => setTab('email')}
-              >
-                <Text style={[styles.tabText, tab === 'email' && styles.tabTextActive]}>
-                  Email
-                </Text>
-              </TouchableOpacity>
+          <FadeIn delay={60}>
+            <View style={styles.segment}>
+              {[['phone', 'Téléphone', 'call-outline'], ['email', 'Email', 'mail-outline']].map(([key, label, icon]) => {
+                const active = tab === key;
+                return (
+                  <PressableScale key={key} style={[styles.segmentItem, active && styles.segmentActive]} onPress={() => setTab(key)}>
+                    <Ionicons name={icon} size={16} color={active ? PRIMARY : MUTED} />
+                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
+                  </PressableScale>
+                );
+              })}
             </View>
 
-            {/* Phone / Email input */}
             {tab === 'phone' ? (
-              <View style={styles.inputBox}>
-                <Text style={styles.flag}>🇹🇳</Text>
-                <Text style={styles.dialCode}>+216</Text>
-                <View style={styles.inputDivider} />
-                <TextInput
-                  style={styles.inputText}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="12 345 678"
-                  placeholderTextColor="#b0b8c9"
-                  keyboardType="phone-pad"
-                />
-              </View>
-            ) : (
-              <View style={styles.inputBox}>
-                <Ionicons name="mail-outline" size={20} color="#b0b8c9" style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.inputText}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="email@exemple.com"
-                  placeholderTextColor="#b0b8c9"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-            )}
-
-            {/* Password input */}
-            <View style={styles.inputBox}>
-              <TextInput
-                style={styles.inputText}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Mot de passe"
-                placeholderTextColor="#b0b8c9"
-                secureTextEntry={!showPassword}
+              <Field
+                left={<PhonePrefix />}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="12 345 678"
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22} color="#b0b8c9"
-                />
-              </TouchableOpacity>
-            </View>
+            ) : (
+              <Field
+                icon="mail-outline"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="email@exemple.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+            )}
+            <Field
+              icon="lock-closed-outline"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Mot de passe"
+              secureTextEntry={!showPassword}
+              textContentType="password"
+              onSubmitEditing={handleLogin}
+              returnKeyType="go"
+              right={(
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#94a3b8" />
+                </TouchableOpacity>
+              )}
+            />
 
-            {/* Forgot password */}
             <TouchableOpacity
-              style={styles.forgotRow}
+              style={styles.forgot}
               onPress={() => Alert.alert(
                 'Mot de passe oublié',
-                'Veuillez contacter le support à support@fixpro.com pour réinitialiser votre mot de passe.',
-                [{ text: 'OK' }]
+                'Contactez le support à support@fixpro.com pour réinitialiser votre mot de passe.',
               )}
             >
               <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
 
-            {/* Login button */}
-            <TouchableOpacity
-              style={[styles.loginBtn, loading && { opacity: 0.7 }]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.loginBtnText}>Se connecter</Text>
-              }
-            </TouchableOpacity>
+            <PrimaryButton label="Se connecter" onPress={handleLogin} loading={loading} disabled={googleLoading} />
+          </FadeIn>
 
-            {/* Register link */}
-            <View style={styles.registerRow}>
-              <Text style={styles.registerText}>Vous n'avez pas de compte ? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
-                <Text style={styles.registerLink}>S'inscrire</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Pas encore de compte ?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
+              <Text style={styles.footerLink}>Créer un compte</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 56,
-    paddingBottom: 20,
-  },
-  topTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
-
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-
-  card: {
+  container: { flex: 1, backgroundColor: '#fff' },
+  content: { paddingHorizontal: 22, paddingBottom: 30, flexGrow: 1 },
+  segment: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 14, padding: 4, marginBottom: 16 },
+  segmentItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 40, borderRadius: 11 },
+  segmentActive: {
     backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
-  cardTitle: { fontSize: 22, fontWeight: '800', color: '#111827', marginBottom: 4 },
-  cardSub: { fontSize: 14, color: '#6b7280', marginBottom: 20 },
-
-  tabRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    marginBottom: 20,
-  },
-  tab: { flex: 1, paddingBottom: 12, alignItems: 'center' },
-  tabActive: { borderBottomWidth: 2.5, borderBottomColor: BLUE },
-  tabText: { fontSize: 15, fontWeight: '600', color: '#9ca3af' },
-  tabTextActive: { color: BLUE },
-
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 14,
-    backgroundColor: '#f9fafb',
-  },
-  flag: { fontSize: 22, marginRight: 6 },
-  dialCode: { fontSize: 15, fontWeight: '700', color: '#374151', marginRight: 8 },
-  inputDivider: { width: 1, height: 22, backgroundColor: '#d1d5db', marginRight: 10 },
-  inputText: { flex: 1, fontSize: 15, color: '#111827' },
-
-  forgotRow: { alignItems: 'flex-end', marginBottom: 20 },
-  forgotText: { fontSize: 14, color: BLUE, fontWeight: '600' },
-
-  loginBtn: {
-    backgroundColor: BLUE,
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 22,
-  },
-  loginBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-
-  registerRow: { flexDirection: 'row', justifyContent: 'center' },
-  registerText: { fontSize: 14, color: '#6b7280' },
-  registerLink: { fontSize: 14, fontWeight: '700', color: BLUE },
+  segmentText: { fontSize: 14.5, fontWeight: '600', color: MUTED },
+  segmentTextActive: { color: INK },
+  forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 20, paddingVertical: 4 },
+  forgotText: { color: PRIMARY, fontSize: 14, fontWeight: '600' },
+  footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 'auto', paddingTop: 28 },
+  footerText: { fontSize: 14.5, color: MUTED },
+  footerLink: { fontSize: 14.5, color: PRIMARY, fontWeight: '700' },
 });

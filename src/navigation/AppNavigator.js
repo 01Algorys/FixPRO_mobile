@@ -15,6 +15,7 @@ import RoleSelectionScreen from '../pages/RoleSelectionScreen';
 import AuthPage from '../pages/AuthPage';
 import CreateAccountScreen from '../pages/CreateAccountScreen';
 import PendingApprovalScreen from '../pages/PendingApprovalScreen';
+import GoogleWorkerSetupScreen from '../pages/GoogleWorkerSetupScreen';
 import UserHomePage from '../pages/UserHomePage';
 import MessagesPage from '../pages/MessagesPage';
 import ReservationsPage from '../pages/ReservationsPage';
@@ -123,6 +124,7 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+            <Stack.Screen name="GoogleWorkerSetup" component={GoogleWorkerSetupScreen} />
             <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : !isAuthenticated && isGuest ? (
@@ -132,6 +134,8 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+            <Stack.Screen name="GoogleWorkerSetup" component={GoogleWorkerSetupScreen} />
+            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : user?.role === 'WORKER' ? (
           <>

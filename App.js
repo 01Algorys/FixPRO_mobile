@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { NotificationProvider } from './src/context/NotificationContext';
+import { ChromeProvider, useChromeColors } from './src/context/ChromeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigationRef, navigate } from './src/navigation/RootNavigation';
 import socketService from './src/services/socketService';
@@ -20,6 +21,7 @@ import MessageToast from './src/components/MessageToast';
 // Inner component that uses auth context
 function AppContent() {
   const { user } = useAuth();
+  const chrome = useChromeColors();
   const [socketReady, setSocketReady] = useState(false);
   const [pendingReview, setPendingReview] = useState(null);
   const [toast, setToast] = useState({ visible: false, senderName: '', message: '', reservationId: null });
@@ -228,9 +230,10 @@ function AppContent() {
 
   return (
     // Signed-in screens end with a white tab bar, so the home-indicator strip
-    // below them is white; the auth screens keep the brand blue.
-    <SafeAreaView style={{ flex: 1, backgroundColor: user ? '#ffffff' : '#1a56db' }} edges={['bottom']}>
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a56db' }} edges={['top']}>
+    // below them is white; the welcome screen keeps the brand blue. Screens
+    // can override both strips (see ChromeContext).
+    <SafeAreaView style={{ flex: 1, backgroundColor: chrome?.bottom || (user ? '#ffffff' : '#1a56db') }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: chrome?.top || '#1a56db' }} edges={['top']}>
       <AppNavigator ref={navigationRef} />
       {toast.visible && (
         <MessageToast
@@ -249,9 +252,11 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
+      <ChromeProvider>
       <NotificationProvider>
         <AppContent />
       </NotificationProvider>
+      </ChromeProvider>
     </AuthProvider>
   );
 }

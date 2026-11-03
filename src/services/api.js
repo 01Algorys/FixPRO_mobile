@@ -61,6 +61,14 @@ class ApiService {
     });
   }
 
+  // "Continuer avec Google": body = { accessToken, role?, phone?, services? }
+  async googleAuth(body) {
+    return this.request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
   async logout() {
     return this.request('/auth/logout', {
       method: 'POST',

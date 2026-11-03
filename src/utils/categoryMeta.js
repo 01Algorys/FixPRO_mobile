@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+
 // Visual identity for each service category (icon, colors, profession title).
 // Categories themselves come from the API (/categories, managed in the admin
 // dashboard); this only decides how a known key looks in the app.
@@ -19,8 +21,10 @@ export const categoryMeta = (key, apiCategory) => {
   const known = META[String(key || '').toUpperCase()];
   if (known) return known;
   const color = apiCategory?.color || '#1a56db';
+  // Dashboard icons use another icon set; fall back when Ionicons lacks the name
+  const icon = apiCategory?.icon && Ionicons.glyphMap?.[apiCategory.icon] ? apiCategory.icon : 'construct';
   return {
-    icon: apiCategory?.icon || 'construct',
+    icon,
     lib: 'ionicons',
     color,
     bg: color + '1a',

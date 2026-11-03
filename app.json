@@ -126,6 +126,12 @@
           "photosPermission": "FixPro needs access to your photo library to select profile pictures.",
           "cameraPermission": "FixPro needs access to your camera to take profile pictures."
         }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.845008512991-p4do64u09t79gsslc1mefcvlh80u464v"
+        }
       ]
     ],
     "extra": {
