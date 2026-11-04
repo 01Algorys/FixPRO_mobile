@@ -1,53 +1,57 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, StatusBar,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import apiService from '../services/api';
-import { Colors } from '../styles/theme';
+import { useScreenChrome } from '../context/ChromeContext';
+import { titleCase } from '../utils/categoryMeta';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
+
+const BLUE = '#1a56db';
+const NAVY = '#0b3fb3';
+const PRIMARY = '#1d5ff0';
+const INK = '#0f172a';
+const MUTED = '#64748b';
+const PAGE = '#f4f7fd';
+const STAR = '#f5b400';
+
+const MAX_COMMENT = 1000;
+
+const RATING_LABELS = {
+  1: { text: 'Très décevant', color: '#dc2626' },
+  2: { text: 'Décevant', color: '#ea580c' },
+  3: { text: 'Correct', color: '#b45309' },
+  4: { text: 'Très bien', color: '#16a34a' },
+  5: { text: 'Excellent !', color: '#16a34a' },
+};
 
 const RatingPage = ({ route, navigation }) => {
+  useScreenChrome(BLUE, '#ffffff');
   const { reservationId, workerId, workerName } = route.params || {};
-  const { user } = useAuth();
+  const scrollRef = useRef(null);
   const [rating, setRating] = useState(0);
+  const [wouldHireAgain, setWouldHireAgain] = useState(true);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const renderStars = () => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <TouchableOpacity
-          key={i}
-          onPress={() => setRating(i)}
-          style={styles.starButton}
-        >
-          <Ionicons
-            name={i <= rating ? 'star' : 'star-outline'}
-            size={40}
-            color={i <= rating ? Colors.star : Colors.border}
-          />
-        </TouchableOpacity>
-      );
-    }
-    return stars;
-  };
+  const name = titleCase(workerName || 'Technicien');
+  const label = RATING_LABELS[rating];
 
   const handleSubmit = async () => {
-    if (rating === 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner une note');
-      return;
-    }
-
     try {
       setSubmitting(true);
       await apiService.createReview({
         reservationId,
         workerId,
         rating,
-        comment,
-        wouldHireAgain: true,
+        comment: comment.trim(),
+        wouldHireAgain,
       });
-      Alert.alert('Succès', 'Votre évaluation a été envoyée', [
+      Alert.alert('Merci !', 'Votre avis a bien été envoyé.', [
         {
           text: 'OK',
           onPress: () => {
@@ -61,134 +65,172 @@ const RatingPage = ({ route, navigation }) => {
       ]);
     } catch (error) {
       console.error('Failed to submit review:', error);
-      Alert.alert('Erreur', 'Impossible d\'envoyer votre évaluation');
+      const alreadySent = /already exists/i.test(error?.message || '');
+      Alert.alert(
+        alreadySent ? 'Avis déjà envoyé' : 'Erreur',
+        alreadySent ? 'Vous avez déjà évalué cette intervention.' : "Impossible d'envoyer votre avis. Réessayez."
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  const choice = (value, text, icon) => {
+    const active = wouldHireAgain === value;
+    return (
+      <PressableScale
+        style={[styles.choice, active && styles.choiceActive]}
+        scaleTo={0.96}
+        onPress={() => setWouldHireAgain(value)}
+      >
+        <Ionicons name={icon} size={18} color={active ? '#fff' : MUTED} />
+        <Text style={[styles.choiceText, active && styles.choiceTextActive]}>{text}</Text>
+      </PressableScale>
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Évaluer le technicien</Text>
-      </View>
+    // The root view already pads the status bar, so this view starts that far down.
+    // useSafeAreaInsets reads 0 inside that padding: only the device's value is right.
+    <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={initialWindowMetrics?.insets.top ?? 0}>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
+        <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={23} color="#fff" />
+        </PressableScale>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Votre avis</Text>
+          <Text style={styles.subtitle}>Il aide les autres clients à choisir</Text>
+        </View>
+      </LinearGradient>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.card}>
-          <View style={styles.workerInfo}>
-            <Ionicons name="person" size={48} color={Colors.primary} />
-            <Text style={styles.workerName}>{workerName || 'technicien'}</Text>
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <FadeIn style={styles.card}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarLetter}>{name[0]}</Text>
           </View>
+          <Text style={styles.question}>Comment s'est passée l'intervention ?</Text>
+          <Text style={styles.workerName}>avec {name}</Text>
 
-          <Text style={styles.label}>Note globale</Text>
-          <View style={styles.starsContainer}>{renderStars()}</View>
+          <View style={styles.stars}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <PressableScale key={n} scaleTo={0.85} onPress={() => setRating(n)} style={styles.star}>
+                <Ionicons name={n <= rating ? 'star' : 'star-outline'} size={42} color={n <= rating ? STAR : '#cbd5e1'} />
+              </PressableScale>
+            ))}
+          </View>
+          <Text style={[styles.ratingLabel, label && { color: label.color }]}>
+            {label ? label.text : 'Touchez une étoile pour noter'}
+          </Text>
+        </FadeIn>
 
-          <Text style={styles.label}>Commentaire (optionnel)</Text>
+        <FadeIn delay={60} style={[styles.card, styles.cardLeft]}>
+          <Text style={styles.sectionTitle}>Feriez-vous de nouveau appel à {name} ?</Text>
+          <View style={styles.choices}>
+            {choice(true, 'Oui', 'thumbs-up-outline')}
+            {choice(false, 'Non', 'thumbs-down-outline')}
+          </View>
+        </FadeIn>
+
+        <FadeIn delay={120} style={[styles.card, styles.cardLeft]}>
+          <View style={styles.commentHead}>
+            <Text style={styles.sectionTitle}>Votre commentaire</Text>
+            <Text style={styles.optional}>Optionnel</Text>
+          </View>
           <TextInput
             style={styles.commentInput}
-            placeholder="Partagez votre expérience..."
-            placeholderTextColor={Colors.textSecondary}
+            placeholder="Ponctualité, qualité du travail, accueil..."
+            placeholderTextColor="#94a3b8"
             multiline
-            numberOfLines={4}
+            maxLength={MAX_COMMENT}
             value={comment}
             onChangeText={setComment}
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
           />
-
-          <TouchableOpacity
-            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={submitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {submitting ? 'Envoi en cours...' : 'Envoyer l\'évaluation'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.counter}>{comment.length}/{MAX_COMMENT}</Text>
+        </FadeIn>
       </ScrollView>
-    </View>
+
+      <View style={styles.footer}>
+        <PressableScale
+          style={[styles.submit, (!rating || submitting) && styles.submitOff]}
+          onPress={handleSubmit}
+          disabled={!rating || submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitText}>Envoyer mon avis</Text>
+          )}
+        </PressableScale>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: PAGE },
+
   header: {
-    backgroundColor: Colors.headerBackground,
-    paddingTop: 56,
-    paddingHorizontal: 20,
-    paddingBottom: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 18,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
   },
-  headerTitle: {
-    color: Colors.textLight,
-    fontSize: 20,
-    fontWeight: '700',
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  content: {
-    flex: 1,
-    padding: 14,
-  },
+  title: { fontSize: 21, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  subtitle: { fontSize: 13.5, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+
+  content: { padding: 16, gap: 12 },
   card: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: '#fff', borderRadius: 20, padding: 18, alignItems: 'center',
+    shadowColor: '#1e3a8a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 10, elevation: 2,
   },
-  workerInfo: {
-    alignItems: 'center',
-    marginBottom: 24,
+  cardLeft: { alignItems: 'stretch' },
+
+  avatar: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#e8f0ff',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  workerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-    marginTop: 12,
+  avatarLetter: { fontSize: 26, fontWeight: '800', color: PRIMARY },
+  question: { fontSize: 17.5, fontWeight: '800', color: INK, textAlign: 'center' },
+  workerName: { fontSize: 14.5, color: MUTED, marginTop: 3 },
+  stars: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 16 },
+  star: { padding: 2 },
+  ratingLabel: { fontSize: 15, fontWeight: '700', color: MUTED, marginTop: 10 },
+
+  sectionTitle: { fontSize: 15.5, fontWeight: '700', color: INK, flexShrink: 1 },
+  choices: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  choice: {
+    flex: 1, height: 46, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0',
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  starButton: {
-    padding: 4,
-  },
+  choiceActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  choiceText: { fontSize: 14.5, fontWeight: '700', color: '#334155' },
+  choiceTextActive: { color: '#fff' },
+
+  commentHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  optional: { fontSize: 12.5, color: MUTED },
   commentInput: {
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-    color: Colors.text,
-    marginBottom: 20,
-    minHeight: 100,
-    textAlignVertical: 'top',
+    minHeight: 104, marginTop: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc', fontSize: 15, lineHeight: 21, color: INK, textAlignVertical: 'top',
   },
-  submitButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+  counter: { fontSize: 12, color: '#94a3b8', textAlign: 'right', marginTop: 6 },
+
+  footer: {
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#eef2f7',
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: Colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  submit: { height: 54, borderRadius: 27, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+  submitOff: { backgroundColor: '#b6c8ee' },
+  submitText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });
 
 export default RatingPage;

@@ -26,7 +26,8 @@ export const getCurrentCoords = async () => {
       longitude: position.coords.longitude,
     };
   } catch (error) {
-    console.error('getCurrentCoords error:', error);
+    // Normal on a simulator or with location services off
+    console.warn('getCurrentCoords error:', error);
     return null;
   }
 };

@@ -2,8 +2,27 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
+import { getGoogleAccessToken, signOutGoogle, GoogleSignInCancelled } from '../services/googleAuth';
+import { getAppleCredentials, AppleSignInCancelled } from '../services/appleAuth';
 
 const AuthContext = createContext();
+
+// "Continuer avec Google / Apple": how each provider gets credentials from the
+// device and which endpoint checks them.
+const SOCIAL_PROVIDERS = {
+  google: {
+    label: 'Google',
+    getCredentials: async () => ({ accessToken: await getGoogleAccessToken() }),
+    request: (body) => apiService.googleAuth(body),
+    isCancelled: (error) => error instanceof GoogleSignInCancelled,
+  },
+  apple: {
+    label: 'Apple',
+    getCredentials: getAppleCredentials,
+    request: (body) => apiService.appleAuth(body),
+    isCancelled: (error) => error instanceof AppleSignInCancelled,
+  },
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -36,6 +55,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     loadStoredAuth();
+    // The API reports a rejected token; drop the dead session (back to welcome)
+    apiService.onUnauthorized = () => logout();
+    return () => { apiService.onUnauthorized = null; };
   }, []);
 
   const loadStoredAuth = async () => {
@@ -74,20 +96,22 @@ export const AuthProvider = ({ children }) => {
     setIsGuest(true);
   };
 
+  const startSession = async (token, userData) => {
+    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('user', JSON.stringify(userData));
+    await AsyncStorage.removeItem('isGuest');
+
+    setUser(userData);
+    setIsAuthenticated(true);
+    setIsGuest(false);
+    socketService.connect();
+  };
+
   const login = async (credentials) => {
     try {
       const response = await apiService.login(credentials);
       const { token, user: userData } = response.data || response;
-
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.removeItem('isGuest');
-
-      setUser(userData);
-      setIsAuthenticated(true);
-      setIsGuest(false);
-      socketService.connect();
-
+      await startSession(token, userData);
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
       console.error('Login failed:', error);
@@ -95,8 +119,50 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // "Continuer avec Google / Apple" (provider = 'google' | 'apple'). Pass the
+  // returned credentials back on the follow-up calls (role choice, technician
+  // details) so the provider's sheet isn't shown again.
+  // Returns one of: { success } (signed in), { needsRole, profile, credentials },
+  // { needsWorkerDetails, profile, credentials }, { pendingApproval },
+  // { cancelled } or { success: false, error }.
+  const loginWithSocial = async (provider, { credentials, role, phone, services } = {}) => {
+    const social = SOCIAL_PROVIDERS[provider];
+    let creds = credentials;
+    try {
+      if (!creds) creds = await social.getCredentials();
+      let response;
+      try {
+        response = await social.request({ ...creds, role, phone, services });
+      } catch (error) {
+        // Apple identity tokens last 10 minutes; one may expire while the user
+        // fills in the technician form. Ask Apple again, keeping the name it
+        // only shares the first time.
+        if (error.code !== 'APPLE_TOKEN_INVALID' || !credentials) throw error;
+        creds = { ...(await social.getCredentials()), fullName: creds.fullName };
+        response = await social.request({ ...creds, role, phone, services });
+      }
+      const data = response.data || {};
+
+      if (response.pendingApproval) return { pendingApproval: true };
+      if (data.needsRole) return { needsRole: true, profile: data.profile, credentials: creds };
+      if (data.needsWorkerDetails) return { needsWorkerDetails: true, profile: data.profile, credentials: creds };
+
+      await startSession(data.token, data.user);
+      return { success: true, user: data.user, role: data.user.role };
+    } catch (error) {
+      if (social.isCancelled(error)) return { cancelled: true };
+      console.error(`${social.label} sign-in failed:`, error);
+      // A server without the endpoint answers as if login were required
+      if (/no token provided|not found/i.test(error.message || '')) {
+        return { success: false, error: `La connexion ${social.label} n'est pas encore disponible. Utilisez votre téléphone ou votre email.` };
+      }
+      return { success: false, error: mapLoginError(error.message) };
+    }
+  };
+
   const logout = async () => {
     try {
+      signOutGoogle();
       socketService.disconnect();
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
@@ -166,6 +232,7 @@ export const AuthProvider = ({ children }) => {
         isGuest,
         loading,
         login,
+        loginWithSocial,
         logout,
         signup,
         continueAsGuest,

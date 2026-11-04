@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { SafeAreaView, ActivityIndicator, View, Alert } from 'react-native';
+import { ActivityIndicator, View, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { NotificationProvider } from './src/context/NotificationContext';
+import { ChromeProvider, useChromeColors } from './src/context/ChromeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigationRef, navigate } from './src/navigation/RootNavigation';
 import socketService from './src/services/socketService';
@@ -12,13 +14,25 @@ import {
   addNotificationReceivedListener,
   addNotificationTapListener,
   removeNotificationSubscription,
+  showLocalNotification,
+  hasPushToken,
+  getLaunchNotificationData,
 } from './src/services/notificationService';
 import { Colors } from './src/styles/theme';
 import MessageToast from './src/components/MessageToast';
 
+// Opens the review screen for a finished job (once, even if the push and the
+// live event both arrive)
+const openReview = ({ reservationId, workerId, workerName }) => {
+  const current = navigationRef.current?.getCurrentRoute();
+  if (current?.name === 'Rating' && current.params?.reservationId === reservationId) return;
+  navigationRef.current?.navigate('Rating', { reservationId, workerId, workerName });
+};
+
 // Inner component that uses auth context
 function AppContent() {
   const { user } = useAuth();
+  const chrome = useChromeColors();
   const [socketReady, setSocketReady] = useState(false);
   const [pendingReview, setPendingReview] = useState(null);
   const [toast, setToast] = useState({ visible: false, senderName: '', message: '', reservationId: null });
@@ -89,58 +103,72 @@ function AppContent() {
       );
     };
 
-    // NEW RESERVATION (worker receives this)
+    // NEW RESERVATION (worker receives this). The server also sends a push,
+    // which shows even in the foreground; only fall back to a local
+    // notification when this device gets no pushes (simulator, permission off).
     const handleNewReservation = (data) => {
-      const clientName = data.reservation?.user?.name || 'Un client';
-      const serviceName = data.reservation?.service?.name || 'un service';
+      if (hasPushToken()) return;
+      const clientName = data.userName || data.reservation?.user?.name || 'Un client';
+      const serviceName = data.serviceType || data.reservation?.service?.name || 'un service';
       showLocalNotification(
-        '🔔 Nouvelle demande',
-        `${clientName} a demandé ${serviceName}`,
-        { reservationId: data.reservation?.id, type: 'NEW_RESERVATION' }
+        data.title || '🔔 Nouvelle demande',
+        data.message || `${clientName} a demandé ${serviceName}`,
+        { reservationId: data.reservationId, type: 'NEW_RESERVATION' }
       );
     };
 
-    // RESERVATION STATUS CHANGED
-    const handleStatusChanged = (data) => {
-      const labels = {
-        ACCEPTED: { title: '✅ Réservation acceptée', body: 'Votre réservation a été acceptée par le prestataire' },
-        COMPLETED: { title: '🏁 Réservation terminée', body: 'Votre réservation est maintenant terminée' },
-        CANCELLED: { title: '❌ Réservation annulée', body: 'Une réservation a été annulée' },
-        PENDING: null,
+    // RESERVATION UPDATES. The client hears about the technician's actions;
+    // the server pushes them, so a local notification is only a fallback for
+    // devices without a push token. A finished job opens the review screen.
+    const handleReservationUpdate = (data) => {
+      const isClient = user.role !== 'WORKER';
+      if (data.eventType === 'job_completed') {
+        if (isClient) openReview(data);
+        return;
+      }
+      if (hasPushToken()) return;
+      const who = data.workerName || 'Votre technicien';
+      const clientLabels = {
+        ACCEPTED: ['✅ Demande acceptée', `${who} a accepté votre demande.`],
+        REJECTED: ['❌ Demande refusée', `${who} ne peut pas assurer votre demande.`],
+        IN_PROGRESS: ['🔧 Intervention commencée', `${who} a commencé l'intervention.`],
       };
-      const notif = labels[data.status];
+      const notif = data.eventType === 'cancelled'
+        ? ['❌ Réservation annulée', 'Une réservation a été annulée.']
+        : isClient && clientLabels[data.newStatus];
       if (!notif) return;
-      showLocalNotification(notif.title, notif.body, {
+      showLocalNotification(notif[0], notif[1], {
         reservationId: data.reservationId,
         type: 'RESERVATION_STATUS',
       });
     };
 
-    // RESERVATION CANCELLED
-    const handleCancelled = (data) => {
-      showLocalNotification(
-        '❌ Réservation annulée',
-        'Une réservation a été annulée',
-        { reservationId: data.reservationId, type: 'RESERVATION_CANCELLED' }
-      );
-    };
-
     socketService.on('new_message', handleNewMessage);
-    socketService.on('new_reservation', handleNewReservation);
-    socketService.on('reservation_status_changed', handleStatusChanged);
-    socketService.on('reservation_cancelled', handleCancelled);
+    const unsubscribeNewReservation = socketService.onNewReservation(handleNewReservation);
+    const unsubscribeReservationUpdate = socketService.onReservationUpdate(handleReservationUpdate);
 
     return () => {
       socketService.off('new_message', handleNewMessage);
-      socketService.off('new_reservation', handleNewReservation);
-      socketService.off('reservation_status_changed', handleStatusChanged);
-      socketService.off('reservation_cancelled', handleCancelled);
+      unsubscribeNewReservation();
+      unsubscribeReservationUpdate();
     };
+  }, [user]);
+
+  // A finished-job push received while the app is open opens the review
+  // (covers a socket that missed job_completed)
+  useEffect(() => {
+    if (!user || user.role === 'WORKER') return;
+    const subscription = addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data;
+      if (data?.type === 'JOB_COMPLETED' && data.reservationId) openReview(data);
+    });
+    return () => subscription.remove();
   }, [user]);
 
   // Handle notification tap to navigate
   useEffect(() => {
-    const subscription = addNotificationTapListener((data) => {
+    if (!user) return;
+    const openFromNotification = (data) => {
       if (!data?.type) return;
       if (data.type === 'NEW_MESSAGE' && data.reservationId) {
         navigationRef.current?.navigate('Messages', { reservationId: data.reservationId });
@@ -151,8 +179,25 @@ function AppContent() {
       if (data.type === 'RESERVATION_STATUS' && data.reservationId) {
         navigationRef.current?.navigate(user?.role === 'WORKER' ? 'Demandes' : 'Reservations');
       }
+      if (data.type === 'JOB_COMPLETED' && data.reservationId) openReview(data);
+    };
+    const subscription = addNotificationTapListener(openFromNotification);
+
+    // A tap that opened the app from closed fires before this listener exists;
+    // handle it once the signed-in screens are mounted
+    let timer;
+    getLaunchNotificationData().then((data) => {
+      if (!data) return;
+      const openWhenReady = (attempt = 0) => {
+        if (navigationRef.current?.isReady()) openFromNotification(data);
+        else if (attempt < 20) timer = setTimeout(() => openWhenReady(attempt + 1), 250);
+      };
+      openWhenReady();
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      clearTimeout(timer);
+    };
   }, [user]);
 
 
@@ -226,7 +271,11 @@ function AppContent() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a56db' }} edges={['top', 'bottom']}>
+    // Signed-in screens end with a white tab bar, so the home-indicator strip
+    // below them is white; the welcome screen keeps the brand blue. Screens
+    // can override both strips (see ChromeContext).
+    <SafeAreaView style={{ flex: 1, backgroundColor: chrome?.bottom || (user ? '#ffffff' : '#1a56db') }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: chrome?.top || '#1a56db' }} edges={['top']}>
       <AppNavigator ref={navigationRef} />
       {toast.visible && (
         <MessageToast
@@ -238,15 +287,18 @@ function AppContent() {
         />
       )}
     </SafeAreaView>
+    </SafeAreaView>
   );
 }
 
 export default function App() {
   return (
     <AuthProvider>
+      <ChromeProvider>
       <NotificationProvider>
         <AppContent />
       </NotificationProvider>
+      </ChromeProvider>
     </AuthProvider>
   );
 }

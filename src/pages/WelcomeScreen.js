@@ -64,7 +64,7 @@ export default function WelcomeScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.registerBtn}
-          onPress={() => navigation.navigate('RoleSelection')}
+          onPress={() => navigation.navigate('CreateAccount')}
           activeOpacity={0.85}
         >
           <Text style={styles.registerBtnText} numberOfLines={0}>Créer un compte</Text>

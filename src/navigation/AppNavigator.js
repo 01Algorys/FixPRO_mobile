@@ -15,6 +15,7 @@ import RoleSelectionScreen from '../pages/RoleSelectionScreen';
 import AuthPage from '../pages/AuthPage';
 import CreateAccountScreen from '../pages/CreateAccountScreen';
 import PendingApprovalScreen from '../pages/PendingApprovalScreen';
+import SocialWorkerSetupScreen from '../pages/SocialWorkerSetupScreen';
 import UserHomePage from '../pages/UserHomePage';
 import MessagesPage from '../pages/MessagesPage';
 import ReservationsPage from '../pages/ReservationsPage';
@@ -23,6 +24,7 @@ import ServiceWorkersPage from '../pages/ServiceWorkersPage';
 import ProfessionalsPage from '../pages/ProfessionalsPage';
 import ReservationDetails from '../pages/ReservationDetails';
 import RatingPage from '../pages/RatingPage';
+import NotificationsPage from '../pages/NotificationsPage';
 import OrderTracking from '../pages/OrderTracking';
 import WorkerProfile from '../pages/WorkerProfile';
 import WorkerDashboard from '../pages/WorkerDashboard';
@@ -31,7 +33,9 @@ import WorkerReservationsPage from '../pages/WorkerReservationsPage';
 import WorkerMessagesPage from '../pages/WorkerMessagesPage';
 import WorkerProfilePage from '../pages/WorkerProfilePage';
 import WorkerReservationDetailsPage from '../pages/WorkerReservationDetailsPage';
+import WorkerStatsPage from '../pages/WorkerStatsPage';
 import LockedScreen from '../components/LockedScreen';
+import ClientTabBar from '../components/ClientTabBar';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,56 +46,18 @@ const MainTabs = () => {
   const { unreadMessages, reservationUnread } = useNotifications();
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color }) => {
-          let iconName;
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'Reservations') {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-          return <Ionicons name={iconName} size={26} color={color} />;
-        },
-        tabBarActiveTintColor: '#1a56db',
-        tabBarInactiveTintColor: '#9ca3af',
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 12,
-          height: 60,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 8,
-        },
-        headerShown: false,
-      })}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <ClientTabBar
+          {...props}
+          badges={{ Messages: unreadMessages, Reservations: reservationUnread }}
+          onNewRequest={() => props.navigation.navigate('Professionals')}
+        />
+      )}
     >
       <Tab.Screen name="Home" component={UserHomePage} />
-      <Tab.Screen
-        name="Messages"
-        component={MessagesPage}
-        options={{
-          tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
-        }}
-      />
-      <Tab.Screen
-        name="Reservations"
-        component={ReservationsPage}
-        options={{
-          tabBarBadge: reservationUnread > 0 ? (reservationUnread > 99 ? '99+' : reservationUnread) : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
-        }}
-      />
+      <Tab.Screen name="Messages" component={MessagesPage} />
+      <Tab.Screen name="Reservations" component={ReservationsPage} />
       <Tab.Screen name="Profile" component={ProfilePage} />
     </Tab.Navigator>
   );
@@ -100,38 +66,14 @@ const MainTabs = () => {
 const GuestTabs = () => {
   return (
     <GuestTab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color }) => {
-          let iconName;
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = 'lock-closed';
-          } else if (route.name === 'Reservations') {
-            iconName = 'lock-closed';
-          } else if (route.name === 'Profile') {
-            iconName = 'lock-closed';
-          }
-          return <Ionicons name={iconName} size={26} color={color} />;
-        },
-        tabBarActiveTintColor: '#1a56db',
-        tabBarInactiveTintColor: '#9ca3af',
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 12,
-          height: 60,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 8,
-        },
-        headerShown: false,
-      })}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <ClientTabBar
+          {...props}
+          locked={['Messages', 'Reservations', 'Profile']}
+          onNewRequest={() => props.navigation.navigate('Login')}
+        />
+      )}
     >
       <GuestTab.Screen name="Home" component={UserHomePage} />
       <GuestTab.Screen name="Messages" component={LockedScreen} initialParams={{ title: 'Messagerie réservée', message: 'Connectez-vous pour discuter avec les professionnels.' }} />
@@ -145,56 +87,17 @@ const WorkerTabs = () => {
   const { unreadMessages, reservationUnread } = useNotifications();
   return (
     <WorkerTab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color }) => {
-          let iconName;
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'Demandes') {
-            iconName = focused ? 'clipboard' : 'clipboard-outline';
-          } else {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-          return <Ionicons name={iconName} size={26} color={color} />;
-        },
-        tabBarActiveTintColor: '#1a56db',
-        tabBarInactiveTintColor: '#9ca3af',
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopWidth: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 12,
-          height: 60,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 8,
-        },
-        headerShown: false,
-      })}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <ClientTabBar
+          {...props}
+          badges={{ Messages: unreadMessages, Demandes: reservationUnread }}
+        />
+      )}
     >
       <WorkerTab.Screen name="Dashboard" component={WorkerHomePage} />
-      <WorkerTab.Screen
-        name="Demandes"
-        component={WorkerReservationsPage}
-        options={{
-          tabBarBadge: reservationUnread > 0 ? (reservationUnread > 99 ? '99+' : reservationUnread) : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
-        }}
-      />
-      <WorkerTab.Screen
-        name="Messages"
-        component={WorkerMessagesPage}
-        options={{
-          tabBarBadge: unreadMessages > 0 ? (unreadMessages > 99 ? '99+' : unreadMessages) : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#FF3B30', color: '#fff', fontSize: 10 },
-        }}
-      />
+      <WorkerTab.Screen name="Demandes" component={WorkerReservationsPage} />
+      <WorkerTab.Screen name="Messages" component={WorkerMessagesPage} />
       <WorkerTab.Screen name="Profil" component={WorkerProfilePage} />
     </WorkerTab.Navigator>
   );
@@ -221,6 +124,7 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+            <Stack.Screen name="SocialWorkerSetup" component={SocialWorkerSetupScreen} />
             <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : !isAuthenticated && isGuest ? (
@@ -230,10 +134,14 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ cardStyle: { backgroundColor: 'transparent' } }} />
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+            <Stack.Screen name="SocialWorkerSetup" component={SocialWorkerSetupScreen} />
+            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : user?.role === 'WORKER' ? (
           <>
             <Stack.Screen name="WorkerDashboard" component={WorkerTabs} />
+            <Stack.Screen name="Notifications" component={NotificationsPage} />
+            <Stack.Screen name="WorkerStats" component={WorkerStatsPage} />
             <Stack.Screen
               name="WorkerReservationDetails"
               component={WorkerReservationDetailsPage}
@@ -248,6 +156,7 @@ const AppNavigator = forwardRef((props, ref) => {
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="Notifications" component={NotificationsPage} />
             <Stack.Screen
               name="ServiceWorkers"
               component={ServiceWorkersPage}

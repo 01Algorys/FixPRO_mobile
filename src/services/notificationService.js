@@ -3,6 +3,11 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import apiService from './api';
+
+// Whether the backend has this device's push token, i.e. it will receive
+// server push notifications (not the case in a simulator or without permission)
+let pushTokenSaved = false;
+export const hasPushToken = () => pushTokenSaved;
  
 // ─────────────────────────────────────────────────────────────
 // NOTIFICATION HANDLER
@@ -11,12 +16,16 @@ import apiService from './api';
 // not available in Expo Go
 // ─────────────────────────────────────────────────────────────
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  // In the foreground a finished job opens the review screen instead (App.js)
+  handleNotification: async (notification) => {
+    const opensReview = notification.request.content.data?.type === 'JOB_COMPLETED';
+    return {
+      shouldShowBanner: !opensReview,
+      shouldShowList: true,
+      shouldPlaySound: !opensReview,
+      shouldSetBadge: false,
+    };
+  },
 });
  
 // ─────────────────────────────────────────────────────────────
@@ -43,11 +52,6 @@ export const requestNotificationPermissions = async () => {
   try {
     await setupAndroidChannel();
  
-    if (!Device.isDevice) {
-      console.warn('[Notifications] Must use a physical device');
-      return false;
-    }
- 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
  
@@ -67,6 +71,9 @@ export const requestNotificationPermissions = async () => {
       return false;
     }
 
+    // Simulators can show local notifications but get no push token
+    if (!Device.isDevice) return true;
+
     // Obtain Expo push token and save to backend
     try {
       const projectId =
@@ -75,6 +82,7 @@ export const requestNotificationPermissions = async () => {
       if (projectId) {
         const pushTokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         await apiService.savePushToken(pushTokenData.data);
+        pushTokenSaved = true;
       }
     } catch (tokenError) {
       console.warn('[Notifications] Failed to save push token:', tokenError);
@@ -127,6 +135,20 @@ export const addNotificationTapListener = (callback) => {
   });
 };
  
+// ─────────────────────────────────────────────────────────────
+// The notification the user tapped to open the app from closed, if any
+// ─────────────────────────────────────────────────────────────
+export const getLaunchNotificationData = async () => {
+  try {
+    const response = await Notifications.getLastNotificationResponseAsync();
+    // Handle it once, not again on the next sign-in
+    Notifications.clearLastNotificationResponse();
+    return response?.notification?.request?.content?.data || null;
+  } catch (error) {
+    return null;
+  }
+};
+
 // ─────────────────────────────────────────────────────────────
 // REMOVE SUBSCRIPTION
 // ─────────────────────────────────────────────────────────────

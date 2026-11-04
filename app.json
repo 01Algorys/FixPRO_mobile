@@ -2,7 +2,7 @@
   "expo": {
     "name": "FixPro",
     "slug": "fixpro-mobile",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "fixpro",
@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.fixpro.mobile",
+      "usesAppleSignIn": true,
       "buildNumber": "1",
       "minimumOsVersion": "16.0",
       "infoPlist": {
@@ -89,12 +90,7 @@
       "package": "com.fixpro.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      },
-      "config": {
-        "googleMaps": {
-          "apiKey": "REPLACE_WITH_GOOGLE_MAPS_ANDROID_API_KEY"
-        }
+        "backgroundColor": "#ffffff"
       },
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
@@ -120,11 +116,18 @@
         }
       ],
       "expo-font",
+      "expo-apple-authentication",
       [
         "expo-image-picker",
         {
           "photosPermission": "FixPro needs access to your photo library to select profile pictures.",
           "cameraPermission": "FixPro needs access to your camera to take profile pictures."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.845008512991-p4do64u09t79gsslc1mefcvlh80u464v"
         }
       ]
     ],

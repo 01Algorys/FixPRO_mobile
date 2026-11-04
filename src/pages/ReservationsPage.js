@@ -1,790 +1,213 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  Image,
+  View, Text, FlatList, RefreshControl, Image, StatusBar, AppState,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../styles/theme';
 import { useNotifications } from '../context/NotificationContext';
+import { useScreenChrome } from '../context/ChromeContext';
+import { categoryMeta, titleCase } from '../utils/categoryMeta';
+import PressableScale from '../components/ui/PressableScale';
+import {
+  BLUE, NAVY, PRIMARY, MUTED, STATUS, TRACK_STEP, statusOf, Progress, Stars, SkeletonCard, FilterChips, EmptyList, styles,
+} from '../components/reservations/ReservationParts';
 
-const ReservationsPage = ({ navigation }) => {
-  const { resetReservationUnread } = useNotifications();
-  const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('all');
+const FILTERS = [
+  { key: 'all', label: 'Toutes' },
+  { key: 'pending', label: 'En attente', statuses: ['PENDING'] },
+  { key: 'active', label: 'En cours', statuses: ['ACCEPTED', 'IN_PROGRESS'] },
+  { key: 'done', label: 'Terminées', statuses: ['COMPLETED'] },
+  { key: 'closed', label: 'Annulées', statuses: ['CANCELLED', 'REJECTED', 'EXPIRED'] },
+];
 
-  useEffect(() => {
-    loadReservations();
-  }, []);
-
-  // Real-time: patch the matching reservation in place when the backend
-  // emits a status change instead of requiring a manual pull-to-refresh.
-  useEffect(() => {
-    const unsubscribe = socketService.onReservationUpdate((data) => {
-      setReservations((prev) =>
-        prev.map((r) =>
-          r.id === data.reservationId
-            ? {
-                ...r,
-                status: data.eventType === 'cancelled' ? 'CANCELLED' : (data.newStatus || r.status),
-                cancellationReason: data.eventType === 'cancelled' ? data.reason : r.cancellationReason,
-              }
-            : r
-        )
-      );
-    });
-    return unsubscribe;
-  }, []);
-
-  // Reset reservation badge when entering this tab
-  useFocusEffect(
-    React.useCallback(() => {
-      resetReservationUnread();
-    }, [resetReservationUnread])
-  );
-
-  const loadReservations = async () => {
-    try {
-      setLoading(true);
-      const data = await apiService.getUserReservations();
-      setReservations(data.data?.reservations || data.reservations || data.data || data);
-    } catch (error) {
-      console.error('Failed to load reservations:', error);
-      Alert.alert('Erreur', 'Impossible de charger vos réservations');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadReservations();
-    setRefreshing(false);
-  };
-
-  const getStatusConfig = (status) => {
-    const statusLower = status?.toLowerCase() || 'pending';
-    const configs = {
-      pending: { color: '#eab308', bg: '#fef9c3', text: 'En attente', icon: 'time' },
-      accepted: { color: '#1a56db', bg: '#dbeafe', text: 'Accepté', icon: 'checkmark-circle' },
-      in_progress: { color: '#8b5cf6', bg: '#ede9fe', text: 'En cours', icon: 'sync-outline' },
-      completed: { color: '#22c55e', bg: '#dcfce7', text: 'Terminé', icon: 'checkmark-done-circle' },
-      cancelled: { color: '#ef4444', bg: '#fee2e2', text: 'Annulé', icon: 'close-circle' },
-      rejected: { color: '#ef4444', bg: '#fee2e2', text: 'Refusé', icon: 'close-circle' },
-      expired: { color: '#6b7280', bg: '#f3f4f6', text: 'Expiré', icon: 'hourglass-outline' },
-    };
-    return configs[statusLower] || configs.pending;
-  };
-
-  const filteredReservations = reservations.filter((reservation) => {
-    if (filter === 'all') return true;
-    const statusLower = (reservation.status || '').toLowerCase();
-    return statusLower === filter.toLowerCase();
-  });
-
-  const handleViewDetails = (reservation) => {
-    navigation.navigate('OrderTracking', { reservationId: reservation.id });
-  };
-
-  const handleRateWorker = (reservation) => {
-    navigation.navigate('Rating', {
-      reservationId: reservation.id,
-      workerId: reservation.workerId,
-      workerName: reservation.workerName || reservation.worker?.name || 'technicien',
-    });
-  };
-
-  const stats = {
-    total: reservations.length,
-    pending: reservations.filter((r) => r.status === 'pending' || r.status === 'PENDING').length,
-    in_progress: reservations.filter((r) => r.status === 'in_progress' || r.status === 'IN_PROGRESS').length,
-    completed: reservations.filter((r) => r.status === 'completed' || r.status === 'COMPLETED').length,
-  };
-
-  const renderStars = (rating) => {
-    const fullStars = Math.floor(rating || 0);
-    const stars = [];
-    for (let i = 0; i < 5; i++) {
-      stars.push(
-        <Ionicons
-          key={i}
-          name={i < fullStars ? 'star' : 'star-outline'}
-          size={12}
-          color={Colors.star}
-        />
-      );
-    }
-    return stars;
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
+const TRACK = ['Envoyée', 'Acceptée', 'En cours', 'Terminée'];
+const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
+  const status = statusOf(reservation);
+  const look = STATUS[status] || STATUS.PENDING;
+  const meta = categoryMeta(reservation.service?.category);
+  const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
+  const workerName = titleCase(reservation.workerName || 'Technicien');
+  const address = [reservation.location?.address, reservation.location?.city].filter(Boolean).join(', ');
+  const price = reservation.actualPrice ?? reservation.estimatedPrice;
+  const date = new Date(reservation.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const canContact = status === 'ACCEPTED' || status === 'IN_PROGRESS';
+  const canRate = status === 'COMPLETED' && !reservation.review;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mes réservations</Text>
-      </View>
-
-      {/* Stats Section - floats over header */}
-      <View style={styles.statsBackground}>
-        <View style={styles.statsContainer}>
-          {[
-            { value: stats.total, label: 'Total', icon: 'calendar', color: Colors.primary },
-            { value: stats.pending, label: 'En attente', icon: 'time', color: '#eab308' },
-            { value: stats.in_progress, label: 'En cours', icon: 'sync-outline', color: '#8b5cf6' },
-            { value: stats.completed, label: 'Terminées', icon: 'checkmark-done-circle', color: '#22c55e' },
-          ].map((stat, index) => (
-            <View key={index} style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: stat.color + '15' }]}>
-                <Ionicons name={stat.icon} size={20} color={stat.color} />
-              </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
+    <PressableScale style={styles.card} scaleTo={0.985} onPress={onOpen}>
+      <View style={styles.cardTop}>
+        <LinearGradient colors={meta.gradient || [PRIMARY, NAVY]} style={styles.serviceIcon}>
+          <Icon name={meta.icon} size={22} color="#fff" />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.service} numberOfLines={1}>{reservation.service?.name || 'Service'}</Text>
+          <Text style={styles.when}>{date} à {reservation.time}</Text>
+        </View>
+        <View style={[styles.badge, { backgroundColor: look.bg }]}>
+          <Ionicons name={look.icon} size={13} color={look.color} />
+          <Text style={[styles.badgeText, { color: look.color }]}>{look.label}</Text>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[Colors.primary]}
-          />
-        }
-      >
-        {/* Filter */}
-        <View style={styles.filterSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {[
-              { key: 'all', label: 'Toutes', icon: 'list-outline' },
-              { key: 'pending', label: 'En attente', icon: 'time-outline' },
-              { key: 'in_progress', label: 'En cours', icon: 'sync-outline' },
-              { key: 'completed', label: 'Terminées', icon: 'checkmark-circle-outline' },
-              { key: 'cancelled', label: 'Annulées', icon: 'close-circle-outline' },
-              { key: 'expired', label: 'Expirées', icon: 'hourglass-outline' },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.key}
-                style={[
-                  styles.filterChip,
-                  filter === item.key && styles.activeFilterChip,
-                ]}
-                onPress={() => setFilter(item.key)}
-              >
-                <Ionicons
-                  name={item.icon}
-                  size={14}
-                  color={filter === item.key ? Colors.textLight : Colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    filter === item.key && styles.activeFilterChipText,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+      {TRACK_STEP[status] !== undefined && <Progress step={TRACK_STEP[status]} labels={TRACK} />}
 
-        {/* Section Title */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {filter === 'all' ? 'Toutes les réservations' :
-               filter === 'pending' ? 'Réservations en attente' :
-               filter === 'in_progress' ? 'Réservations en cours' :
-               filter === 'completed' ? 'Réservations terminées' : 'Réservations annulées'}
-            </Text>
-            <Text style={styles.sectionCount}>{filteredReservations.length}</Text>
-          </View>
-        </View>
-
-        {/* Reservations List */}
-        {filteredReservations.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="calendar-outline" size={64} color={Colors.textTertiary} />
-            </View>
-            <Text style={styles.emptyTitle}>Aucune réservation</Text>
-            <Text style={styles.emptySubtitle}>
-              Vous n'avez pas encore de réservation dans cette catégorie
-            </Text>
-          </View>
+      <View style={styles.workerRow}>
+        {reservation.workerAvatar ? (
+          <Image source={{ uri: reservation.workerAvatar }} style={styles.avatar} />
         ) : (
-          filteredReservations.map((reservation) => {
-            const statusConfig = getStatusConfig(reservation.status);
-
-            return (
-              <View key={reservation.id} style={styles.reservationCard}>
-                {/* Card Header */}
-                <View style={styles.cardHeader}>
-                  <View style={styles.workerRow}>
-                    <View style={styles.workerAvatar}>
-                      {reservation.worker?.avatar || reservation.workerAvatar ? (
-                        <Image
-                          source={{ uri: reservation.worker?.avatar || reservation.workerAvatar }}
-                          style={styles.workerAvatarImage}
-                        />
-                      ) : (
-                        <Text style={styles.workerAvatarInitial}>
-                          {(reservation.workerName || reservation.worker?.name || 'W')?.[0]?.toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.workerInfo}>
-                      <Text style={styles.workerName}>{reservation.workerName}</Text>
-                      <View style={styles.workerRatingRow}>
-                        <View style={styles.starsRow}>
-                          {renderStars(reservation.workerRating)}
-                        </View>
-                        <Text style={styles.ratingValue}>
-                          {reservation.workerRating || '—'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-                    <Ionicons name={statusConfig.icon} size={14} color={statusConfig.color} />
-                    <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                      {statusConfig.text}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Service Name */}
-                <View style={styles.serviceRow}>
-                  <Ionicons name="construct-outline" size={16} color={Colors.primary} />
-                  <Text style={styles.serviceText}>
-                    {reservation.service?.name || reservation.service || 'Service'}
-                  </Text>
-                </View>
-
-                {/* Details */}
-                <View style={styles.detailsContainer}>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
-                    <Text style={styles.detailText}>
-                      {new Date(reservation.date).toLocaleDateString('fr-FR', {
-                        weekday: 'short',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
-                    <Text style={styles.detailText}>{reservation.time}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
-                    <Text style={styles.detailText} numberOfLines={1}>
-                      {reservation.address || 'Adresse non spécifiée'}
-                    </Text>
-                  </View>
-                  {reservation.workerPhone && (
-                    <View style={styles.detailRow}>
-                      <Ionicons name="call-outline" size={16} color={Colors.textSecondary} />
-                      <Text style={styles.detailText}>{reservation.workerPhone}</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Description */}
-                {reservation.description && (
-                  <View style={styles.descriptionBox}>
-                    <Text style={styles.descriptionText} numberOfLines={2}>
-                      {reservation.description}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Your final review, once submitted */}
-                {reservation.review && (
-                  <View style={styles.reviewBox}>
-                    <View style={styles.reviewBoxHeader}>
-                      <View style={styles.starsRow}>
-                        {renderStars(reservation.review.rating)}
-                      </View>
-                      <Text style={styles.reviewBoxLabel}>Votre avis</Text>
-                    </View>
-                    {!!reservation.review.comment && (
-                      <Text style={styles.reviewBoxComment} numberOfLines={3}>
-                        {reservation.review.comment}
-                      </Text>
-                    )}
-                  </View>
-                )}
-
-                {/* Divider */}
-                <View style={styles.cardDivider} />
-
-                {/* Actions */}
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={styles.viewButton}
-                    onPress={() => handleViewDetails(reservation)}
-                  >
-                    <Ionicons name="eye-outline" size={18} color={Colors.textLight} />
-                    <Text style={styles.viewButtonText}>Voir détails</Text>
-                  </TouchableOpacity>
-
-                  {(reservation.status === 'accepted' || reservation.status === 'ACCEPTED' || 
-                    reservation.status === 'in_progress' || reservation.status === 'IN_PROGRESS') && (
-                    <TouchableOpacity
-                      style={styles.contactButton}
-                      onPress={() => navigation.navigate('Messages', { conversationId: reservation.id })}
-                    >
-                      <Ionicons name="chatbubbles-outline" size={18} color={Colors.textLight} />
-                      <Text style={styles.contactButtonText}>Contacter</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {(reservation.status === 'completed' || reservation.status === 'COMPLETED') && !reservation.userRating && (
-                    <TouchableOpacity
-                      style={styles.rateButton}
-                      onPress={() => handleRateWorker(reservation)}
-                    >
-                      <Ionicons name="star" size={18} color={Colors.textLight} />
-                      <Text style={styles.rateButtonText}>Évaluer</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            );
-          })
+          <View style={[styles.avatar, styles.avatarEmpty]}>
+            <Text style={styles.avatarLetter}>{workerName[0]}</Text>
+          </View>
         )}
+        <Text style={styles.workerName} numberOfLines={1}>{workerName}</Text>
+        {price > 0 && <Text style={styles.price}>{price} TND</Text>}
+      </View>
 
-        {/* Bottom spacing */}
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    </View>
+      {!!address && (
+        <View style={styles.addressRow}>
+          <Ionicons name="location-outline" size={15} color={MUTED} />
+          <Text style={styles.address} numberOfLines={1}>{address}</Text>
+        </View>
+      )}
+
+      {!!reservation.review && (
+        <View style={styles.review}>
+          <Stars rating={reservation.review.rating} />
+          <Text style={styles.reviewLabel}>Votre avis</Text>
+        </View>
+      )}
+
+      {(canContact || canRate) && (
+        <View style={styles.actions}>
+          {canContact && (
+            <PressableScale style={styles.action} onPress={onContact}>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
+              <Text style={styles.actionText}>Contacter</Text>
+            </PressableScale>
+          )}
+          {canRate && (
+            <PressableScale style={[styles.action, styles.rateAction]} onPress={onRate}>
+              <Ionicons name="star" size={18} color="#fff" />
+              <Text style={styles.actionText}>Donner mon avis</Text>
+            </PressableScale>
+          )}
+        </View>
+      )}
+    </PressableScale>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
+const ReservationsPage = ({ navigation }) => {
+  useScreenChrome(BLUE, '#ffffff');
+  const { resetReservationUnread } = useNotifications();
+  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState('all');
 
-  // Header - matches WorkerProfile
-  header: {
-    backgroundColor: Colors.headerBackground,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.textLight,
-  },
+  const load = useCallback(async () => {
+    try {
+      const data = await apiService.getUserReservations();
+      const list = data.data?.reservations || [];
+      setReservations(Array.isArray(list) ? list : []);
+      setFailed(false);
+    } catch (error) {
+      console.warn('Failed to load reservations:', error.message);
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Stats - floating card like WorkerProfile detailsCard
-  statsBackground: {
-    paddingHorizontal: 20,
-    marginTop: -30,
-    marginBottom: 8,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
+  // Live: show the new status straight away, then refresh the rest (price,
+  // review...). Also catches up after the app was in the background.
+  useEffect(() => {
+    const unsubscribe = socketService.onReservationUpdate((data) => {
+      const next = data.eventType === 'cancelled' ? 'CANCELLED' : data.newStatus;
+      if (next) {
+        setReservations((prev) => prev.map((r) => (r.id === data.reservationId ? { ...r, status: next } : r)));
+      }
+      load();
+      if (navigation.isFocused()) resetReservationUnread();
+    });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') load();
+    });
+    return () => {
+      unsubscribe();
+      appState.remove();
+    };
+  }, [load]);
 
-  scrollView: {
-    flex: 1,
-  },
+  // Also picks up a booking just made elsewhere in the app
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      resetReservationUnread();
+    }, [load, resetReservationUnread])
+  );
 
-  // Filter - styled like WorkerProfile
-  filterSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: Colors.card,
-    marginRight: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    gap: 6,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  activeFilterChip: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  activeFilterChipText: {
-    color: Colors.textLight,
-    fontWeight: '600',
-  },
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
 
-  // Section - matches WorkerProfile
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  sectionCount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.primary,
-    backgroundColor: Colors.primary + '15',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
+  const countFor = (f) => (f.statuses ? reservations.filter((r) => f.statuses.includes(statusOf(r))).length : reservations.length);
+  const selected = FILTERS.find((f) => f.key === filter);
+  const visible = selected.statuses ? reservations.filter((r) => selected.statuses.includes(statusOf(r))) : reservations;
+  const activeCount = countFor(FILTERS[2]);
 
-  // Empty state
-  emptyContainer: {
-    padding: 48,
-    alignItems: 'center',
-  },
-  emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  const renderEmpty = () => {
+    if (loading) return <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>;
+    return (
+      <EmptyList
+        icon={failed ? 'cloud-offline-outline' : 'calendar-outline'}
+        title={failed ? 'Connexion impossible' : 'Aucune réservation ici'}
+        text={failed ? 'Tirez vers le bas pour réessayer.' : 'Vos réservations apparaîtront ici dès votre première demande.'}
+      />
+    );
+  };
 
-  // Reservation Card - matches WorkerProfile cards
-  reservationCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  workerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  workerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  workerAvatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  workerAvatarInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  workerInfo: {
-    flex: 1,
-  },
-  workerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  workerRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  starsRow: {
-    flexDirection: 'row',
-  },
-  ratingValue: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
+        <Text style={styles.title}>Mes réservations</Text>
+        <Text style={styles.subtitle}>
+          {activeCount > 0 ? `${activeCount} intervention${activeCount > 1 ? 's' : ''} en cours` : 'Suivez vos demandes en direct'}
+        </Text>
+      </LinearGradient>
 
-  // Service
-  serviceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  serviceText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
+      <FilterChips filters={FILTERS} selected={filter} onSelect={setFilter} countFor={countFor} />
 
-  // Details
-  detailsContainer: {
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    gap: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-
-  // Description
-  descriptionBox: {
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-  },
-  descriptionText: {
-    fontSize: 13,
-    color: Colors.text,
-    lineHeight: 20,
-  },
-
-  // Your final review
-  reviewBox: {
-    backgroundColor: Colors.star + '15',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.star,
-  },
-  reviewBoxHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  reviewBoxLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  reviewBoxComment: {
-    fontSize: 13,
-    color: Colors.text,
-    lineHeight: 18,
-    fontStyle: 'italic',
-  },
-
-  // Divider
-  cardDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginBottom: 12,
-  },
-
-// Actions - matches WorkerProfile button style
-cardActions: {
-  flexDirection: 'row',
-  gap: 10,
-},
-viewButton: {
-  flex: 1,
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: Colors.primary,
-  paddingVertical: 12,
-  borderRadius: 12,
-  gap: 6,
-  shadowColor: Colors.shadow,
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 3,
-},
-viewButtonText: {
-  color: Colors.textLight,
-  fontSize: 14,
-  fontWeight: '600',
-},
-contactButton: {
-  flex: 1,
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#1a56db',
-  paddingVertical: 12,
-  borderRadius: 12,
-  gap: 6,
-  shadowColor: Colors.shadow,
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 3,
-},
-contactButtonText: {
-  color: Colors.textLight,
-  fontSize: 14,
-  fontWeight: '600',
-},
-rateButton: {
-  flex: 1,
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: Colors.success,
-  paddingVertical: 12,
-  borderRadius: 12,
-  gap: 6,
-  shadowColor: Colors.shadow,
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 3,
-},
-rateButtonText: {
-  color: Colors.textLight,
-  fontSize: 14,
-  fontWeight: '600',
-},
-});
+      <FlatList
+        style={{ flex: 1 }}
+        data={visible}
+        keyExtractor={(r) => String(r.id)}
+        renderItem={({ item }) => (
+          <ReservationCard
+            reservation={item}
+            onOpen={() => navigation.navigate('OrderTracking', { reservationId: item.id })}
+            onContact={() => navigation.navigate('Messages', { conversationId: item.id })}
+            onRate={() => navigation.navigate('Rating', {
+              reservationId: item.id,
+              workerId: item.workerId,
+              workerName: item.workerName || 'technicien',
+            })}
+          />
+        )}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
+      />
+    </View>
+  );
+};
 
 export default ReservationsPage;

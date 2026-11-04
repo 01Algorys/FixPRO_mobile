@@ -1,461 +1,92 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
   TextInput,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
+  Image,
   Platform,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useAuth } from '../context/AuthContext';
-import apiService from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../styles/theme';
-import { useResponsive, wp, hp, rf, scale } from '../utils/responsive';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
+import apiService from '../services/api';
+import { useScreenChrome } from '../context/ChromeContext';
 import { getCurrentCoords, reverseGeocodeAddress } from '../utils/location';
+import { professionTitle, titleCase } from '../utils/categoryMeta';
 import LocationPickerModal from '../components/LocationPickerModal';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
+import { SectionHead, BottomSheet } from '../components/profile/ProfileParts';
 
-const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    paddingHorizontal: wp(5),
-  },
-  errorText: {
-    fontSize: rf(15),
-    color: Colors.text,
-    textAlign: 'center',
-    marginVertical: hp(2),
-  },
-  retryButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: wp(6),
-    paddingVertical: hp(1.5),
-    borderRadius: scale(8),
-  },
-  retryButtonText: {
-    color: Colors.textLight,
-    fontSize: rf(15),
-    fontWeight: '600',
-  },
-  header: {
-    backgroundColor: Colors.headerBackground,
-    paddingTop: insets.top + hp(5),
-    paddingHorizontal: wp(5),
-    paddingBottom: hp(2.5),
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: wp(4),
-  },
-  headerTitle: {
-    fontSize: rf(18),
-    fontWeight: 'bold',
-    color: Colors.textLight,
-  },
-  profileSection: {
-    backgroundColor: Colors.headerBackground,
-    alignItems: 'center',
-    paddingBottom: hp(5),
-  },
-  profilePictureContainer: {
-    width: scale(80),
-    height: scale(80),
-    borderRadius: scale(40),
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  workerCard: {
-    backgroundColor: Colors.card,
-    marginHorizontal: wp(5),
-    borderRadius: scale(16),
-    padding: wp(5),
-    marginTop: -hp(2.5),
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  workerName: {
-    fontSize: rf(18),
-    fontWeight: 'bold',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: hp(0.5),
-  },
-  workerProfession: {
-    fontSize: rf(13),
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: hp(1.5),
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: hp(1.5),
-  },
-  starsRow: {
-    flexDirection: 'row',
-    marginRight: wp(2),
-  },
-  ratingText: {
-    fontSize: rf(12),
-    color: Colors.textSecondary,
-  },
-  workerStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: hp(1.5),
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: wp(4),
-  },
-  workerStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: wp(1),
-  },
-  workerStatText: {
-    fontSize: rf(12),
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  section: {
-    paddingHorizontal: wp(5),
-    marginTop: hp(3),
-  },
-  sectionTitle: {
-    fontSize: rf(18),
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: hp(1.5),
-  },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: scale(12),
-    padding: wp(4),
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: wp(3),
-  },
-  formHalf: {
-    flex: 1,
-  },
-  label: {
-    fontSize: rf(13),
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: hp(1),
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: scale(10),
-    padding: wp(3),
-    fontSize: rf(14),
-    backgroundColor: Colors.background,
-    marginBottom: hp(0.25),
-    color: Colors.text,
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  datePickerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dateText: {
-    fontSize: rf(14),
-    color: Colors.text,
-  },
-  placeholderText: {
-    fontSize: rf(14),
-    color: Colors.textTertiary,
-  },
-  fieldError: {
-    color: '#ef4444',
-    fontSize: rf(11),
-    marginBottom: hp(1),
-    marginTop: hp(0.25),
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: scale(10),
-    padding: wp(3),
-    fontSize: rf(14),
-    backgroundColor: Colors.background,
-    marginBottom: hp(0.25),
-    minHeight: scale(100),
-    color: Colors.text,
-  },
-  charCount: {
-    fontSize: rf(11),
-    color: Colors.textTertiary,
-    textAlign: 'right',
-    marginTop: hp(0.5),
-  },
-  urgencyContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: wp(2),
-  },
-  urgencyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: wp(3.5),
-    paddingVertical: hp(1.25),
-    borderRadius: scale(12),
-    backgroundColor: Colors.background,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    gap: wp(1.5),
-  },
-  urgencyText: {
-    fontSize: rf(12),
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  urgencyTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: hp(1.25),
-  },
-  summaryIconLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: wp(2),
-  },
-  summaryLabel: {
-    fontSize: rf(13),
-    color: Colors.textSecondary,
-  },
-  summaryValue: {
-    fontSize: rf(13),
-    fontWeight: '600',
-    color: Colors.text,
-    maxWidth: '50%',
-    textAlign: 'right',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: wp(5),
-    paddingVertical: hp(2),
-    backgroundColor: Colors.background,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: wp(3),
-    paddingBottom: insets.bottom + hp(2),
-  },
-  cancelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.card,
-    paddingVertical: hp(2),
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: wp(1.5),
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cancelButtonText: {
-    fontSize: rf(15),
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  confirmButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: hp(2),
-    borderRadius: scale(12),
-    gap: wp(1.5),
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  confirmButtonText: {
-    color: Colors.textLight,
-    fontSize: rf(15),
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  locationSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: wp(5),
-  },
-  mapPickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: wp(1.5),
-    marginTop: hp(1.5),
-    paddingVertical: hp(1.2),
-    borderRadius: scale(10),
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  mapPickerButtonText: {
-    color: Colors.primary,
-    fontWeight: '600',
-    fontSize: rf(13),
-  },
-});
+const PRIMARY = '#1d5ff0';
+const INK = '#0f172a';
+const MUTED = '#64748b';
+const SURFACE = '#f4f7fc';
+
+const MIN_DESCRIPTION = 10;
+const DEFAULT_MESSAGE = "Bonjour, j'ai besoin d'une intervention à mon domicile. Merci de me confirmer votre disponibilité.";
+
+const pad = (n) => String(n).padStart(2, '0');
+const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+// Where the time wheel starts: the next full hour
+const nextHour = () => {
+  const d = new Date();
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  return d;
+};
 
 const ReservationDetails = ({ route, navigation }) => {
-  const {
-    workerId,
-    immediate,
-    workerDetails,
-    address,
-    city,
-    postalCode,
-    description,
-    service,
-    date,
-    time,
-  } = route.params || {};
-  const { user } = useAuth();
-  const { width, height, isTablet, isSmallPhone } = useResponsive();
-  const insets = useSafeAreaInsets();
-  const styles = createStyles(width, height, isTablet, isSmallPhone, insets);
+  useScreenChrome('#1a56db', '#ffffff');
+  const { workerId, immediate, workerDetails, service } = route.params || {};
+  const scrollRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    date: date || '',
-    time: time || '',
-    address: address || '',
-    postalCode: postalCode || '',
-    city: city || '',
-    description: description || '',
-    urgency: 'normal',
-    latitude: null,
-    longitude: null,
-  });
-
-  const [errors, setErrors] = useState({});
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [locatingAddress, setLocatingAddress] = useState(false);
-  const [mapPickerVisible, setMapPickerVisible] = useState(false);
+  const [date, setDate] = useState(startOfToday);
+  const [time, setTime] = useState(null);
+  const [asap, setAsap] = useState(!!immediate);
+  const [picker, setPicker] = useState(null);
+  const [pickerValue, setPickerValue] = useState(new Date());
+  const [urgent, setUrgent] = useState(!!immediate);
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [coords, setCoords] = useState(null);
+  const [description, setDescription] = useState(DEFAULT_MESSAGE);
+  const [locating, setLocating] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [triedSubmit, setTriedSubmit] = useState(false);
 
   useEffect(() => {
     loadWorker();
+    locate();
   }, [workerId]);
-
-  // Auto-detect the user's current location and pre-fill the address fields.
-  // Silently does nothing if permission is denied — the user can still type
-  // an address manually or open the map picker.
-  useEffect(() => {
-    const autoDetectLocation = async () => {
-      if (formData.address) return; // don't overwrite a pre-filled address (e.g. from route params)
-      try {
-        setLocatingAddress(true);
-        const coords = await getCurrentCoords();
-        if (!coords) return;
-
-        const resolved = await reverseGeocodeAddress(coords.latitude, coords.longitude);
-        setFormData((prev) => ({
-          ...prev,
-          address: prev.address || resolved?.address || prev.address,
-          city: prev.city || resolved?.city || prev.city,
-          postalCode: prev.postalCode || resolved?.postalCode || prev.postalCode,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        }));
-      } catch (error) {
-        console.error('Auto-detect location failed:', error);
-      } finally {
-        setLocatingAddress(false);
-      }
-    };
-    autoDetectLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleLocationPicked = ({ address: pickedAddress, latitude, longitude }) => {
-    setFormData((prev) => ({
-      ...prev,
-      address: pickedAddress || prev.address,
-      latitude,
-      longitude,
-    }));
-    setMapPickerVisible(false);
-    if (errors.address) {
-      setErrors((prev) => ({ ...prev, address: '' }));
-    }
-  };
 
   const loadWorker = async () => {
     try {
       setLoading(true);
-
       if (immediate && workerDetails) {
         setWorker(workerDetails);
-      } else {
-        const response = await apiService.getWorkerById(workerId);
-        const data = response.data || response;
-        setWorker({
-          ...data,
-          name: data.user?.name || data.name || 'Professionnel',
-        });
+        return;
       }
+      const response = await apiService.getWorkerById(workerId);
+      const payload = response.data || response;
+      const data = payload.worker || payload;
+      setWorker({ ...data, name: data.user?.name || data.name || 'Technicien' });
     } catch (error) {
       console.error('Failed to load worker:', error);
     } finally {
@@ -463,470 +94,481 @@ const ReservationDetails = ({ route, navigation }) => {
     }
   };
 
-  const urgencyLevels = [
-    { value: 'low', label: 'Non urgent', color: '#22c55e', icon: 'time-outline' },
-    { value: 'normal', label: 'Normal', color: '#1a56db', icon: 'calendar-outline' },
-    { value: 'high', label: 'Urgent', color: '#f97316', icon: 'alert-circle-outline' },
-    { value: 'emergency', label: 'Urgence', color: '#ef4444', icon: 'warning-outline' },
-  ];
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.date) newErrors.date = 'La date est requise';
-    if (!formData.time) newErrors.time = "L'heure est requise";
-    if (!formData.address) newErrors.address = "L'adresse est requise";
-    if (!formData.postalCode) newErrors.postalCode = 'Le code postal est requis';
-    if (!formData.city) newErrors.city = 'La ville est requise';
-    if (!formData.description) {
-      newErrors.description = 'La description est requise';
-    } else if (formData.description.length < 10) {
-      newErrors.description = 'La description doit contenir au moins 10 caractères';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
+  // Pre-fill the address from the device position; the client can still edit it
+  // or pick a point on the map.
+  const locate = async () => {
+    try {
+      setLocating(true);
+      const c = await getCurrentCoords();
+      if (!c) return;
+      setCoords(c);
+      const resolved = await reverseGeocodeAddress(c.latitude, c.longitude);
+      if (resolved?.address) setAddress(resolved.address);
+      if (resolved?.city) setCity(resolved.city);
+      if (resolved?.postalCode) setPostalCode(resolved.postalCode);
+    } catch (error) {
+      console.error('Auto-detect location failed:', error);
+    } finally {
+      setLocating(false);
     }
   };
 
-  const handleDateChange = (event, date) => {
-    setShowDatePicker(false);
-    if (date) {
-      setSelectedDate(date);
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      const formattedDate = `${day}/${month}/${year}`;
-      setFormData((prev) => ({ ...prev, date: formattedDate }));
-      if (errors.date) {
-        setErrors((prev) => ({ ...prev, date: '' }));
-      }
-    }
+  // The point on the map decides the whole address, so a pin moved to another
+  // town never keeps the old city
+  const handleLocationPicked = async ({ address: picked, latitude, longitude }) => {
+    setCoords({ latitude, longitude });
+    setMapVisible(false);
+    setLocating(true);
+    const resolved = await reverseGeocodeAddress(latitude, longitude);
+    setAddress(resolved?.address || picked || '');
+    setCity(resolved?.city || '');
+    setPostalCode(resolved?.postalCode || '');
+    setLocating(false);
   };
+
+  const applyPicked = (mode, value) => {
+    if (mode === 'date') setDate(value);
+    else setTime(value);
+    setAsap(false);
+  };
+
+  // Android shows its own dialog; iOS shows the wheel in a sheet
+  const openPicker = (mode) => {
+    const value = mode === 'date' ? date : time || nextHour();
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        mode,
+        is24Hour: true,
+        minimumDate: mode === 'date' ? startOfToday() : undefined,
+        onChange: (event, picked) => {
+          if (event.type === 'set' && picked) applyPicked(mode, picked);
+        },
+      });
+      return;
+    }
+    setPickerValue(value);
+    setPicker(mode);
+  };
+
+  const chooseNow = () => {
+    setDate(startOfToday());
+    setTime(null);
+    setAsap(true);
+  };
+
+  const scheduled = new Date(date);
+  if (time) scheduled.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  const whenError = asap ? null
+    : !time ? 'Choisissez une heure'
+    : scheduled <= new Date() ? 'Choisissez une date et une heure à venir'
+    : null;
+
+  const errors = {
+    time: whenError,
+    address: !address.trim() ? "Indiquez l'adresse d'intervention" : null,
+    city: !city.trim() ? 'Indiquez la ville' : null,
+    description: description.trim().length < MIN_DESCRIPTION
+      ? `Décrivez le problème (${MIN_DESCRIPTION} caractères minimum)` : null,
+  };
+  const valid = !Object.values(errors).some(Boolean);
+  const showError = (key) => triedSubmit && errors[key];
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    setTriedSubmit(true);
+    if (!valid) return;
+
+    const workerIdValue = worker?.userId || worker?.user?.id || workerId;
+    const firstService = Array.isArray(worker?.services) ? worker.services[0] : null;
+    const serviceIdValue = service || (typeof firstService === 'object' ? firstService?.id : firstService);
+    if (!workerIdValue || !serviceIdValue) {
+      Alert.alert('Erreur', 'Informations du technicien ou du service manquantes.');
+      return;
+    }
 
     try {
       setSubmitting(true);
-
-      const workerIdValue = worker?.userId || worker?.user?.id || workerId;
-      const serviceIdValue =
-        service ||
-        (Array.isArray(worker?.services) && worker.services.length > 0
-          ? worker.services[0]
-          : null);
-
-      if (!workerIdValue || !serviceIdValue) {
-        Alert.alert('Erreur', 'Informations du technicien ou du service manquantes.');
-        return;
-      }
-
-      let isoDate;
-      if (formData.date.includes('/')) {
-        const parts = formData.date.split('/');
-        isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      } else {
-        isoDate = formData.date;
-      }
-
-      const parsedDate = new Date(isoDate);
-      if (isNaN(parsedDate.getTime())) {
-        Alert.alert('Erreur', 'Date invalide. Veuillez sélectionner une date valide.');
-        return;
-      }
-
-      const formattedTime = formData.time.includes(':')
-        ? formData.time.slice(0, 5)
-        : `${formData.time}:00`;
-
-      const reservationData = {
-        workerId: parseInt(workerIdValue),
-        service: parseInt(serviceIdValue),
-        date: parsedDate.toISOString(),
-        time: formattedTime,
+      await apiService.createReservation({
+        workerId: parseInt(workerIdValue, 10),
+        service: parseInt(serviceIdValue, 10),
+        date: new Date(isoDay(asap ? new Date() : date)).toISOString(),
+        time: hhmm(asap ? new Date() : time),
         duration: 60,
         location: {
-          address: formData.address,
-          city: formData.city,
+          address: address.trim(),
+          city: city.trim(),
           state: '',
-          zipCode: formData.postalCode,
-          latitude: formData.latitude || undefined,
-          longitude: formData.longitude || undefined,
+          zipCode: postalCode.trim(),
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
         },
-        description: formData.description,
-        emergency: formData.urgency === 'high' || formData.urgency === 'emergency',
-      };
-
-      console.log('Sending reservation data:', JSON.stringify(reservationData, null, 2));
-
-      const response = await apiService.createReservation(reservationData);
-      const reservation = response.data;
-
-      navigation.navigate('Reservations', { newReservation: reservation });
+        description: description.trim(),
+        emergency: urgent,
+      });
+      Alert.alert('Demande envoyée', `${firstName} va recevoir votre demande et vous répondra rapidement.`, [
+        { text: 'Voir mes demandes', onPress: () => navigation.navigate('Main', { screen: 'Reservations' }) },
+      ]);
     } catch (error) {
       console.error('Failed to create reservation:', error);
-      if (error.response?.data) {
-        console.error('Backend error details:', error.response.data);
-      }
-      Alert.alert('Erreur', 'Échec de la création de la réservation');
+      Alert.alert('Erreur', "La demande n'a pas pu être envoyée. Réessayez.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
-    const stars = [];
-    for (let i = 0; i < 5; i++) {
-      stars.push(
-        <Ionicons
-          key={i}
-          name={i < fullStars ? 'star' : 'star-outline'}
-          size={14}
-          color={Colors.star}
-        />
-      );
-    }
-    return stars;
-  };
-
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={PRIMARY} />
       </View>
     );
   }
 
   if (!worker) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="person-outline" size={64} color={Colors.textTertiary} />
-        <Text style={styles.errorText}>technicien non trouvé</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.retryButtonText}>Retour</Text>
-        </TouchableOpacity>
+      <View style={styles.centered}>
+        <Ionicons name="person-outline" size={52} color="#cbd5e1" />
+        <Text style={styles.errorText}>Technicien introuvable</Text>
+        <PressableScale style={styles.retryBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.retryText}>Retour</Text>
+        </PressableScale>
       </View>
     );
   }
 
+  const name = titleCase(worker.name) || 'Technicien';
+  const firstName = name.split(' ')[0];
+  const avatar = worker.user?.avatar || worker.avatar;
+  const firstService = Array.isArray(worker.services) ? worker.services[0] : null;
+  const profession = professionTitle(firstService?.category, firstService?.name);
+  const rating = Number(worker.averageRating || worker.rating || 0);
+  const price = worker.hourlyRate || firstService?.basePrice;
+  const dateLabel = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const whenText = asap
+    ? "Aujourd'hui · Dès que possible"
+    : time
+      ? `${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${hhmm(time)}`
+      : 'Choisissez une date et une heure';
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.headerBackground} />
-      <ScrollView>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Réserver un service</Text>
+    // The root view already pads the status bar, so this view starts that far down.
+    // useSafeAreaInsets reads 0 inside that padding: only the device's value is right.
+    <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={initialWindowMetrics?.insets.top ?? 0}>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient colors={['#1a56db', '#0b3fb3']} style={styles.header}>
+        <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={23} color="#fff" />
+        </PressableScale>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Nouvelle demande</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>Pour {firstName}</Text>
         </View>
+      </LinearGradient>
 
-        {/* Worker Profile Mini Card */}
-        <View style={styles.profileSection}>
-          <View style={styles.profilePictureContainer}>
-            <Ionicons name="person" size={50} color={Colors.primary} />
-          </View>
-        </View>
-
-        <View style={styles.workerCard}>
-          <Text style={styles.workerName}>{worker.name}</Text>
-          <Text style={styles.workerProfession}>
-            {worker.skills?.[0] || 'Technicien'}
-          </Text>
-
-          <View style={styles.ratingRow}>
-            <View style={styles.starsRow}>
-              {renderStars(worker.averageRating || worker.rating || 0)}
-            </View>
-            <Text style={styles.ratingText}>
-              {worker.averageRating || worker.rating || 0} · {worker.experience || 0} ans d'exp.
-            </Text>
-          </View>
-
-          <View style={styles.workerStatsRow}>
-            <View style={styles.workerStatItem}>
-              <Ionicons name="briefcase-outline" size={16} color={Colors.primary} />
-              <Text style={styles.workerStatText}>
-                {worker.jobsCompleted || 0} jobs
-              </Text>
-            </View>
-            <View style={styles.workerStatItem}>
-              <Ionicons name="cash-outline" size={16} color={Colors.primary} />
-              <Text style={styles.workerStatText}>
-                {worker.hourlyRate ? `${worker.hourlyRate}$/h` : 'Sur demande'}
-              </Text>
-            </View>
-            {worker.isVerified && (
-              <View style={styles.workerStatItem}>
-                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                <Text style={[styles.workerStatText, { color: Colors.success }]}>Certifié</Text>
+      <View style={{ flex: 1 }}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {/* Technician */}
+          <FadeIn style={[styles.card, styles.techCard]}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.techAvatar} />
+            ) : (
+              <View style={[styles.techAvatar, styles.techAvatarFallback]}>
+                <Text style={styles.techInitial}>{name.charAt(0)}</Text>
               </View>
             )}
-          </View>
-        </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.techNameRow}>
+                <Text style={styles.techName} numberOfLines={1}>{name}</Text>
+                {worker.isVerified && <Ionicons name="checkmark-circle" size={16} color={PRIMARY} />}
+              </View>
+              <Text style={styles.techSub} numberOfLines={1}>{profession}</Text>
+              <View style={styles.techMeta}>
+                <Ionicons name="star" size={13} color="#f5a524" />
+                <Text style={styles.techMetaText}>{rating.toFixed(1)}</Text>
+                {!!worker.experience && <Text style={styles.techMetaText}>· {worker.experience} ans d'exp.</Text>}
+              </View>
+            </View>
+            {!!price && (
+              <View style={styles.pricePill}>
+                <Text style={styles.priceSmall}>dès</Text>
+                <Text style={styles.priceText}>{price} TND</Text>
+              </View>
+            )}
+          </FadeIn>
 
-        {/* Date & Time Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Date & Heure</Text>
-          <View style={styles.card}>
-            <View style={styles.formRow}>
-              <View style={styles.formHalf}>
-                <Text style={styles.label}>
-                  <Ionicons name="calendar-outline" size={14} color={Colors.primary} /> Date
-                </Text>
-                <TouchableOpacity
-                  style={[styles.input, styles.datePickerButton, errors.date && styles.inputError]}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={formData.date ? styles.dateText : styles.placeholderText}>
-                    {formData.date || 'Sélectionner'}
+          {/* When */}
+          <FadeIn delay={50}>
+            <SectionHead icon="calendar-outline" title="Quand ?" />
+            <View style={styles.whenRow}>
+              <PressableScale style={[styles.whenField, { flex: 1.5 }, !asap && styles.whenFieldSet]} scaleTo={0.98} onPress={() => openPicker('date')}>
+                <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.whenLabel}>Date</Text>
+                  <Text style={styles.whenValue} numberOfLines={1} adjustsFontSizeToFit>{asap ? "Aujourd'hui" : dateLabel}</Text>
+                </View>
+              </PressableScale>
+              <PressableScale style={[styles.whenField, { flex: 1 }, !!time && !asap && styles.whenFieldSet, showError('time') && styles.inputError]} scaleTo={0.98} onPress={() => openPicker('time')}>
+                <Ionicons name="time-outline" size={20} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.whenLabel}>Heure</Text>
+                  <Text style={[styles.whenValue, !time && !asap && styles.whenEmpty]} numberOfLines={1}>
+                    {asap ? 'Au plus vite' : time ? hhmm(time) : 'Choisir'}
                   </Text>
-                  <Ionicons name="calendar" size={18} color={Colors.primary} />
-                </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="default"
-                    minimumDate={new Date()}
-                    onChange={handleDateChange}
-                  />
-                )}
-                {errors.date && <Text style={styles.fieldError}>{errors.date}</Text>}
-              </View>
-              <View style={styles.formHalf}>
-                <Text style={styles.label}>
-                  <Ionicons name="time-outline" size={14} color={Colors.primary} /> Heure
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.time && styles.inputError]}
-                  placeholder="HH:MM"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={formData.time}
-                  onChangeText={(value) => handleInputChange('time', value)}
-                />
-                {errors.time && <Text style={styles.fieldError}>{errors.time}</Text>}
-              </View>
+                </View>
+              </PressableScale>
             </View>
-          </View>
-        </View>
+            <PressableScale style={[styles.nowBtn, asap && styles.nowBtnActive]} scaleTo={0.98} onPress={chooseNow}>
+              <Ionicons name="flash" size={16} color={asap ? '#fff' : '#ea580c'} />
+              <Text style={[styles.nowText, asap && styles.chipTextActive]}>Maintenant</Text>
+            </PressableScale>
+            {showError('time') && <Text style={styles.fieldError}>{errors.time}</Text>}
+          </FadeIn>
 
-        {/* Location Section */}
-        <View style={styles.section}>
-          <View style={styles.locationSectionHeader}>
-            <Text style={styles.sectionTitle}>Localisation</Text>
-            {locatingAddress && (
-              <ActivityIndicator size="small" color={Colors.primary} />
-            )}
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.label}>
-              <Ionicons name="location-outline" size={14} color={Colors.primary} /> Adresse
-            </Text>
-            <TextInput
-              style={[styles.input, errors.address && styles.inputError]}
-              placeholder="Numéro et nom de rue"
-              placeholderTextColor={Colors.textTertiary}
-              value={formData.address}
-              onChangeText={(value) => handleInputChange('address', value)}
+          {/* Where */}
+          <FadeIn delay={100}>
+            <SectionHead
+              icon="location-outline"
+              title="Où ?"
+              right={(
+                <PressableScale style={styles.linkBtn} onPress={locate} disabled={locating}>
+                  {locating ? <ActivityIndicator size="small" color={PRIMARY} /> : <Ionicons name="locate" size={15} color={PRIMARY} />}
+                  <Text style={styles.linkText}>Ma position</Text>
+                </PressableScale>
+              )}
             />
-            {errors.address && <Text style={styles.fieldError}>{errors.address}</Text>}
-
-            <TouchableOpacity
-              style={styles.mapPickerButton}
-              onPress={() => setMapPickerVisible(true)}
-            >
-              <Ionicons name="map-outline" size={16} color={Colors.primary} />
-              <Text style={styles.mapPickerButtonText}>Choisir sur la carte</Text>
-            </TouchableOpacity>
-
-            <View style={styles.formRow}>
-              <View style={styles.formHalf}>
-                <Text style={styles.label}>Code postal</Text>
-                <TextInput
-                  style={[styles.input, errors.postalCode && styles.inputError]}
-                  placeholder="0000"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={formData.postalCode}
-                  onChangeText={(value) => handleInputChange('postalCode', value)}
-                  keyboardType="numeric"
-                />
-                {errors.postalCode && <Text style={styles.fieldError}>{errors.postalCode}</Text>}
-              </View>
-              <View style={styles.formHalf}>
-                <Text style={styles.label}>Ville</Text>
-                <TextInput
-                  style={[styles.input, errors.city && styles.inputError]}
-                  placeholder="Ville"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={formData.city}
-                  onChangeText={(value) => handleInputChange('city', value)}
-                />
-                {errors.city && <Text style={styles.fieldError}>{errors.city}</Text>}
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Urgency Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Niveau d'urgence</Text>
-          <View style={styles.card}>
-            <View style={styles.urgencyContainer}>
-              {urgencyLevels.map((level) => (
-                <TouchableOpacity
-                  key={level.value}
-                  style={[
-                    styles.urgencyChip,
-                    formData.urgency === level.value && {
-                      backgroundColor: level.color,
-                      borderColor: level.color,
-                    },
-                  ]}
-                  onPress={() => handleInputChange('urgency', level.value)}
-                >
-                  <Ionicons
-                    name={level.icon}
-                    size={16}
-                    color={formData.urgency === level.value ? '#fff' : level.color}
-                  />
-                  <Text
-                    style={[
-                      styles.urgencyText,
-                      formData.urgency === level.value && styles.urgencyTextActive,
-                    ]}
-                  >
-                    {level.label}
+            <View style={[styles.card, styles.pad]}>
+              <PressableScale style={styles.mapPick} scaleTo={0.98} onPress={() => setMapVisible(true)}>
+                <View style={styles.mapIcon}>
+                  <Ionicons name="map" size={21} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.mapTitle}>{coords ? 'Modifier le point sur la carte' : 'Choisir sur la carte'}</Text>
+                  <Text style={styles.mapSub} numberOfLines={1}>
+                    {locating ? "Recherche de l'adresse…" : [address, city].filter(Boolean).join(', ') || "Placez le repère à l'endroit de l'intervention"}
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={PRIMARY} />
+              </PressableScale>
+              <View style={[styles.inputWrap, { marginTop: 12 }, showError('address') && styles.inputError]}>
+                <Ionicons name="location-outline" size={18} color="#94a3b8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Rue et numéro"
+                  placeholderTextColor="#94a3b8"
+                  value={address}
+                  onChangeText={setAddress}
+                />
+              </View>
+              {showError('address') && <Text style={styles.fieldError}>{errors.address}</Text>}
+              <View style={styles.inputRow}>
+                <View style={[styles.inputWrap, { flex: 1.6 }, showError('city') && styles.inputError]}>
+                  <TextInput style={styles.input} placeholder="Ville" placeholderTextColor="#94a3b8" value={city} onChangeText={setCity} />
+                </View>
+                <View style={[styles.inputWrap, { flex: 1 }]}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Code postal"
+                    placeholderTextColor="#94a3b8"
+                    value={postalCode}
+                    onChangeText={setPostalCode}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+              {showError('city') && <Text style={styles.fieldError}>{errors.city}</Text>}
             </View>
-          </View>
-        </View>
+          </FadeIn>
 
-        {/* Description Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <View style={styles.card}>
-            <TextInput
-              style={[styles.textArea, errors.description && styles.inputError]}
-              placeholder="Décrivez en détail le problème..."
-              placeholderTextColor={Colors.textTertiary}
-              value={formData.description}
-              onChangeText={(value) => handleInputChange('description', value)}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-            {errors.description && (
-              <Text style={styles.fieldError}>{errors.description}</Text>
+          {/* What */}
+          <FadeIn delay={150}>
+            <SectionHead icon="create-outline" title="Quel est le problème ?" />
+            <View style={[styles.card, styles.pad]}>
+              <TextInput
+                style={[styles.textArea, showError('description') && styles.inputError]}
+                placeholder="Ex : fuite sous l'évier de la cuisine depuis ce matin…"
+                placeholderTextColor="#94a3b8"
+                value={description}
+                onChangeText={setDescription}
+                onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
+                selectTextOnFocus={description === DEFAULT_MESSAGE}
+                multiline
+                maxLength={1000}
+                textAlignVertical="top"
+              />
+              <View style={styles.textMeta}>
+                {showError('description') ? (
+                  <Text style={[styles.fieldError, { marginTop: 0 }]}>{errors.description}</Text>
+                ) : <View />}
+                <Text style={styles.counter}>{description.length}/1000</Text>
+              </View>
+              <View style={styles.urgencyRow}>
+                <PressableScale style={[styles.urgency, !urgent && styles.urgencyActive]} onPress={() => setUrgent(false)}>
+                  <Ionicons name="calendar-outline" size={16} color={!urgent ? '#fff' : MUTED} />
+                  <Text style={[styles.urgencyText, !urgent && styles.chipTextActive]}>Normal</Text>
+                </PressableScale>
+                <PressableScale style={[styles.urgency, urgent && styles.urgencyUrgent]} onPress={() => setUrgent(true)}>
+                  <Ionicons name="flash" size={16} color={urgent ? '#fff' : '#ea580c'} />
+                  <Text style={[styles.urgencyText, { color: '#ea580c' }, urgent && styles.chipTextActive]}>Urgent</Text>
+                </PressableScale>
+              </View>
+            </View>
+          </FadeIn>
+        </ScrollView>
+
+        {/* Summary + confirm */}
+        <View style={styles.footer}>
+          <View style={styles.footerSummary}>
+            <Ionicons name="calendar" size={16} color={PRIMARY} />
+            <Text style={styles.footerText} numberOfLines={1}>{whenText}</Text>
+          </View>
+          <PressableScale style={[styles.confirmBtn, submitting && { opacity: 0.7 }]} onPress={handleSubmit} disabled={submitting}>
+            {submitting ? <ActivityIndicator color="#fff" /> : (
+              <>
+                <Text style={styles.confirmText}>Envoyer la demande</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
             )}
-            <Text style={styles.charCount}>
-              {formData.description.length}/500 caractères
-            </Text>
-          </View>
+          </PressableScale>
         </View>
-
-        {/* Summary Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Récapitulatif</Text>
-          <View style={styles.card}>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryIconLabel}>
-                <Ionicons name="construct-outline" size={16} color={Colors.primary} />
-                <Text style={styles.summaryLabel}>Service</Text>
-              </View>
-              <Text style={styles.summaryValue}>
-                {worker.skills?.[0] || 'Service professionnel'}
-              </Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryIconLabel}>
-                <Ionicons name="person-outline" size={16} color={Colors.primary} />
-                <Text style={styles.summaryLabel}>Professionnel</Text>
-              </View>
-              <Text style={styles.summaryValue}>{worker.name}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryIconLabel}>
-                <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
-                <Text style={styles.summaryLabel}>Date</Text>
-              </View>
-              <Text style={styles.summaryValue}>
-                {formData.date || 'Non sélectionnée'}
-              </Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryIconLabel}>
-                <Ionicons name="time-outline" size={16} color={Colors.primary} />
-                <Text style={styles.summaryLabel}>Heure</Text>
-              </View>
-              <Text style={styles.summaryValue}>
-                {formData.time || 'Non sélectionnée'}
-              </Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryIconLabel}>
-                <Ionicons name="cash-outline" size={16} color={Colors.primary} />
-                <Text style={styles.summaryLabel}>Tarif estimé</Text>
-              </View>
-              <Text style={[styles.summaryValue, { color: Colors.primary, fontWeight: 'bold' }]}>
-                {worker.hourlyRate ? `À partir de ${worker.hourlyRate}$` : 'Sur demande'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Bottom spacing for buttons */}
-        <View style={{ height: hp(12) }} />
-      </ScrollView>
-
-      {/* Action Buttons - Fixed at bottom like WorkerProfile */}
-      <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="close-outline" size={20} color={Colors.text} />
-          <Text style={styles.cancelButtonText}>Annuler</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.confirmButton, submitting && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color={Colors.textLight} />
-          ) : (
-            <>
-              <Ionicons name="checkmark-outline" size={20} color={Colors.textLight} />
-              <Text style={styles.confirmButtonText}>Confirmer</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </View>
 
+      <BottomSheet
+        visible={!!picker}
+        title={picker === 'time' ? "Choisir l'heure" : 'Choisir la date'}
+        onClose={() => setPicker(null)}
+      >
+        {!!picker && (
+          <DateTimePicker
+            value={pickerValue}
+            mode={picker}
+            display="spinner"
+            locale="fr-FR"
+            themeVariant="light"
+            minimumDate={picker === 'date' ? startOfToday() : undefined}
+            onChange={(event, picked) => picked && setPickerValue(picked)}
+          />
+        )}
+        <PressableScale
+          style={styles.confirmBtn}
+          onPress={() => {
+            applyPicked(picker, pickerValue);
+            setPicker(null);
+          }}
+        >
+          <Text style={styles.confirmText}>Valider</Text>
+        </PressableScale>
+      </BottomSheet>
+
       <LocationPickerModal
-        visible={mapPickerVisible}
-        initialCoords={
-          formData.latitude && formData.longitude
-            ? { latitude: formData.latitude, longitude: formData.longitude }
-            : null
-        }
+        visible={mapVisible}
+        initialCoords={coords}
         onConfirm={handleLocationPicked}
-        onClose={() => setMapPickerVisible(false)}
+        onClose={() => setMapVisible(false)}
       />
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
+
+const shadow = {
+  shadowColor: '#1e3a8a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2,
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: SURFACE },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: SURFACE },
+  errorText: { fontSize: 15, color: MUTED },
+  retryBtn: { backgroundColor: PRIMARY, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 },
+  retryText: { color: '#fff', fontWeight: '700' },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 16,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 21, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 13.5, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+
+  content: { padding: 16, paddingBottom: 24 },
+  card: { backgroundColor: '#fff', borderRadius: 20, ...shadow },
+  pad: { padding: 14 },
+
+  techCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  techAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#e3edff' },
+  techAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  techInitial: { fontSize: 22, fontWeight: '700', color: PRIMARY },
+  techNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  techName: { fontSize: 16.5, fontWeight: '700', color: INK, flexShrink: 1 },
+  techSub: { fontSize: 13.5, color: PRIMARY, fontWeight: '600', marginTop: 1 },
+  techMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  techMetaText: { fontSize: 12.5, color: MUTED },
+  pricePill: { alignItems: 'center', backgroundColor: '#e3edff', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  priceSmall: { fontSize: 10.5, color: MUTED },
+  priceText: { fontSize: 14.5, fontWeight: '800', color: INK },
+
+  whenRow: { flexDirection: 'row', gap: 10 },
+  whenField: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, height: 64, paddingHorizontal: 12,
+    borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  whenFieldSet: { borderColor: '#bcd0f7' },
+  whenLabel: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  whenValue: { fontSize: 15, color: INK, fontWeight: '700', marginTop: 1 },
+  whenEmpty: { color: '#94a3b8', fontWeight: '600' },
+  nowBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, marginTop: 10,
+    borderRadius: 14, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa',
+  },
+  nowBtnActive: { backgroundColor: '#ea580c', borderColor: '#ea580c' },
+  nowText: { fontSize: 14.5, fontWeight: '700', color: '#ea580c' },
+  chipTextActive: { color: '#fff' },
+  fieldError: { color: '#dc2626', fontSize: 12.5, marginTop: 6, marginLeft: 4 },
+
+  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  linkText: { color: PRIMARY, fontSize: 14, fontWeight: '700' },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, height: 50, paddingHorizontal: 14,
+    backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 14,
+  },
+  inputRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  input: { flex: 1, fontSize: 15, color: INK, paddingVertical: 0 },
+  inputError: { borderColor: '#fca5a5', backgroundColor: '#fff7f7' },
+  mapPick: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12,
+    borderRadius: 16, backgroundColor: '#eef4ff', borderWidth: 1, borderColor: '#d6e4ff',
+  },
+  mapIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+  mapTitle: { fontSize: 15, fontWeight: '700', color: INK },
+  mapSub: { fontSize: 13, color: MUTED, marginTop: 1 },
+
+  textArea: {
+    minHeight: 110, fontSize: 15, lineHeight: 21, color: INK, padding: 14,
+    backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 14,
+  },
+  textMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  counter: { fontSize: 12, color: '#94a3b8' },
+  urgencyRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  urgency: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44,
+    borderRadius: 14, backgroundColor: '#f1f5f9',
+  },
+  urgencyActive: { backgroundColor: PRIMARY },
+  urgencyUrgent: { backgroundColor: '#ea580c' },
+  urgencyText: { fontSize: 14.5, fontWeight: '700', color: MUTED },
+
+  footer: {
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#eef2f7', gap: 10,
+  },
+  footerSummary: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  footerText: { flex: 1, fontSize: 13.5, color: '#334155', fontWeight: '600', textTransform: 'none' },
+  confirmBtn: {
+    height: 54, borderRadius: 27, backgroundColor: PRIMARY,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmText: { color: '#fff', fontSize: 16.5, fontWeight: '700' },
+});
 
 export default ReservationDetails;

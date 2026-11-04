@@ -1,128 +1,92 @@
-import React from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, Dimensions, Image,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
+import { AuthShell, AuthTitle, PRIMARY, INK, MUTED } from '../components/auth/AuthUI';
 
-const { width } = Dimensions.get('window');
-const BLUE = '#1a56db';
+const ROLES = [
+  {
+    role: 'USER',
+    title: 'Je cherche un professionnel',
+    desc: 'Réservez un plombier, un électricien… près de chez vous.',
+    icon: 'home-outline',
+    image: require('../assets/user.png'),
+  },
+  {
+    role: 'WORKER',
+    title: 'Je suis technicien',
+    desc: 'Recevez des demandes de clients et développez votre activité.',
+    icon: 'construct-outline',
+    image: require('../assets/worker.png'),
+  },
+];
 
-export default function RoleSelectionScreen({ navigation }) {
+// Role choice for a new Google / Apple account signing in from the login
+// screen. route.params.social = { provider, credentials, profile }.
+export default function RoleSelectionScreen({ navigation, route }) {
+  const { loginWithSocial } = useAuth();
+  const social = route.params?.social;
+  const [busyRole, setBusyRole] = useState(null);
+
+  const choose = async (role) => {
+    if (role === 'WORKER') {
+      navigation.navigate('SocialWorkerSetup', social);
+      return;
+    }
+    setBusyRole(role);
+    const result = await loginWithSocial(social.provider, { credentials: social.credentials, role });
+    setBusyRole(null);
+    if (result.success === false) Alert.alert('Connexion impossible', result.error);
+    // On success the navigator switches to the signed-in app
+  };
+
+  const firstName = social?.profile?.name?.split(' ')[0];
+
   return (
-    <LinearGradient colors={['#1a56db', '#1565c0']} style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+    <AuthShell onBack={() => navigation.goBack()}>
+      <AuthTitle
+        title={firstName ? `Bienvenue ${firstName} !` : 'Bienvenue !'}
+        subtitle="Comment souhaitez-vous utiliser FixPro ?"
+      />
 
-      {/* Decorative background circles */}
-      <View style={[styles.bgCircle, { top: -60, right: -60, width: 200, height: 200 }]} />
-      <View style={[styles.bgCircle, { bottom: 100, left: -80, width: 250, height: 250 }]} />
-
-      {/* Back button */}
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={22} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Title */}
-      <View style={styles.titleBlock}>
-        <Text style={styles.title}>Choisissez votre rôle</Text>
-        <Text style={styles.subtitle}>
-          Comment souhaitez-vous{'\n'}utiliser FixPro ?
-        </Text>
-      </View>
-
-      {/* Cards */}
-      <View style={styles.cardsContainer}>
-
-        {/* Client card */}
-        <TouchableOpacity
-          style={styles.roleCard}
-          onPress={() => navigation.navigate('CreateAccount', { role: 'USER' })}
-          activeOpacity={0.88}
-        >
-          <View style={styles.roleIconBox}>
-            <Ionicons name="person-outline" size={26} color={BLUE} />
-          </View>
-          <View style={styles.roleTextBlock}>
-            <Text style={styles.roleTitle}>Je suis un particulier</Text>
-            <Text style={styles.roleDesc}>J'ai besoin d'un service{'\n'}à domicile</Text>
-          </View>
-          <Image
-            source={require('../assets/user.png')}
-            style={styles.roleIllustration}
-            resizeMode="contain"
-          />
-          <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-        </TouchableOpacity>
-
-        {/* Worker card */}
-        <TouchableOpacity
-          style={styles.roleCard}
-          onPress={() => navigation.navigate('CreateAccount', { role: 'WORKER' })}
-          activeOpacity={0.88}
-        >
-          <View style={styles.roleIconBox}>
-            <Ionicons name="construct-outline" size={26} color={BLUE} />
-          </View>
-          <View style={styles.roleTextBlock}>
-            <Text style={styles.roleTitle}>Je suis un professionnel</Text>
-            <Text style={styles.roleDesc}>Je souhaite proposer{'\n'}mes services</Text>
-          </View>
-          <Image
-            source={require('../assets/worker.png')}
-            style={styles.roleIllustration}
-            resizeMode="contain"
-          />
-          <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-        </TouchableOpacity>
-
-      </View>
-    </LinearGradient>
+      {ROLES.map((r, i) => (
+        <FadeIn key={r.role} delay={i * 70}>
+          <PressableScale style={styles.card} onPress={() => choose(r.role)} disabled={!!busyRole}>
+            <View style={styles.cardText}>
+              <View style={styles.iconTile}>
+                <Ionicons name={r.icon} size={22} color={PRIMARY} />
+              </View>
+              <Text style={styles.cardTitle}>{r.title}</Text>
+              <Text style={styles.cardDesc}>{r.desc}</Text>
+              <View style={styles.cardCta}>
+                {busyRole === r.role ? <ActivityIndicator size="small" color={PRIMARY} /> : (
+                  <>
+                    <Text style={styles.cardCtaText}>Continuer</Text>
+                    <Ionicons name="arrow-forward" size={16} color={PRIMARY} />
+                  </>
+                )}
+              </View>
+            </View>
+            <Image source={r.image} style={styles.cardImage} resizeMode="contain" />
+          </PressableScale>
+        </FadeIn>
+      ))}
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 56 },
-
-  bgCircle: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  card: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#f6f9ff', borderRadius: 24, padding: 18,
+    marginBottom: 14, borderWidth: 1, borderColor: '#e3ecff', overflow: 'hidden',
   },
-
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 28,
-  },
-
-  titleBlock: { marginBottom: 32 },
-  title: { fontSize: 28, fontWeight: '900', color: '#fff', marginBottom: 10 },
-  subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 22 },
-
-  cardsContainer: { gap: 16 },
-  roleCard: {
-    backgroundColor: '#fff',
-    borderRadius: 22,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  roleIconBox: {
-    width: 50, height: 50, borderRadius: 14,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  roleTextBlock: { flex: 1 },
-  roleTitle: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 4 },
-  roleDesc: { fontSize: 13, color: '#6b7280', lineHeight: 18 },
-  roleIllustration: { width: 80, height: 80 },
+  cardText: { flex: 1, paddingRight: 8 },
+  iconTile: { width: 42, height: 42, borderRadius: 13, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  cardTitle: { fontSize: 17.5, fontWeight: '800', color: INK, letterSpacing: -0.3 },
+  cardDesc: { fontSize: 13.5, color: MUTED, marginTop: 4, lineHeight: 19 },
+  cardCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, height: 20 },
+  cardCtaText: { color: PRIMARY, fontSize: 14.5, fontWeight: '700' },
+  cardImage: { width: 104, height: 124 },
 });

@@ -9,15 +9,26 @@ class SocketService {
     this.onlineUsers = new Set();
     this.presenceListeners = new Set();
     this.reservationListeners = new Set();
+    this.newReservationListeners = new Set();
+    this.notificationListeners = new Set();
   }
 
-  async connect() {
+  // Sign-in, app start and App.js all call this, often at the same moment;
+  // share one attempt so only one socket exists (otherwise every event
+  // arrives several times)
+  connect() {
+    // `active`: connected or still reconnecting on its own
+    if (this.socket?.active) return Promise.resolve();
+    if (!this.connecting) {
+      // A socket that gave up reconnecting is replaced
+      if (this.socket) this.disconnect();
+      this.connecting = this.openSocket().finally(() => { this.connecting = null; });
+    }
+    return this.connecting;
+  }
+
+  async openSocket() {
     try {
-      // Guard: if already connected, return early
-      if (this.socket && this.connected) {
-        if (__DEV__) console.log('Socket already connected, skipping');
-        return;
-      }
 
       const token = await AsyncStorage.getItem('token');
 
@@ -105,6 +116,16 @@ class SocketService {
       });
       this.socket.on('job_completed', (data) => {
         notifyReservationListeners('job_completed', data);
+      });
+
+      // A new entry in the user's notification list
+      this.socket.on('new_notification', (data) => {
+        this.notificationListeners.forEach((cb) => cb(data));
+      });
+
+      // A client just sent this technician a request
+      this.socket.on('new_reservation', (data) => {
+        this.newReservationListeners.forEach((cb) => cb(data));
       });
 
       // Listen for new messages
@@ -278,6 +299,17 @@ class SocketService {
   onReservationUpdate(callback) {
     this.reservationListeners.add(callback);
     return () => this.reservationListeners.delete(callback); // returns unsubscribe fn
+  }
+
+  onNotification(callback) {
+    this.notificationListeners.add(callback);
+    return () => this.notificationListeners.delete(callback); // returns unsubscribe fn
+  }
+
+  // Works before the socket connects and across reconnects
+  onNewReservation(callback) {
+    this.newReservationListeners.add(callback);
+    return () => this.newReservationListeners.delete(callback); // returns unsubscribe fn
   }
 }
 

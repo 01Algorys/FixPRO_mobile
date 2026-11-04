@@ -27,7 +27,7 @@ export default function LockedScreen({ navigation, route }) {
 
         <TouchableOpacity
           style={styles.registerBtn}
-          onPress={() => navigation.navigate('RoleSelection')}
+          onPress={() => navigation.navigate('CreateAccount')}
           activeOpacity={0.85}
         >
           <Text style={styles.registerBtnText}>Créer un compte</Text>

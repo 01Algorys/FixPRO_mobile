@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 const THEME = '#1A3A6B';
 const BLUE = '#1A6BFF';
 
-export default function ProfileImagePicker({ imageUri, onImageSelected }) {
+export default function ProfileImagePicker({ imageUri, name, onImageSelected }) {
   const [loading, setLoading] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
 
@@ -117,7 +117,7 @@ export default function ProfileImagePicker({ imageUri, onImageSelected }) {
         ) : (
           <View style={styles.avatarPlaceholder}>
             <Text style={styles.avatarInitial}>
-              {getInitials('Worker')} // You can pass actual name as prop
+              {getInitials(name)}
             </Text>
           </View>
         )}

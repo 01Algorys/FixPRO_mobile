@@ -11,11 +11,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import MapView from 'react-native-maps';
+import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
 import { getCurrentCoords } from '../utils/location';
+import { hasGoogleMaps, newPlacesSession, searchPlaces, getPlaceLocation } from '../utils/googleMaps';
 
 const DEFAULT_REGION = {
   // Tunis, Tunisia — reasonable fallback center for this app's market when
@@ -26,21 +27,10 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.05,
 };
 
-// Free-tier OpenStreetMap search — no API key required. Nominatim's usage
-// policy requires a descriptive User-Agent and reasonable request volume,
-// which the 400ms debounce below respects.
-const searchAddress = async (query) => {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`;
-  const response = await fetch(url, {
-    headers: { 'User-Agent': 'FixProMobileApp/1.0 (contact@fixpro.com)' },
-  });
-  if (!response.ok) return [];
-  return response.json();
-};
-
 const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => {
   const mapRef = useRef(null);
   const searchDebounceRef = useRef(null);
+  const placesSessionRef = useRef(newPlacesSession());
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [address, setAddress] = useState('');
   const [resolvingAddress, setResolvingAddress] = useState(false);
@@ -107,7 +97,7 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
     searchDebounceRef.current = setTimeout(async () => {
       try {
         setSearching(true);
-        const results = await searchAddress(text.trim());
+        const results = await searchPlaces(text.trim(), placesSessionRef.current);
         setSearchResults(results);
       } catch (error) {
         console.error('Address search error:', error);
@@ -118,15 +108,20 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
     }, 400);
   };
 
-  const handleSelectSearchResult = (result) => {
-    const latitude = parseFloat(result.lat);
-    const longitude = parseFloat(result.lon);
-    const newRegion = { latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 };
-    setRegion(newRegion);
-    setAddress(result.display_name);
+  const handleSelectSearchResult = async (result) => {
     setSearchQuery('');
     setSearchResults([]);
-    mapRef.current?.animateToRegion(newRegion, 400);
+    try {
+      const place = await getPlaceLocation(result.id, placesSessionRef.current);
+      placesSessionRef.current = newPlacesSession();
+      if (!place) return;
+      const newRegion = { latitude: place.latitude, longitude: place.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 };
+      setRegion(newRegion);
+      setAddress(place.address || result.text);
+      mapRef.current?.animateToRegion(newRegion, 400);
+    } catch (error) {
+      console.error('Place lookup error:', error);
+    }
   };
 
   const handleConfirm = () => {
@@ -168,7 +163,7 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
             <FlatList
               style={styles.resultsList}
               data={searchResults}
-              keyExtractor={(item) => String(item.place_id)}
+              keyExtractor={(item) => item.id}
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -177,7 +172,7 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
                 >
                   <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
                   <Text style={styles.resultText} numberOfLines={2}>
-                    {item.display_name}
+                    {item.text}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -188,6 +183,7 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
         <View style={styles.mapContainer}>
           <MapView
             ref={mapRef}
+            provider={hasGoogleMaps ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
             style={styles.map}
             initialRegion={region}
             onRegionChangeComplete={handleRegionChangeComplete}

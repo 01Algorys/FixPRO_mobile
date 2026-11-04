@@ -1,19 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, StatusBar, TextInput, Alert,
-  KeyboardAvoidingView, Platform, Dimensions,
+  View, Text, ScrollView, ActivityIndicator, StatusBar, TextInput, Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import ProfileImagePicker from '../components/ProfileImagePicker';
-import { getCurrentCoords } from '../utils/location';
-
-const { width } = Dimensions.get('window');
-const THEME = '#1a56db';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
+import { getCurrentCoords, reverseGeocodeCity } from '../utils/location';
+import { categoryMeta, titleCase } from '../utils/categoryMeta';
+import CountryCodePicker from '../components/CountryCodePicker';
+import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
+import {
+  THEME, INK, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, DangerButtons, BottomSheet, PasswordField, styles,
+} from '../components/profile/ProfileParts';
 
 export default function WorkerProfile({ navigation }) {
   const { logout, updateAvatar } = useAuth();
@@ -27,7 +29,13 @@ export default function WorkerProfile({ navigation }) {
   const [saving, setSaving] = useState(false);
 
   // Editable fields
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
+  const applyPhone = (value) => {
+    const parts = splitPhone(value);
+    setCountry(parts.country);
+    setPhone(parts.number);
+  };
   const [bio, setBio] = useState('');
   const [experience, setExperience] = useState('');
   const [priceMin, setPriceMin] = useState('');
@@ -45,29 +53,42 @@ export default function WorkerProfile({ navigation }) {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   // Location (used to suggest this worker to nearby clients)
   const [hasLocation, setHasLocation] = useState(false);
   const [settingLocation, setSettingLocation] = useState(false);
+  const [placeName, setPlaceName] = useState(null);
 
   const fetchProfile = async () => {
     try {
       setError(null);
       const response = await api.getWorkerProfile();
       const profileData = response?.data || response;
-      console.log(profileData)
       setProfile(profileData);
       
       // Calculate stats from profile data
       const statsData = {
         totalMissions: profileData?.jobsCompleted || profileData?.interventions || 0,
         totalReviews: profileData?.totalReviews || 0,
-        satisfactionRate: profileData?.satisfactionRate || 100,
+        satisfactionRate: null,
       };
       setStats(statsData);
+
+      // Share of 4★+ reviews; loaded separately so a slow reviews call never blocks the page
+      if (profileData?.id) {
+        api.getWorkerReviewsPublic(profileData.id)
+          .then((res) => {
+            const list = res?.data?.reviews || res?.reviews || [];
+            if (!list.length) return;
+            const happy = list.filter((r) => (r.rating || 0) >= 4).length;
+            setStats((prev) => ({ ...prev, satisfactionRate: Math.round((happy / list.length) * 100) }));
+          })
+          .catch(() => {});
+      }
       
       // Populate editable fields
-      setPhone(profileData?.user?.phone ?? '');
+      applyPhone(profileData?.user?.phone);
       setBio(profileData?.bio ?? '');
       setExperience(String(profileData?.experience ?? ''));
       setPriceMin(String(profileData?.hourlyRate ?? ''));
@@ -77,9 +98,9 @@ export default function WorkerProfile({ navigation }) {
       setAvatarUrl(profileData?.user?.avatar ?? null);
 
       // Location is used to suggest this worker to nearby clients
-      setHasLocation(
-        typeof profileData?.latitude === 'number' && typeof profileData?.longitude === 'number'
-      );
+      const located = typeof profileData?.latitude === 'number' && typeof profileData?.longitude === 'number';
+      setHasLocation(located);
+      if (located) reverseGeocodeCity(profileData.latitude, profileData.longitude).then(setPlaceName);
     } catch (err) {
       console.error('[Profile] fetchProfile error:', err);
       setError('Impossible de charger le profil');
@@ -97,7 +118,7 @@ export default function WorkerProfile({ navigation }) {
 
   const handleCancelEdit = () => {
     // Reset fields to original values
-    setPhone(profile?.user?.phone ?? '');
+    applyPhone(profile?.user?.phone);
     setBio(profile?.bio ?? '');
     setExperience(String(profile?.experience ?? ''));
     setPriceMin(String(profile?.hourlyRate ?? ''));
@@ -116,7 +137,7 @@ export default function WorkerProfile({ navigation }) {
       
       // Prepare update data
       const updateData = {
-        phone: phone.trim(),
+        phone: fullPhone(country, phone),
         bio: bio.trim(),
         experience: parseInt(experience) || 0,
         hourlyRate: parseFloat(priceMin) || 0,
@@ -155,6 +176,7 @@ export default function WorkerProfile({ navigation }) {
       });
 
       setHasLocation(true);
+      reverseGeocodeCity(coords.latitude, coords.longitude).then(setPlaceName);
       Alert.alert('Succès', 'Votre position a été enregistrée. Les clients à proximité pourront désormais vous voir en priorité.');
     } catch (err) {
       console.error('[Profile] handleSetLocation error:', err);
@@ -183,6 +205,7 @@ export default function WorkerProfile({ navigation }) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setPasswordOpen(false);
       Alert.alert('Succès', 'Mot de passe mis à jour avec succès ✓');
     } catch (err) {
       console.error('[Profile] handleChangePassword error:', err);
@@ -272,7 +295,6 @@ export default function WorkerProfile({ navigation }) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={THEME} />
-        <Text style={styles.loadingText}>Chargement du profil...</Text>
       </View>
     );
   }
@@ -280,460 +302,221 @@ export default function WorkerProfile({ navigation }) {
   if (error) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="cloud-offline-outline" size={60} color="#ccc" />
+        <Ionicons name="cloud-offline-outline" size={52} color="#cbd5e1" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={fetchProfile}>
+        <PressableScale style={styles.retryBtn} onPress={() => { setLoading(true); fetchProfile(); }}>
           <Text style={styles.retryText}>Réessayer</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     );
   }
 
+  const rating = Number(profile?.averageRating || 0);
+  const services = profile?.services || [];
+  const rate = profile?.hourlyRate;
+  const years = profile?.experience;
+  const openEdit = () => setIsEditing(true);
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={THEME} />
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-
-        {/* ── HEADER ── */}
-        <LinearGradient colors={[THEME, '#1565c0']} style={styles.header}>
-          <Text style={styles.headerTitle}>Profil du technicien</Text>
-
-          {/* Avatar with ProfileImagePicker */}
-          <View style={styles.avatarWrapper}>
-            {uploadingAvatar ? (
-              <View style={styles.avatarCircle}>
-                <ActivityIndicator size="small" color="#fff" />
-              </View>
-            ) : (
-              <ProfileImagePicker 
-                imageUri={avatarUrl}
-                onImageSelected={handleImageSelected}
-              />
-            )}
-          </View>
-
-          {/* Certified badge */}
-          {profile?.isVerified && (
-            <View style={styles.certifiedBadge}>
-              <Ionicons name="checkmark-circle" size={16} color="#fff" />
-              <Text style={styles.certifiedText}>Certifié</Text>
-            </View>
-          )}
-
-          <Text style={styles.profileName}>
-            {profile?.user?.name ?? 'Technicien'}
-          </Text>
-          <Text style={styles.profileSpecialty}>{profile?.skills?.[0] ?? 'Professionnel'}</Text>
-          <Text style={styles.profileMeta}>
-            {profile?.averageRating?.toFixed(1) ?? '—'} ({stats?.totalReviews ?? 0} avis) · {profile?.experience ?? 0} ans d'expérience
-          </Text>
-        </LinearGradient>
+    <>
+      <StatusBar barStyle="light-content" />
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <ProfileHeader title="Profil Technicien" onBell={() => navigation.navigate('Notifications')} />
 
         <View style={styles.body}>
-
-          {/* ── STATS ROW ── */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats?.totalMissions ?? 0}</Text>
-              <Text style={styles.statLabel}>Interventions</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {profile?.averageRating?.toFixed(1) ?? '—'}
-              </Text>
-              <Text style={styles.statLabel}>Note moyenne</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {stats?.satisfactionRate ?? 0}%
-              </Text>
-              <Text style={styles.statLabel}>Clients{'\n'}satisfaits</Text>
-            </View>
-          </View>
-
-          {/* ── À PROPOS ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>À propos</Text>
-            <Text style={styles.bioText}>{profile?.bio ?? '—'}</Text>
-          </View>
-
-          {/* ── MA POSITION ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Ma position</Text>
-            <View style={styles.locationRow}>
-              <View style={[styles.locationStatusIcon, hasLocation && styles.locationStatusIconActive]}>
-                <Ionicons
-                  name={hasLocation ? 'checkmark-circle' : 'location-outline'}
-                  size={20}
-                  color={hasLocation ? '#10b981' : '#9ca3af'}
-                />
-              </View>
-              <Text style={styles.locationStatusText}>
-                {hasLocation
-                  ? 'Position enregistrée — vous êtes suggéré aux clients à proximité.'
-                  : "Aucune position enregistrée. Activez-la pour apparaître dans les recherches d'urgence près de chez vous."}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.saveBtn, settingLocation && styles.saveBtnDisabled]}
-              onPress={handleSetLocation}
-              disabled={settingLocation}
-            >
-              {settingLocation ? (
-                <ActivityIndicator size="small" color="#fff" />
+          {/* Identity */}
+          <FadeIn style={styles.identity}>
+            <View style={styles.avatarRing}>
+              {uploadingAvatar ? (
+                <View style={styles.avatarLoading}>
+                  <ActivityIndicator size="small" color={THEME} />
+                </View>
               ) : (
-                <>
-                  <Ionicons name="locate-outline" size={18} color="#fff" />
-                  <Text style={styles.saveBtnText}>
-                    {hasLocation ? 'Mettre à jour ma position' : 'Définir ma position'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* ── MODIFIER MES INFORMATIONS ── */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Text style={styles.cardTitle}>Modifier mes informations</Text>
-              {!isEditing ? (
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => setIsEditing(true)}
-                >
-                  <Ionicons name="pencil-outline" size={16} color={THEME} />
-                  <Text style={styles.editBtnText}>Modifier</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={handleCancelEdit}
-                >
-                  <Ionicons name="close-outline" size={16} color="#ef4444" />
-                  <Text style={styles.cancelBtnText}>Annuler</Text>
-                </TouchableOpacity>
+                <ProfileImagePicker imageUri={avatarUrl} name={profile?.user?.name} onImageSelected={handleImageSelected} />
               )}
             </View>
-
-            {/* Phone */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Téléphone</Text>
-              <View style={[styles.inputWrapper, !isEditing && styles.inputDisabled]}>
-                <Ionicons name="call-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={phone}
-                  onChangeText={setPhone}
-                  editable={isEditing}
-                  placeholder="Téléphone"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="phone-pad"
-                />
+            <View style={styles.identityInfo}>
+              <View style={styles.identityTop}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.profileName} numberOfLines={1}>{titleCase(profile?.user?.name) || 'Technicien'}</Text>
+                    {profile?.isVerified && <MaterialCommunityIcons name="check-decagram" size={19} color={THEME} />}
+                  </View>
+                  <View style={styles.rolePill}>
+                    <MaterialCommunityIcons name="hard-hat" size={14} color={THEME} />
+                    <Text style={styles.roleText}>Technicien</Text>
+                  </View>
+                </View>
+                <PressableScale style={styles.editBtn} onPress={openEdit}>
+                  <Ionicons name="pencil" size={15} color={INK} />
+                  <Text style={styles.editBtnText}>Modifier{'\n'}le profil</Text>
+                </PressableScale>
               </View>
-            </View>
-
-            {/* Bio */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Bio</Text>
-              <View style={[styles.inputWrapper, styles.textAreaWrapper, !isEditing && styles.inputDisabled]}>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={bio}
-                  onChangeText={setBio}
-                  editable={isEditing}
-                  placeholder="Décrivez votre expérience..."
-                  placeholderTextColor="#9ca3af"
-                  multiline
-                  numberOfLines={3}
-                />
-              </View>
-            </View>
-
-            {/* Experience */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Années d'expérience</Text>
-              <View style={[styles.inputWrapper, !isEditing && styles.inputDisabled]}>
-                <MaterialCommunityIcons name="briefcase-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={experience}
-                  onChangeText={setExperience}
-                  editable={isEditing}
-                  placeholder="Années d'expérience"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            {/* Hourly rate */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Tarif horaire (TND)</Text>
-              <View style={[styles.inputWrapper, !isEditing && styles.inputDisabled]}>
-                <MaterialCommunityIcons name="cash-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={priceMin}
-                  onChangeText={setPriceMin}
-                  editable={isEditing}
-                  placeholder="Tarif horaire"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            {/* Save button — only visible in edit mode */}
-            {isEditing && (
-              <TouchableOpacity
-                style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-                onPress={handleSaveProfile}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
+              <View style={styles.metaRow}>
+                <Ionicons name="star" size={15} color="#fbbf24" />
+                <Text style={styles.metaStrong}>{rating.toFixed(1)}</Text>
+                <Text style={styles.metaText}>({stats?.totalReviews ?? 0} avis)</Text>
+                {!!years && (
                   <>
-                    <Ionicons name="checkmark-outline" size={18} color="#fff" />
-                    <Text style={styles.saveBtnText}>Enregistrer</Text>
+                    <View style={styles.metaDivider} />
+                    <Ionicons name="briefcase-outline" size={15} color={INK} />
+                    <Text style={styles.metaStrong}>{years}</Text>
+                    <Text style={styles.metaText} numberOfLines={1}>ans d'expérience</Text>
                   </>
                 )}
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* ── CHANGER MOT DE PASSE ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Changer mot de passe</Text>
-
-            {/* Current password */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Mot de passe actuel</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="Mot de passe actuel"
-                  placeholderTextColor="#9ca3af"
-                  secureTextEntry={!showCurrentPw}
-                />
-                <TouchableOpacity onPress={() => setShowCurrentPw(!showCurrentPw)}>
-                  <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#9ca3af" />
-                </TouchableOpacity>
               </View>
             </View>
+          </FadeIn>
 
-            {/* New password */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Nouveau mot de passe</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-open-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="Nouveau mot de passe"
-                  placeholderTextColor="#9ca3af"
-                  secureTextEntry={!showNewPw}
-                />
-                <TouchableOpacity onPress={() => setShowNewPw(!showNewPw)}>
-                  <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#9ca3af" />
-                </TouchableOpacity>
+          <StatsRow
+            delay={40}
+            items={[
+              { icon: 'briefcase-outline', value: stats?.totalMissions ?? 0, label: 'Interventions' },
+              { icon: 'star-outline', color: '#f59e0b', value: rating.toFixed(1), label: 'Note moyenne' },
+              { icon: 'people-outline', value: stats?.satisfactionRate == null ? '—' : `${stats.satisfactionRate}%`, label: 'Clients satisfaits' },
+            ]}
+          />
+
+          {/* Location */}
+          <FadeIn delay={80}>
+            <SectionHead
+              icon="location-outline"
+              title="Ma position"
+              right={(
+              <View style={[styles.statusPill, !hasLocation && styles.statusPillOff]}>
+                <View style={[styles.statusDot, !hasLocation && styles.statusDotOff]} />
+                <Text style={[styles.statusText, !hasLocation && styles.statusTextOff]}>
+                  {hasLocation ? 'Actif' : 'Inactif'}
+                </Text>
               </View>
-            </View>
-
-            {/* Confirm password */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Confirmer le mot de passe</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-open-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirmer le mot de passe"
-                  placeholderTextColor="#9ca3af"
-                  secureTextEntry={!showConfirmPw}
-                />
-                <TouchableOpacity onPress={() => setShowConfirmPw(!showConfirmPw)}>
-                  <Ionicons name={showConfirmPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#9ca3af" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.passwordBtn, savingPassword && styles.saveBtnDisabled]}
-              onPress={handleChangePassword}
-              disabled={savingPassword}
-            >
-              {savingPassword ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.saveBtnText}>Mettre à jour le mot de passe</Text>
               )}
-            </TouchableOpacity>
-          </View>
+            />
+            <View style={[styles.card, styles.locationRow]}>
+              <View style={styles.locationIcon}>
+                <Ionicons name="location-outline" size={21} color={INK} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.locationTitle} numberOfLines={1}>
+                  {hasLocation ? placeName || 'Position enregistrée' : 'Aucune position'}
+                </Text>
+                <Text style={styles.locationText}>
+                  {hasLocation
+                    ? 'Vous êtes visible pour les clients dans cette zone.'
+                    : 'Ajoutez-la pour apparaître dans les recherches.'}
+                </Text>
+              </View>
+              <PressableScale onPress={handleSetLocation} disabled={settingLocation} style={styles.locationBtn}>
+                {settingLocation ? (
+                  <ActivityIndicator size="small" color={THEME} />
+                ) : (
+                  <Text style={styles.linkText}>{hasLocation ? 'Mettre à jour' : 'Définir'}</Text>
+                )}
+              </PressableScale>
+            </View>
+          </FadeIn>
 
-          {/* ── LOGOUT ── */}
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-            <Text style={styles.logoutText}>Déconnexion</Text>
-          </TouchableOpacity>
+          {/* About */}
+          <FadeIn delay={120}>
+            <SectionHead icon="information-circle-outline" title="À propos" />
+            <PressableScale scaleTo={0.99} style={[styles.card, styles.cardPad]} onPress={openEdit}>
+              <Text style={[styles.bioText, !profile?.bio?.trim() && { color: '#94a3b8' }]}>
+                {profile?.bio?.trim() || 'Présentez-vous en quelques mots pour rassurer vos clients.'}
+              </Text>
+            </PressableScale>
+          </FadeIn>
 
-          {/* ── DELETE ACCOUNT ── */}
-          <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount}>
-            <Ionicons name="trash-outline" size={20} color="#7f1d1d" />
-            <Text style={styles.deleteAccountText}>Supprimer le compte</Text>
-          </TouchableOpacity>
+          {/* Services */}
+          {services.length > 0 && (
+            <FadeIn delay={160}>
+              <SectionHead icon="layers-outline" title="Mes services" />
+              <View style={styles.servicesGrid}>
+                {services.map((s) => {
+                  const meta = categoryMeta(s.category, { name: s.name });
+                  const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
+                  return (
+                    <View key={s.id} style={[styles.serviceTile, { backgroundColor: meta.bg }]}>
+                      <Icon name={meta.icon} size={27} color={meta.color} />
+                      <Text style={[styles.serviceName, { color: meta.color }]} numberOfLines={1} adjustsFontSizeToFit>
+                        {s.name}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </FadeIn>
+          )}
 
-          <View style={{ height: 40 }} />
+          {/* Information */}
+          <FadeIn delay={200}>
+            <SectionHead icon="person-outline" title="Mes informations" />
+            <View style={styles.card}>
+              <InfoRow icon="call-outline" value={profile?.user?.phone || '—'} onPress={openEdit} />
+              <InfoRow icon="mail-outline" value={profile?.user?.email || '—'} />
+              <InfoRow icon="pricetag-outline" label="Tarif horaire" value={rate ? `${rate} TND` : '—'} onPress={openEdit} />
+              <InfoRow icon="calendar-outline" label="Années d'expérience" value={years ? `${years} ans` : '—'} onPress={openEdit} last />
+            </View>
+          </FadeIn>
+
+          {/* Account */}
+          <FadeIn delay={240}>
+            <SectionHead icon="shield-checkmark-outline" title="Sécurité & Compte" />
+            <View style={styles.accountRow}>
+              <AccountTile icon="lock-closed-outline" label={'Changer le\nmot de passe'} onPress={() => setPasswordOpen(true)} />
+              <AccountTile icon="notifications-outline" label={'Mes\nnotifications'} onPress={() => navigation.navigate('Notifications')} />
+            </View>
+            <DangerButtons onLogout={handleLogout} onDelete={handleDeleteAccount} />
+          </FadeIn>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+
+      <BottomSheet visible={isEditing} title="Modifier le profil" onClose={handleCancelEdit}>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Téléphone</Text>
+            <View style={styles.inputWrapper}>
+              <CountryCodePicker country={country} onChange={setCountry} />
+              <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Téléphone" placeholderTextColor="#94a3b8" keyboardType="phone-pad" />
+            </View>
+          </View>
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Expérience (ans)</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput style={styles.input} value={experience} onChangeText={setExperience} placeholder="0" placeholderTextColor="#94a3b8" keyboardType="numeric" />
+              </View>
+            </View>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Tarif horaire (TND)</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput style={styles.input} value={priceMin} onChangeText={setPriceMin} placeholder="0" placeholderTextColor="#94a3b8" keyboardType="numeric" />
+              </View>
+            </View>
+          </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>À propos</Text>
+            <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Décrivez votre expérience..."
+                placeholderTextColor="#94a3b8"
+                multiline
+              />
+            </View>
+          </View>
+          <PressableScale style={[styles.primaryBtn, saving && styles.btnDisabled]} onPress={handleSaveProfile} disabled={saving}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Enregistrer</Text>}
+          </PressableScale>
+      </BottomSheet>
+
+      <BottomSheet visible={passwordOpen} title="Changer le mot de passe" onClose={() => setPasswordOpen(false)}>
+        <PasswordField label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} shown={showCurrentPw} onToggle={() => setShowCurrentPw(!showCurrentPw)} icon="lock-closed-outline" />
+        <PasswordField label="Nouveau mot de passe" value={newPassword} onChangeText={setNewPassword} shown={showNewPw} onToggle={() => setShowNewPw(!showNewPw)} icon="key-outline" />
+        <PasswordField label="Confirmer le mot de passe" value={confirmPassword} onChangeText={setConfirmPassword} shown={showConfirmPw} onToggle={() => setShowConfirmPw(!showConfirmPw)} icon="key-outline" />
+          <PressableScale style={[styles.primaryBtn, savingPassword && styles.btnDisabled]} onPress={handleChangePassword} disabled={savingPassword}>
+            {savingPassword ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Mettre à jour</Text>}
+          </PressableScale>
+      </BottomSheet>
+    </>
   );
 }
-
-// ─── STYLES ───
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f3f4f6' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 24 },
-  loadingText: { fontSize: 14, color: '#6b7280', marginTop: 8 },
-  errorText: { fontSize: 16, color: '#6b7280', textAlign: 'center' },
-  retryBtn: { backgroundColor: THEME, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
-  retryText: { color: '#fff', fontWeight: '700' },
-
-  // Header
-  header: {
-    paddingTop: 52, paddingBottom: 32,
-    paddingHorizontal: 20, alignItems: 'center',
-  },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: 20 },
-  avatarWrapper: { marginBottom: 12 },
-  avatarCircle: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 3, borderColor: '#fff',
-  },
-  avatarInitial: { fontSize: 36, fontWeight: '800', color: '#fff' },
-  certifiedBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#10b981', paddingHorizontal: 14,
-    paddingVertical: 5, borderRadius: 20, marginBottom: 10,
-  },
-  certifiedText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  profileSpecialty: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
-  profileMeta: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
-
-  // Body
-  body: { padding: 16, gap: 16 },
-
-  // Stats row
-  statsRow: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 20,
-    flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-  },
-  statItem: { alignItems: 'center', flex: 1 },
-  statNumber: { fontSize: 22, fontWeight: '800', color: THEME },
-  statLabel: { fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 },
-  statDivider: { width: 1, height: 40, backgroundColor: '#e5e7eb' },
-
-  // Cards
-  card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, gap: 14,
-  },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: THEME },
-  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  bioText: { fontSize: 14, color: '#4b5563', lineHeight: 22 },
-
-  // Location card
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  locationStatusIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  locationStatusIconActive: { backgroundColor: '#d1fae5' },
-  locationStatusText: {
-    flex: 1, fontSize: 13, color: '#6b7280', lineHeight: 18,
-  },
-
-  // Edit / Cancel buttons
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#eff6ff', paddingHorizontal: 12,
-    paddingVertical: 6, borderRadius: 20,
-  },
-  editBtnText: { fontSize: 13, fontWeight: '600', color: THEME },
-  cancelBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fef2f2', paddingHorizontal: 12,
-    paddingVertical: 6, borderRadius: 20,
-  },
-  cancelBtnText: { fontSize: 13, fontWeight: '600', color: '#ef4444' },
-
-  // Fields
-  fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#e5e7eb',
-    borderRadius: 12, paddingHorizontal: 12,
-    paddingVertical: 10, backgroundColor: '#fff',
-  },
-  inputDisabled: { backgroundColor: '#f9fafb', borderColor: '#f3f4f6' },
-  inputIcon: { marginRight: 8 },
-  input: { flex: 1, fontSize: 15, color: '#1f2937' },
-  textAreaWrapper: { alignItems: 'flex-start', paddingVertical: 12 },
-  textArea: { minHeight: 80, textAlignVertical: 'top' },
-  priceRow: { flexDirection: 'row' },
-
-  // Save button
-  saveBtn: {
-    backgroundColor: THEME, borderRadius: 14,
-    paddingVertical: 14, flexDirection: 'row',
-    justifyContent: 'center', alignItems: 'center', gap: 8,
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  // Password button
-  passwordBtn: {
-    backgroundColor: '#1a56db', borderRadius: 14,
-    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
-  },
-
-  // Logout
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 16, backgroundColor: '#fff',
-    borderRadius: 16, borderWidth: 1.5, borderColor: '#fecaca',
-  },
-  logoutText: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
-  deleteAccountBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 16, backgroundColor: '#fff', marginTop: 8,
-    borderRadius: 16, borderWidth: 1.5, borderColor: '#7f1d1d40',
-  },
-  deleteAccountText: { fontSize: 15, fontWeight: '700', color: '#7f1d1d' },
-});

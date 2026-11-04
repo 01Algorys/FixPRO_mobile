@@ -26,7 +26,14 @@ class ApiService {
       
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `HTTP error! status: ${response.status}`);
+        // A stored session the server no longer accepts (expired, or issued by
+        // another server): sign out instead of failing every screen.
+        if (response.status === 401 && token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google') && !endpoint.startsWith('/auth/apple')) {
+          this.onUnauthorized?.();
+        }
+        const failure = new Error(error.message || `HTTP error! status: ${response.status}`);
+        failure.code = error.code;
+        throw failure;
       }
 
       return await response.json();
@@ -61,6 +68,22 @@ class ApiService {
     });
   }
 
+  // "Continuer avec Google": body = { accessToken, role?, phone?, services? }
+  async googleAuth(body) {
+    return this.request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  // "Continuer avec Apple": body = { identityToken, authorizationCode?, fullName?, role?, phone?, services? }
+  async appleAuth(body) {
+    return this.request('/auth/apple', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
   async logout() {
     return this.request('/auth/logout', {
       method: 'POST',
@@ -80,7 +103,19 @@ class ApiService {
 
   // Users endpoints
   async getUserReservations() {
-    return this.request('/users/reservations');
+    return this.request('/users/reservations?limit=100');
+  }
+
+  async getNotifications() {
+    return this.request('/users/notifications?limit=50');
+  }
+
+  // Without ids, marks everything as read
+  async markNotificationsRead(ids) {
+    return this.request('/users/notifications/read', {
+      method: 'PATCH',
+      body: JSON.stringify(ids ? { ids } : {}),
+    });
   }
 
   // Workers endpoints
@@ -154,10 +189,10 @@ class ApiService {
     }
   }
 
-  async getWorkerReservations(workerId = null) {
+  async getWorkerReservations(workerId = null, params = {}) {
     if (workerId) {
-      console.log('Getting worker reservations for worker ID:', workerId);
-      return this.request(`/reservations/worker/${workerId}`);
+      const query = new URLSearchParams(params).toString();
+      return this.request(`/reservations/worker/${workerId}${query ? `?${query}` : ''}`);
     }
     return this.request('/workers/reservations');
   }
@@ -199,6 +234,11 @@ class ApiService {
 
   async getCategories() {
     return this.request('/services/categories');
+  }
+
+  // Active categories managed from the admin dashboard, with technician counts
+  async getPublicCategories() {
+    return this.request('/categories');
   }
 
   // Reservations endpoints
