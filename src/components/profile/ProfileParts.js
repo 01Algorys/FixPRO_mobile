@@ -16,11 +16,18 @@ export const INK = '#0f172a';
 export const MUTED = '#64748b';
 export const SURFACE = '#f4f7fc';
 
-export const ProfileHeader = ({ title, onBell }) => (
+// Shows a back button with `onBack`, and share instead of the bell with `onShare`
+export const ProfileHeader = ({ title, onBell, onBack, onShare }) => (
   <LinearGradient colors={['#1a56db', NAVY]} style={styles.header}>
     <View style={styles.headerGlow} />
     <View style={styles.headerTop}>
-      <View style={styles.headerSide} />
+      <View style={styles.headerSide}>
+        {!!onBack && (
+          <PressableScale scaleTo={0.9} onPress={onBack}>
+            <Ionicons name="arrow-back" size={25} color="#fff" />
+          </PressableScale>
+        )}
+      </View>
       <View style={styles.brand}>
         <Image source={require('../../assets/tool.png')} style={styles.brandLogo} />
         <View>
@@ -29,8 +36,8 @@ export const ProfileHeader = ({ title, onBell }) => (
         </View>
       </View>
       <View style={[styles.headerSide, { alignItems: 'flex-end' }]}>
-        <PressableScale scaleTo={0.9} onPress={onBell}>
-          <Ionicons name="notifications-outline" size={25} color="#fff" />
+        <PressableScale scaleTo={0.9} onPress={onShare || onBell}>
+          <Ionicons name={onShare ? 'share-outline' : 'notifications-outline'} size={25} color="#fff" />
         </PressableScale>
       </View>
     </View>
@@ -162,7 +169,7 @@ export const styles = StyleSheet.create({
   // Header
   header: { paddingTop: 8, paddingBottom: 44, paddingHorizontal: 18, overflow: 'hidden' },
   headerGlow: {
-    position: 'absolute', right: -80, top: 0, width: 260, height: 260,
+    position: 'absolute', right: -80, top: 30, width: 260, height: 260,
     borderRadius: 130, backgroundColor: 'rgba(255,255,255,0.06)',
   },
   headerTop: { flexDirection: 'row', alignItems: 'center' },

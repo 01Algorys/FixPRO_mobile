@@ -33,6 +33,7 @@ import WorkerReservationsPage from '../pages/WorkerReservationsPage';
 import WorkerMessagesPage from '../pages/WorkerMessagesPage';
 import WorkerProfilePage from '../pages/WorkerProfilePage';
 import WorkerReservationDetailsPage from '../pages/WorkerReservationDetailsPage';
+import WorkerStatsPage from '../pages/WorkerStatsPage';
 import LockedScreen from '../components/LockedScreen';
 import ClientTabBar from '../components/ClientTabBar';
 
@@ -140,6 +141,7 @@ const AppNavigator = forwardRef((props, ref) => {
           <>
             <Stack.Screen name="WorkerDashboard" component={WorkerTabs} />
             <Stack.Screen name="Notifications" component={NotificationsPage} />
+            <Stack.Screen name="WorkerStats" component={WorkerStatsPage} />
             <Stack.Screen
               name="WorkerReservationDetails"
               component={WorkerReservationDetailsPage}

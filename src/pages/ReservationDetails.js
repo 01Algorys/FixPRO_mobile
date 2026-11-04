@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,54 +10,63 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Image,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
 import apiService from '../services/api';
+import { useScreenChrome } from '../context/ChromeContext';
 import { getCurrentCoords, reverseGeocodeAddress } from '../utils/location';
 import { professionTitle, titleCase } from '../utils/categoryMeta';
 import LocationPickerModal from '../components/LocationPickerModal';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
+import { SectionHead, BottomSheet } from '../components/profile/ProfileParts';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
 const MUTED = '#64748b';
 const SURFACE = '#f4f7fc';
 
-const DAYS_AHEAD = 14;
-const SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
-const NOW = 'now';
 const MIN_DESCRIPTION = 10;
+const DEFAULT_MESSAGE = "Bonjour, j'ai besoin d'une intervention à mon domicile. Merci de me confirmer votre disponibilité.";
 
 const pad = (n) => String(n).padStart(2, '0');
 const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const nowHHMM = () => {
+const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const startOfToday = () => {
   const d = new Date();
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+// Where the time wheel starts: the next full hour
+const nextHour = () => {
+  const d = new Date();
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  return d;
 };
 
 const ReservationDetails = ({ route, navigation }) => {
+  useScreenChrome('#1a56db', '#ffffff');
   const { workerId, immediate, workerDetails, service } = route.params || {};
-
-  const days = useMemo(() => Array.from({ length: DAYS_AHEAD }, (_, i) => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + i);
-    return d;
-  }), []);
+  const scrollRef = useRef(null);
 
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [day, setDay] = useState(isoDay(days[0]));
-  const [time, setTime] = useState(immediate ? NOW : null);
+  const [date, setDate] = useState(startOfToday);
+  const [time, setTime] = useState(null);
+  const [asap, setAsap] = useState(!!immediate);
+  const [picker, setPicker] = useState(null);
+  const [pickerValue, setPickerValue] = useState(new Date());
   const [urgent, setUrgent] = useState(!!immediate);
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [coords, setCoords] = useState(null);
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(DEFAULT_MESSAGE);
   const [locating, setLocating] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const [triedSubmit, setTriedSubmit] = useState(false);
@@ -104,27 +113,59 @@ const ReservationDetails = ({ route, navigation }) => {
     }
   };
 
-  const handleLocationPicked = ({ address: picked, latitude, longitude }) => {
-    if (picked) setAddress(picked);
+  // The point on the map decides the whole address, so a pin moved to another
+  // town never keeps the old city
+  const handleLocationPicked = async ({ address: picked, latitude, longitude }) => {
     setCoords({ latitude, longitude });
     setMapVisible(false);
+    setLocating(true);
+    const resolved = await reverseGeocodeAddress(latitude, longitude);
+    setAddress(resolved?.address || picked || '');
+    setCity(resolved?.city || '');
+    setPostalCode(resolved?.postalCode || '');
+    setLocating(false);
   };
 
-  const isToday = day === isoDay(days[0]);
-  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  const slotPast = (slot) => {
-    const [h, m] = slot.split(':').map(Number);
-    return isToday && h * 60 + m <= nowMinutes;
+  const applyPicked = (mode, value) => {
+    if (mode === 'date') setDate(value);
+    else setTime(value);
+    setAsap(false);
   };
 
-  // Changing day can make the chosen slot invalid (past slot, or "now" on another day)
-  const selectDay = (value) => {
-    setDay(value);
-    if (time === NOW && value !== isoDay(days[0])) setTime(null);
+  // Android shows its own dialog; iOS shows the wheel in a sheet
+  const openPicker = (mode) => {
+    const value = mode === 'date' ? date : time || nextHour();
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        mode,
+        is24Hour: true,
+        minimumDate: mode === 'date' ? startOfToday() : undefined,
+        onChange: (event, picked) => {
+          if (event.type === 'set' && picked) applyPicked(mode, picked);
+        },
+      });
+      return;
+    }
+    setPickerValue(value);
+    setPicker(mode);
   };
+
+  const chooseNow = () => {
+    setDate(startOfToday());
+    setTime(null);
+    setAsap(true);
+  };
+
+  const scheduled = new Date(date);
+  if (time) scheduled.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  const whenError = asap ? null
+    : !time ? 'Choisissez une heure'
+    : scheduled <= new Date() ? 'Choisissez une date et une heure à venir'
+    : null;
 
   const errors = {
-    time: !time ? 'Choisissez une heure' : null,
+    time: whenError,
     address: !address.trim() ? "Indiquez l'adresse d'intervention" : null,
     city: !city.trim() ? 'Indiquez la ville' : null,
     description: description.trim().length < MIN_DESCRIPTION
@@ -150,8 +191,8 @@ const ReservationDetails = ({ route, navigation }) => {
       await apiService.createReservation({
         workerId: parseInt(workerIdValue, 10),
         service: parseInt(serviceIdValue, 10),
-        date: new Date(day).toISOString(),
-        time: time === NOW ? nowHHMM() : time,
+        date: new Date(isoDay(asap ? new Date() : date)).toISOString(),
+        time: hhmm(asap ? new Date() : time),
         duration: 60,
         location: {
           address: address.trim(),
@@ -202,26 +243,30 @@ const ReservationDetails = ({ route, navigation }) => {
   const profession = professionTitle(firstService?.category, firstService?.name);
   const rating = Number(worker.averageRating || worker.rating || 0);
   const price = worker.hourlyRate || firstService?.basePrice;
-  const dayLabel = (d, i) => (i === 0 ? "Auj." : i === 1 ? 'Dem.' : d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''));
-  const chosenDate = days.find((d) => isoDay(d) === day);
-  const whenText = time
-    ? `${chosenDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${time === NOW ? 'Dès que possible' : time}`
-    : 'Choisissez un créneau';
+  const dateLabel = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const whenText = asap
+    ? "Aujourd'hui · Dès que possible"
+    : time
+      ? `${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${hhmm(time)}`
+      : 'Choisissez une date et une heure';
 
   return (
     // The root view already pads the status bar, so this view starts that far down.
     // useSafeAreaInsets reads 0 inside that padding: only the device's value is right.
     <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={initialWindowMetrics?.insets.top ?? 0}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient colors={['#1a56db', '#0b3fb3']} style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color={INK} />
+          <Ionicons name="arrow-back" size={23} color="#fff" />
         </PressableScale>
-        <Text style={styles.headerTitle}>Nouvelle demande</Text>
-      </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Nouvelle demande</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>Pour {firstName}</Text>
+        </View>
+      </LinearGradient>
 
       <View style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Technician */}
           <FadeIn style={[styles.card, styles.techCard]}>
             {avatar ? (
@@ -253,54 +298,58 @@ const ReservationDetails = ({ route, navigation }) => {
 
           {/* When */}
           <FadeIn delay={50}>
-            <Text style={styles.sectionTitle}>Quand ?</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
-              {days.map((d, i) => {
-                const active = isoDay(d) === day;
-                return (
-                  <PressableScale key={isoDay(d)} style={[styles.dayChip, active && styles.dayChipActive]} onPress={() => selectDay(isoDay(d))}>
-                    <Text style={[styles.dayName, active && styles.chipTextActive]}>{dayLabel(d, i)}</Text>
-                    <Text style={[styles.dayNum, active && styles.chipTextActive]}>{d.getDate()}</Text>
-                  </PressableScale>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.slots}>
-              {isToday && (
-                <PressableScale style={[styles.slot, styles.nowSlot, time === NOW && styles.slotActive]} onPress={() => setTime(NOW)}>
-                  <Ionicons name="flash" size={14} color={time === NOW ? '#fff' : '#ea580c'} />
-                  <Text style={[styles.slotText, { color: '#ea580c' }, time === NOW && styles.chipTextActive]}>Maintenant</Text>
-                </PressableScale>
-              )}
-              {SLOTS.map((slot) => {
-                const past = slotPast(slot);
-                const active = time === slot;
-                return (
-                  <PressableScale
-                    key={slot}
-                    disabled={past}
-                    style={[styles.slot, active && styles.slotActive, past && styles.slotPast]}
-                    onPress={() => setTime(slot)}
-                  >
-                    <Text style={[styles.slotText, active && styles.chipTextActive, past && styles.slotPastText]}>{slot}</Text>
-                  </PressableScale>
-                );
-              })}
+            <SectionHead icon="calendar-outline" title="Quand ?" />
+            <View style={styles.whenRow}>
+              <PressableScale style={[styles.whenField, { flex: 1.5 }, !asap && styles.whenFieldSet]} scaleTo={0.98} onPress={() => openPicker('date')}>
+                <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.whenLabel}>Date</Text>
+                  <Text style={styles.whenValue} numberOfLines={1} adjustsFontSizeToFit>{asap ? "Aujourd'hui" : dateLabel}</Text>
+                </View>
+              </PressableScale>
+              <PressableScale style={[styles.whenField, { flex: 1 }, !!time && !asap && styles.whenFieldSet, showError('time') && styles.inputError]} scaleTo={0.98} onPress={() => openPicker('time')}>
+                <Ionicons name="time-outline" size={20} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.whenLabel}>Heure</Text>
+                  <Text style={[styles.whenValue, !time && !asap && styles.whenEmpty]} numberOfLines={1}>
+                    {asap ? 'Au plus vite' : time ? hhmm(time) : 'Choisir'}
+                  </Text>
+                </View>
+              </PressableScale>
             </View>
+            <PressableScale style={[styles.nowBtn, asap && styles.nowBtnActive]} scaleTo={0.98} onPress={chooseNow}>
+              <Ionicons name="flash" size={16} color={asap ? '#fff' : '#ea580c'} />
+              <Text style={[styles.nowText, asap && styles.chipTextActive]}>Maintenant</Text>
+            </PressableScale>
             {showError('time') && <Text style={styles.fieldError}>{errors.time}</Text>}
           </FadeIn>
 
           {/* Where */}
           <FadeIn delay={100}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Où ?</Text>
-              <PressableScale style={styles.linkBtn} onPress={locate} disabled={locating}>
-                {locating ? <ActivityIndicator size="small" color={PRIMARY} /> : <Ionicons name="locate" size={15} color={PRIMARY} />}
-                <Text style={styles.linkText}>Ma position</Text>
-              </PressableScale>
-            </View>
+            <SectionHead
+              icon="location-outline"
+              title="Où ?"
+              right={(
+                <PressableScale style={styles.linkBtn} onPress={locate} disabled={locating}>
+                  {locating ? <ActivityIndicator size="small" color={PRIMARY} /> : <Ionicons name="locate" size={15} color={PRIMARY} />}
+                  <Text style={styles.linkText}>Ma position</Text>
+                </PressableScale>
+              )}
+            />
             <View style={[styles.card, styles.pad]}>
-              <View style={[styles.inputWrap, showError('address') && styles.inputError]}>
+              <PressableScale style={styles.mapPick} scaleTo={0.98} onPress={() => setMapVisible(true)}>
+                <View style={styles.mapIcon}>
+                  <Ionicons name="map" size={21} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.mapTitle}>{coords ? 'Modifier le point sur la carte' : 'Choisir sur la carte'}</Text>
+                  <Text style={styles.mapSub} numberOfLines={1}>
+                    {locating ? "Recherche de l'adresse…" : [address, city].filter(Boolean).join(', ') || "Placez le repère à l'endroit de l'intervention"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={PRIMARY} />
+              </PressableScale>
+              <View style={[styles.inputWrap, { marginTop: 12 }, showError('address') && styles.inputError]}>
                 <Ionicons name="location-outline" size={18} color="#94a3b8" />
                 <TextInput
                   style={styles.input}
@@ -327,16 +376,12 @@ const ReservationDetails = ({ route, navigation }) => {
                 </View>
               </View>
               {showError('city') && <Text style={styles.fieldError}>{errors.city}</Text>}
-              <PressableScale style={styles.mapBtn} onPress={() => setMapVisible(true)}>
-                <Ionicons name="map-outline" size={16} color={PRIMARY} />
-                <Text style={styles.mapText}>{coords ? 'Ajuster sur la carte' : 'Choisir sur la carte'}</Text>
-              </PressableScale>
             </View>
           </FadeIn>
 
           {/* What */}
           <FadeIn delay={150}>
-            <Text style={styles.sectionTitle}>Quel est le problème ?</Text>
+            <SectionHead icon="create-outline" title="Quel est le problème ?" />
             <View style={[styles.card, styles.pad]}>
               <TextInput
                 style={[styles.textArea, showError('description') && styles.inputError]}
@@ -344,6 +389,8 @@ const ReservationDetails = ({ route, navigation }) => {
                 placeholderTextColor="#94a3b8"
                 value={description}
                 onChangeText={setDescription}
+                onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
+                selectTextOnFocus={description === DEFAULT_MESSAGE}
                 multiline
                 maxLength={1000}
                 textAlignVertical="top"
@@ -385,6 +432,33 @@ const ReservationDetails = ({ route, navigation }) => {
         </View>
       </View>
 
+      <BottomSheet
+        visible={!!picker}
+        title={picker === 'time' ? "Choisir l'heure" : 'Choisir la date'}
+        onClose={() => setPicker(null)}
+      >
+        {!!picker && (
+          <DateTimePicker
+            value={pickerValue}
+            mode={picker}
+            display="spinner"
+            locale="fr-FR"
+            themeVariant="light"
+            minimumDate={picker === 'date' ? startOfToday() : undefined}
+            onChange={(event, picked) => picked && setPickerValue(picked)}
+          />
+        )}
+        <PressableScale
+          style={styles.confirmBtn}
+          onPress={() => {
+            applyPicked(picker, pickerValue);
+            setPicker(null);
+          }}
+        >
+          <Text style={styles.confirmText}>Valider</Text>
+        </PressableScale>
+      </BottomSheet>
+
       <LocationPickerModal
         visible={mapVisible}
         initialCoords={coords}
@@ -407,17 +481,19 @@ const styles = StyleSheet.create({
   retryText: { color: '#fff', fontWeight: '700' },
 
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 10,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eef2f7',
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 16,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: INK },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 21, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 13.5, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
 
   content: { padding: 16, paddingBottom: 24 },
   card: { backgroundColor: '#fff', borderRadius: 20, ...shadow },
   pad: { padding: 14 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: INK, letterSpacing: -0.3, marginTop: 24, marginBottom: 10 },
 
   techCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   techAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#e3edff' },
@@ -432,28 +508,25 @@ const styles = StyleSheet.create({
   priceSmall: { fontSize: 10.5, color: MUTED },
   priceText: { fontSize: 14.5, fontWeight: '800', color: INK },
 
-  dayRow: { gap: 8, paddingRight: 16 },
-  dayChip: {
-    width: 56, paddingVertical: 10, borderRadius: 16, alignItems: 'center', backgroundColor: '#fff',
-    borderWidth: 1, borderColor: '#e2e8f0',
+  whenRow: { flexDirection: 'row', gap: 10 },
+  whenField: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, height: 64, paddingHorizontal: 12,
+    borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0',
   },
-  dayChipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
-  dayName: { fontSize: 12, color: MUTED, fontWeight: '600', textTransform: 'capitalize' },
-  dayNum: { fontSize: 19, color: INK, fontWeight: '800', marginTop: 2 },
+  whenFieldSet: { borderColor: '#bcd0f7' },
+  whenLabel: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  whenValue: { fontSize: 15, color: INK, fontWeight: '700', marginTop: 1 },
+  whenEmpty: { color: '#94a3b8', fontWeight: '600' },
+  nowBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, marginTop: 10,
+    borderRadius: 14, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa',
+  },
+  nowBtnActive: { backgroundColor: '#ea580c', borderColor: '#ea580c' },
+  nowText: { fontSize: 14.5, fontWeight: '700', color: '#ea580c' },
   chipTextActive: { color: '#fff' },
-  slots: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  slot: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, height: 40, borderRadius: 12,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', justifyContent: 'center',
-  },
-  nowSlot: { borderColor: '#fed7aa', backgroundColor: '#fff7ed' },
-  slotActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
-  slotPast: { backgroundColor: '#f1f5f9', borderColor: '#f1f5f9' },
-  slotText: { fontSize: 14, fontWeight: '600', color: INK },
-  slotPastText: { color: '#cbd5e1', textDecorationLine: 'line-through' },
   fieldError: { color: '#dc2626', fontSize: 12.5, marginTop: 6, marginLeft: 4 },
 
-  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 24, marginBottom: 10 },
+  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   linkText: { color: PRIMARY, fontSize: 14, fontWeight: '700' },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10, height: 50, paddingHorizontal: 14,
@@ -462,11 +535,13 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   input: { flex: 1, fontSize: 15, color: INK, paddingVertical: 0 },
   inputError: { borderColor: '#fca5a5', backgroundColor: '#fff7f7' },
-  mapBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, marginTop: 12,
-    borderRadius: 22, backgroundColor: '#eef4ff',
+  mapPick: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12,
+    borderRadius: 16, backgroundColor: '#eef4ff', borderWidth: 1, borderColor: '#d6e4ff',
   },
-  mapText: { color: PRIMARY, fontSize: 14.5, fontWeight: '700' },
+  mapIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+  mapTitle: { fontSize: 15, fontWeight: '700', color: INK },
+  mapSub: { fontSize: 13, color: MUTED, marginTop: 1 },
 
   textArea: {
     minHeight: 110, fontSize: 15, lineHeight: 21, color: INK, padding: 14,

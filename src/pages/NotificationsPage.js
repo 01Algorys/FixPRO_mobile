@@ -36,6 +36,9 @@ const timeAgo = (date) => {
   return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 };
 
+// Older notifications were saved with an emoji in front of the title
+const cleanTitle = (title) => String(title || '').replace(/^[^A-Za-zÀ-ÿ0-9]+/, '');
+
 const NotificationRow = ({ item, onPress }) => {
   const look = STYLES_BY_TYPE[item.type] || DEFAULT_STYLE;
   return (
@@ -44,7 +47,7 @@ const NotificationRow = ({ item, onPress }) => {
         <Ionicons name={look.icon} size={22} color={look.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, !item.isRead && styles.rowTitleUnread]} numberOfLines={1}>{item.title}</Text>
+        <Text style={[styles.rowTitle, !item.isRead && styles.rowTitleUnread]} numberOfLines={1}>{cleanTitle(item.title)}</Text>
         <Text style={styles.rowMessage} numberOfLines={2}>{item.message}</Text>
         <Text style={styles.rowTime}>{timeAgo(item.createdAt)}</Text>
       </View>

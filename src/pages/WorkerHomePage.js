@@ -234,7 +234,7 @@ export default function WorkerHomePage({ navigation }) {
   const shortcuts = [
     { label: 'Disponibilité', icon: 'calendar-clock', color: PRIMARY, bg: '#e8effd', onPress: () => navigation.navigate('Profil') },
     { label: 'Mes services', icon: 'briefcase-variant', color: '#f97316', bg: '#fff1e6', onPress: () => navigation.navigate('Profil') },
-    { label: 'Statistiques', icon: 'chart-bar', color: '#16a34a', bg: '#e7f7ec', onPress: () => navigation.navigate('Demandes') },
+    { label: 'Statistiques', icon: 'chart-bar', color: '#16a34a', bg: '#e7f7ec', onPress: () => navigation.navigate('WorkerStats') },
     { label: 'Paramètres', icon: 'cog', color: '#7c3aed', bg: '#f1eafe', onPress: () => navigation.navigate('Profil') },
   ];
 
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   headerGlow: {
-    position: 'absolute', right: -90, top: 0, width: 280, height: 280,
+    position: 'absolute', right: -90, top: 30, width: 280, height: 280,
     borderRadius: 140, backgroundColor: 'rgba(255,255,255,0.06)',
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
