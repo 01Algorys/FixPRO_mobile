@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  Image,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, RefreshControl, TextInput, StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../styles/theme';
-import * as ImagePicker from 'expo-image-picker';
 import CountryCodePicker from '../components/CountryCodePicker';
+import ProfileImagePicker from '../components/ProfileImagePicker';
+import PressableScale from '../components/ui/PressableScale';
+import FadeIn from '../components/ui/FadeIn';
+import { Stars } from '../components/reservations/ReservationParts';
+import { titleCase } from '../utils/categoryMeta';
 import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
+import {
+  THEME, INK, MUTED, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, DangerButtons, BottomSheet, PasswordField, styles,
+} from '../components/profile/ProfileParts';
+
+const REVIEWS_PREVIEW = 3;
+
+// Reviews only store ids, so the name comes from the booking they belong to
+const workerNameOf = (review, reservations) => {
+  const booking = Array.isArray(reservations) && reservations.find((r) => r.id === review.reservationId);
+  return (booking && booking.workerName) || 'Professionnel';
+};
 
 const ProfilePage = ({ navigation }) => {
   const { user, logout, updateProfile } = useAuth();
@@ -32,6 +34,7 @@ const ProfilePage = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   // Edit profile modal
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -68,23 +71,22 @@ const ProfilePage = ({ navigation }) => {
       }
 
       let reviews = [];
+      let reviewsTotal = 0;
       try {
-        if (typeof apiService.getUserReviews === 'function') {
-          const reviewsResponse = await apiService.getUserReviews();
-          reviews = reviewsResponse.data || reviewsResponse || [];
-        }
+        const reviewsResponse = await apiService.getUserReviews();
+        reviews = reviewsResponse.data?.reviews || [];
+        reviewsTotal = reviewsResponse.data?.pagination?.total ?? reviews.length;
       } catch (reviewError) {
         console.log('No reviews found:', reviewError);
       }
 
       const totalReservations = Array.isArray(reservations) ? reservations.length : 0;
       const completedReservations = Array.isArray(reservations)
-        ? reservations.filter((r) => r.status === 'COMPLETED').length
+        ? reservations.filter((r) => String(r.status).toUpperCase() === 'COMPLETED').length
         : 0;
       const pendingReservations = Array.isArray(reservations)
-        ? reservations.filter((r) => r.status === 'PENDING').length
+        ? reservations.filter((r) => String(r.status).toUpperCase() === 'PENDING').length
         : 0;
-      const totalReviewsGiven = Array.isArray(reviews) ? reviews.length : 0;
 
       // Get avatar URL from user data
       const avatar = userData?.user?.avatar || userData?.avatar || null;
@@ -92,28 +94,23 @@ const ProfilePage = ({ navigation }) => {
 
       const combinedProfileData = {
         ...userData,
-        memberSince: userData.createdAt || new Date(),
+        memberSince: userData.user?.createdAt || userData.createdAt || null,
         totalReservations,
         completedReservations,
         pendingReservations,
-        totalReviewsGiven,
-        bio: userData.bio || 'Membre de la communauté FixPro',
-        preferences: userData.preferences || {},
+        totalReviewsGiven: reviewsTotal,
         location: userData.user?.location || null,
         phone: userData.user?.phone || '',
-        reviews: Array.isArray(reviews)
-          ? reviews.map((review) => ({
-              id: review.id,
-              workerName: review.workerName || 'Professionnel',
-              rating: review.rating || 5,
-              comment: review.comment || review.text || 'Excellent service!',
-              date: review.createdAt || new Date(),
-            }))
-          : [],
+        reviews: reviews.map((review) => ({
+          id: review.id,
+          workerName: workerNameOf(review, reservations),
+          rating: review.rating || 0,
+          comment: review.comment || '',
+          date: review.createdAt,
+        })),
       };
 
       setProfileData(combinedProfileData);
-      console.log("afhoiawjfoiajwfoi",combinedProfileData)
     } catch (error) {
       console.error('Failed to load profile:', error);
       setError('Impossible de charger le profil. Veuillez réessayer.');
@@ -122,13 +119,11 @@ const ProfilePage = ({ navigation }) => {
         setProfileData({
           name: user.name || 'Utilisateur',
           email: user.email || '',
-          memberSince: new Date(),
+          memberSince: null,
           totalReservations: 0,
           completedReservations: 0,
           pendingReservations: 0,
           totalReviewsGiven: 0,
-          bio: 'Membre de la communauté FixPro',
-          preferences: {},
           location: null,
           phone: '',
           reviews: [],
@@ -272,67 +267,6 @@ const ProfilePage = ({ navigation }) => {
     }
   };
 
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    const names = name.split(' ');
-    if (names.length >= 2) {
-      return names[0][0].toUpperCase() + names[1][0].toUpperCase();
-    }
-    return name[0].toUpperCase();
-  };
-
-  const handleAvatarPress = () => {
-    Alert.alert(
-      'Modifier la photo de profil',
-      'Choisissez une option',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Galerie', onPress: () => pickImage('gallery') },
-        { text: 'Caméra', onPress: () => pickImage('camera') },
-      ]
-    );
-  };
-
-  const pickImage = async (source) => {
-    try {
-      let result;
-      
-      if (source === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission refusée', 'L\'accès à la caméra est nécessaire.');
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission refusée', 'L\'accès à la galerie est nécessaire.');
-          return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
-      }
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        await uploadAvatar(asset);
-      }
-    } catch (error) {
-      console.error('Image picker error:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
-    }
-  };
-
   const uploadAvatar = async (asset) => {
     try {
       setUploadingAvatar(true);
@@ -363,970 +297,190 @@ const ProfilePage = ({ navigation }) => {
     }
   };
 
-  const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
-    const stars = [];
-    for (let i = 0; i < 5; i++) {
-      stars.push(
-        <Ionicons
-          key={i}
-          name={i < fullStars ? 'star' : 'star-outline'}
-          size={16}
-          color={Colors.star}
-        />
-      );
-    }
-    return stars;
-  };
-  console.log("profile data", profileData)
-
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={THEME} />
       </View>
     );
   }
 
   if (error && !profileData) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={Colors.error} />
+      <View style={styles.centered}>
+        <Ionicons name="cloud-offline-outline" size={52} color="#cbd5e1" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadProfile}>
-          <Text style={styles.retryButtonText}>Réessayer</Text>
-        </TouchableOpacity>
+        <PressableScale style={styles.retryBtn} onPress={loadProfile}>
+          <Text style={styles.retryText}>Réessayer</Text>
+        </PressableScale>
       </View>
     );
   }
 
+  const name = profileData?.user?.name || profileData?.name || user?.name;
+  const email = profileData?.user?.email || profileData?.email;
+  const phone = profileData?.user?.phone;
+  const city = profileData?.location?.city || profileData?.location?.address;
+  const memberSince = profileData?.memberSince
+    ? new Date(profileData.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    : null;
+  const reviews = profileData?.reviews || [];
+  const shownReviews = showAllReviews ? reviews : reviews.slice(0, REVIEWS_PREVIEW);
+
   return (
     <>
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[Colors.primary]}
-        />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mon profil</Text>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="settings-outline" size={24} color={Colors.textLight} />
-        </TouchableOpacity>
-      </View>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME} />}
+      >
+        <ProfileHeader title="Mon profil" onBell={() => navigation.navigate('Notifications')} />
 
-      {/* Profile Picture Section */}
-      <View style={styles.profileSection}>
-        <TouchableOpacity 
-          style={styles.profilePictureContainer}
-          onPress={handleAvatarPress}
-          disabled={uploadingAvatar}
-        >
-          <View style={styles.profilePicture}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarInitial}>
-                {getInitials(profileData?.user?.name || user?.name || 'U')}
-              </Text>
-            )}
-            {uploadingAvatar && (
-              <View style={styles.avatarLoadingOverlay}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-              </View>
-            )}
-          </View>
-          <View style={styles.cameraIconBadge}>
-            <Ionicons name="camera" size={12} color={Colors.textLight} />
-          </View>
-          <View style={styles.memberBadge}>
-            <Ionicons name="checkmark-circle" size={14} color={Colors.textLight} />
-            <Text style={styles.memberText}>Membre</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Main Content Card */}
-      <View style={styles.mainCard}>
-        <Text style={styles.profileName}>{profileData?.user.name}</Text>
-        <Text style={styles.userEmail}>{profileData?.user.email}</Text>
-
-        {profileData?.phone ? (
-          <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.infoRowText}>{profileData.user.phone}</Text>
-          </View>
-        ) : null}
-
-        {profileData?.location ? (
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.infoRowText}>
-              {profileData.location.city || profileData.location.address || 'Non spécifié'}
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={styles.infoRow}>
-          <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
-          <Text style={styles.infoRowText}>
-            Membre depuis{' '}
-            {new Date(profileData?.memberSince).toLocaleDateString('fr-FR', {
-              month: 'long',
-              year: 'numeric',
-            })}
-          </Text>
-        </View>
-
-        {/* User Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: Colors.primary + '15' }]}>
-              <Ionicons name="calendar" size={18} color={Colors.primary} />
-            </View>
-            <Text style={styles.statNumber}>{profileData?.totalReservations}</Text>
-            <Text style={styles.statLabel}>Réservations</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#22c55e15' }]}>
-              <Ionicons name="checkmark-done-circle" size={18} color="#22c55e" />
-            </View>
-            <Text style={styles.statNumber}>{profileData?.completedReservations}</Text>
-            <Text style={styles.statLabel}>Terminées</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#eab30815' }]}>
-              <Ionicons name="star" size={18} color="#eab308" />
-            </View>
-            <Text style={styles.statNumber}>{profileData?.totalReviewsGiven}</Text>
-            <Text style={styles.statLabel}>Avis donnés</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* About Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>À propos</Text>
-        <View style={styles.card}>
-          <Text style={styles.aboutText}>{profileData?.bio}</Text>
-        </View>
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Accès rapide</Text>
-        <View style={styles.quickActionsGrid}>
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={() => navigation.navigate('ReservationsPage')}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + '15' }]}>
-              <Ionicons name="calendar-outline" size={24} color={Colors.primary} />
-            </View>
-            <Text style={styles.quickActionText}>Réservations</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.quickActionCard}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#22c55e15' }]}>
-              <Ionicons name="heart-outline" size={24} color="#22c55e" />
-            </View>
-            <Text style={styles.quickActionText}>Favoris</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.quickActionCard}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#eab30815' }]}>
-              <Ionicons name="notifications-outline" size={24} color="#eab308" />
-            </View>
-            <Text style={styles.quickActionText}>Notifications</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.quickActionCard}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#1a56db15' }]}>
-              <Ionicons name="help-circle-outline" size={24} color="#1a56db" />
-            </View>
-            <Text style={styles.quickActionText}>Aide</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Reviews Given Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Mes avis</Text>
-          {profileData?.reviews?.length > 0 && (
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {profileData?.reviews?.length > 0 ? (
-          profileData.reviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <View style={styles.reviewerAvatar}>
-                  <Ionicons name="construct" size={20} color={Colors.primary} />
+        <View style={styles.body}>
+          {/* Identity */}
+          <FadeIn style={styles.identity}>
+            <View style={styles.avatarRing}>
+              {uploadingAvatar ? (
+                <View style={styles.avatarLoading}>
+                  <ActivityIndicator size="small" color={THEME} />
                 </View>
-                <View style={styles.reviewerInfo}>
-                  <Text style={styles.reviewerName}>{review.workerName}</Text>
-                  <View style={styles.reviewMeta}>
-                    <View style={styles.reviewStars}>{renderStars(review.rating)}</View>
-                    <Text style={styles.reviewDate}>
-                      {new Date(review.date).toLocaleDateString('fr-FR')}
-                    </Text>
+              ) : (
+                <ProfileImagePicker imageUri={avatarUrl} name={name} onImageSelected={uploadAvatar} />
+              )}
+            </View>
+            <View style={styles.identityInfo}>
+              <View style={styles.identityTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.profileName} numberOfLines={1}>{titleCase(name) || 'Utilisateur'}</Text>
+                  <View style={styles.rolePill}>
+                    <Ionicons name="person" size={13} color={THEME} />
+                    <Text style={styles.roleText}>Client</Text>
                   </View>
                 </View>
+                <PressableScale style={styles.editBtn} onPress={handleOpenEditProfile}>
+                  <Ionicons name="pencil" size={15} color={INK} />
+                  <Text style={styles.editBtnText}>Modifier{'\n'}le profil</Text>
+                </PressableScale>
               </View>
-              <View style={styles.reviewCommentBox}>
-                <Text style={styles.reviewComment}>{review.comment}</Text>
-              </View>
+              {!!memberSince && (
+                <View style={styles.metaRow}>
+                  <Ionicons name="calendar-outline" size={15} color={INK} />
+                  <Text style={styles.metaText} numberOfLines={1}>Membre depuis {memberSince}</Text>
+                </View>
+              )}
             </View>
-          ))
-        ) : (
-          <View style={styles.noReviewsContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="star-outline" size={48} color={Colors.textTertiary} />
+          </FadeIn>
+
+          <StatsRow
+            delay={40}
+            items={[
+              { icon: 'calendar-outline', value: profileData?.totalReservations ?? 0, label: 'Réservations' },
+              { icon: 'checkmark-done-outline', color: '#16a34a', value: profileData?.completedReservations ?? 0, label: 'Terminées' },
+              { icon: 'star-outline', color: '#f59e0b', value: profileData?.totalReviewsGiven ?? 0, label: 'Avis donnés' },
+            ]}
+          />
+
+          {/* Information */}
+          <FadeIn delay={80}>
+            <SectionHead icon="person-outline" title="Mes informations" />
+            <View style={styles.card}>
+              <InfoRow icon="call-outline" value={phone || 'Ajouter un téléphone'} onPress={handleOpenEditProfile} />
+              <InfoRow icon="mail-outline" value={email || '—'} />
+              <InfoRow icon="location-outline" label="Ville" value={city || '—'} onPress={handleOpenEditProfile} last />
             </View>
-            <Text style={styles.noReviewsTitle}>Aucun avis</Text>
-            <Text style={styles.noReviewsText}>
-              Vous n'avez pas encore donné d'avis
-            </Text>
-          </View>
-        )}
-      </View>
+          </FadeIn>
 
-      {/* Account Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Compte</Text>
-
-        <TouchableOpacity style={styles.menuItem} onPress={handleOpenEditProfile}>
-          <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: Colors.primary + '15' }]}>
-              <Ionicons name="person-outline" size={20} color={Colors.primary} />
-            </View>
-            <Text style={styles.menuItemText}>Modifier le profil</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={handleOpenSecurity}>
-          <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: '#1a56db15' }]}>
-              <Ionicons name="lock-closed-outline" size={20} color="#1a56db" />
-            </View>
-            <Text style={styles.menuItemText}>Sécurité</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: '#1a56db15' }]}>
-              <Ionicons name="card-outline" size={20} color="#1a56db" />
-            </View>
-            <Text style={styles.menuItemText}>Paiement</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.logoutItem} onPress={handleLogout}>
-          <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: '#ef444415' }]}>
-              <Ionicons name="log-out-outline" size={20} color={Colors.error} />
-            </View>
-            <Text style={styles.logoutText}>Déconnexion</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={Colors.error} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.deleteAccountItem} onPress={handleDeleteAccount}>
-          <View style={styles.menuItemLeft}>
-            <View style={[styles.menuItemIcon, { backgroundColor: '#7f1d1d20' }]}>
-              <Ionicons name="trash-outline" size={20} color="#7f1d1d" />
-            </View>
-            <Text style={styles.deleteAccountText}>Supprimer le compte</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom spacing */}
-      <View style={{ height: 40 }} />
-    </ScrollView>
-
-    {/* Edit Profile Modal */}
-    <Modal
-      visible={editModalVisible}
-      animationType="slide"
-      transparent
-      onRequestClose={() => setEditModalVisible(false)}
-    >
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Modifier le profil</Text>
-            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-              <Ionicons name="close" size={24} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Nom</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={editName}
-                  onChangeText={setEditName}
-                  placeholder="Votre nom"
-                  placeholderTextColor={Colors.textTertiary}
-                />
-              </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Téléphone</Text>
-              <View style={styles.inputWrapper}>
-                <CountryCodePicker country={editCountry} onChange={setEditCountry} />
-                <TextInput
-                  style={styles.input}
-                  value={editPhone}
-                  onChangeText={setEditPhone}
-                  placeholder="Votre numéro de téléphone"
-                  placeholderTextColor={Colors.textTertiary}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Ville</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="location-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={editCity}
-                  onChangeText={setEditCity}
-                  placeholder="Votre ville"
-                  placeholderTextColor={Colors.textTertiary}
-                />
-              </View>
-            </View>
-          </ScrollView>
-
-          <TouchableOpacity
-            style={[styles.saveButton, savingProfile && styles.saveButtonDisabled]}
-            onPress={handleSaveProfile}
-            disabled={savingProfile}
-          >
-            {savingProfile ? (
-              <ActivityIndicator size="small" color={Colors.textLight} />
+          {/* Reviews */}
+          <FadeIn delay={120}>
+            <SectionHead
+              icon="star-outline"
+              title="Mes avis"
+              right={reviews.length > REVIEWS_PREVIEW && (
+                <PressableScale onPress={() => setShowAllReviews(!showAllReviews)}>
+                  <Text style={styles.linkText}>{showAllReviews ? 'Voir moins' : 'Voir tout'}</Text>
+                </PressableScale>
+              )}
+            />
+            {shownReviews.length > 0 ? (
+              shownReviews.map((review) => (
+                <View key={review.id} style={[styles.card, styles.cardPad, local.review]}>
+                  <View style={local.reviewTop}>
+                    <Text style={local.reviewName} numberOfLines={1}>{titleCase(review.workerName)}</Text>
+                    <Text style={local.reviewDate}>{new Date(review.date).toLocaleDateString('fr-FR')}</Text>
+                  </View>
+                  <Stars rating={review.rating} />
+                  {!!review.comment && <Text style={local.reviewComment}>{review.comment}</Text>}
+                </View>
+              ))
             ) : (
-              <Text style={styles.saveButtonText}>Enregistrer</Text>
+              <View style={[styles.card, styles.cardPad]}>
+                <Text style={[styles.bioText, { color: '#94a3b8' }]}>
+                  Vous n'avez pas encore donné d'avis. Notez vos professionnels après chaque intervention.
+                </Text>
+              </View>
             )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+          </FadeIn>
 
-    {/* Security / Change Password Modal */}
-    <Modal
-      visible={securityModalVisible}
-      animationType="slide"
-      transparent
-      onRequestClose={() => setSecurityModalVisible(false)}
-    >
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Sécurité</Text>
-            <TouchableOpacity onPress={() => setSecurityModalVisible(false)}>
-              <Ionicons name="close" size={24} color={Colors.textSecondary} />
-            </TouchableOpacity>
+          {/* Account */}
+          <FadeIn delay={160}>
+            <SectionHead icon="shield-checkmark-outline" title="Sécurité & Compte" />
+            <View style={styles.accountRow}>
+              <AccountTile icon="calendar-outline" label={'Mes\nréservations'} onPress={() => navigation.navigate('Reservations')} />
+              <AccountTile icon="lock-closed-outline" label={'Changer le\nmot de passe'} onPress={handleOpenSecurity} />
+              <AccountTile icon="notifications-outline" label={'Mes\nnotifications'} onPress={() => navigation.navigate('Notifications')} />
+            </View>
+            <DangerButtons onLogout={handleLogout} onDelete={handleDeleteAccount} />
+          </FadeIn>
+        </View>
+      </ScrollView>
+
+      <BottomSheet visible={editModalVisible} title="Modifier le profil" onClose={() => setEditModalVisible(false)}>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Nom</Text>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="person-outline" size={18} color="#94a3b8" />
+            <TextInput style={styles.input} value={editName} onChangeText={setEditName} placeholder="Votre nom" placeholderTextColor="#94a3b8" />
           </View>
-
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Mot de passe actuel</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="Mot de passe actuel"
-                  placeholderTextColor={Colors.textTertiary}
-                  secureTextEntry={!showCurrentPw}
-                />
-                <TouchableOpacity onPress={() => setShowCurrentPw(!showCurrentPw)}>
-                  <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textTertiary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Nouveau mot de passe</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-open-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="Nouveau mot de passe"
-                  placeholderTextColor={Colors.textTertiary}
-                  secureTextEntry={!showNewPw}
-                />
-                <TouchableOpacity onPress={() => setShowNewPw(!showNewPw)}>
-                  <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textTertiary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Confirmer le mot de passe</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-open-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirmer le mot de passe"
-                  placeholderTextColor={Colors.textTertiary}
-                  secureTextEntry={!showConfirmPw}
-                />
-                <TouchableOpacity onPress={() => setShowConfirmPw(!showConfirmPw)}>
-                  <Ionicons name={showConfirmPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textTertiary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </ScrollView>
-
-          <TouchableOpacity
-            style={[styles.saveButton, savingPassword && styles.saveButtonDisabled]}
-            onPress={handleChangePassword}
-            disabled={savingPassword}
-          >
-            {savingPassword ? (
-              <ActivityIndicator size="small" color={Colors.textLight} />
-            ) : (
-              <Text style={styles.saveButtonText}>Mettre à jour le mot de passe</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Téléphone</Text>
+          <View style={styles.inputWrapper}>
+            <CountryCodePicker country={editCountry} onChange={setEditCountry} />
+            <TextInput style={styles.input} value={editPhone} onChangeText={setEditPhone} placeholder="Votre numéro de téléphone" placeholderTextColor="#94a3b8" keyboardType="phone-pad" />
+          </View>
+        </View>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Ville</Text>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="location-outline" size={18} color="#94a3b8" />
+            <TextInput style={styles.input} value={editCity} onChangeText={setEditCity} placeholder="Votre ville" placeholderTextColor="#94a3b8" />
+          </View>
+        </View>
+        <PressableScale style={[styles.primaryBtn, savingProfile && styles.btnDisabled]} onPress={handleSaveProfile} disabled={savingProfile}>
+          {savingProfile ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Enregistrer</Text>}
+        </PressableScale>
+      </BottomSheet>
+
+      <BottomSheet visible={securityModalVisible} title="Changer le mot de passe" onClose={() => setSecurityModalVisible(false)}>
+        <PasswordField label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} shown={showCurrentPw} onToggle={() => setShowCurrentPw(!showCurrentPw)} icon="lock-closed-outline" />
+        <PasswordField label="Nouveau mot de passe" value={newPassword} onChangeText={setNewPassword} shown={showNewPw} onToggle={() => setShowNewPw(!showNewPw)} icon="key-outline" />
+        <PasswordField label="Confirmer le mot de passe" value={confirmPassword} onChangeText={setConfirmPassword} shown={showConfirmPw} onToggle={() => setShowConfirmPw(!showConfirmPw)} icon="key-outline" />
+        <PressableScale style={[styles.primaryBtn, savingPassword && styles.btnDisabled]} onPress={handleChangePassword} disabled={savingPassword}>
+          {savingPassword ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Mettre à jour</Text>}
+        </PressableScale>
+      </BottomSheet>
     </>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: Colors.text,
-    textAlign: 'center',
-    marginVertical: 16,
-  },
-  retryButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  retryButtonText: {
-    color: Colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // Header
-  header: {
-    backgroundColor: Colors.headerBackground,
-    paddingTop: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.textLight,
-  },
-  settingsButton: {
-    padding: 4,
-  },
-
-  // Profile Section
-  profileSection: {
-    backgroundColor: Colors.headerBackground,
-    alignItems: 'center',
-    paddingBottom: 40,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-  },
-  profilePictureContainer: {
-    position: 'relative',
-    alignItems: 'center',
-  },
-  profilePicture: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: Colors.primary + '30',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-  },
-  avatarInitial: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  avatarLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraIconBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.card,
-  },
-  memberBadge: {
-    position: 'absolute',
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.success,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  memberText: {
-    color: Colors.textLight,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  // Main Card
-  mainCard: {
-    backgroundColor: Colors.card,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
-    marginTop: -20,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  profileName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    gap: 6,
-  },
-  infoRowText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-
-  // Stats
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-  },
-
-  // Sections
-  section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  seeAllText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-
-  // Card
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  aboutText: {
-    fontSize: 15,
-    color: Colors.text,
-    lineHeight: 22,
-  },
-
-  // Quick Actions
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  quickActionCard: {
-    width: '47%',
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  quickActionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-
-  // Reviews
-  reviewCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  reviewerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  reviewerInfo: {
-    flex: 1,
-  },
-  reviewerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  reviewMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  reviewStars: {
-    flexDirection: 'row',
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-  },
-  reviewCommentBox: {
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-  },
-  reviewComment: {
-    fontSize: 14,
-    color: Colors.text,
-    lineHeight: 20,
-  },
-
-  // Empty state
-  noReviewsContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  noReviewsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  noReviewsText: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-  },
-
-  // Menu Items
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.card,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  menuItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuItemText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: Colors.text,
-  },
-  logoutItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.card,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#ef444420',
-  },
-  logoutText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.error,
-  },
-  deleteAccountItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.card,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#7f1d1d20',
-  },
-  deleteAccountText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#7f1d1d',
-  },
-
-  // Modals (Edit Profile / Security)
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: 6,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: Colors.input,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-  },
-  saveButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: Colors.textLight,
-    fontSize: 15,
-    fontWeight: '700',
-  },
+const local = StyleSheet.create({
+  review: { marginBottom: 8, gap: 4 },
+  reviewTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  reviewName: { flex: 1, fontSize: 15, fontWeight: '700', color: INK },
+  reviewDate: { fontSize: 12.5, color: MUTED },
+  reviewComment: { fontSize: 14, lineHeight: 20, color: '#334155', marginTop: 2 },
 });
 
 export default ProfilePage;

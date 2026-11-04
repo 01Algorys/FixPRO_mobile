@@ -292,8 +292,6 @@ const UserHomePage = ({ navigation }) => {
         {/* Header */}
         <LinearGradient
           colors={['#1a56db', NAVY]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.6, y: 1 }}
           style={styles.header}
         >
           <View style={styles.headerGlow} />

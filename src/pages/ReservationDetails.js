@@ -9,11 +9,10 @@ import {
   Alert,
   StatusBar,
   KeyboardAvoidingView,
-  Platform,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import apiService from '../services/api';
 import { getCurrentCoords, reverseGeocodeAddress } from '../utils/location';
 import { professionTitle, titleCase } from '../utils/categoryMeta';
@@ -40,7 +39,6 @@ const nowHHMM = () => {
 
 const ReservationDetails = ({ route, navigation }) => {
   const { workerId, immediate, workerDetails, service } = route.params || {};
-  const insets = useSafeAreaInsets();
 
   const days = useMemo(() => Array.from({ length: DAYS_AHEAD }, (_, i) => {
     const d = new Date();
@@ -211,7 +209,9 @@ const ReservationDetails = ({ route, navigation }) => {
     : 'Choisissez un créneau';
 
   return (
-    <View style={styles.container}>
+    // The root view already pads the status bar, so this view starts that far down.
+    // useSafeAreaInsets reads 0 inside that padding: only the device's value is right.
+    <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={initialWindowMetrics?.insets.top ?? 0}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
@@ -220,11 +220,7 @@ const ReservationDetails = ({ route, navigation }) => {
         <Text style={styles.headerTitle}>Nouvelle demande</Text>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 60}
-      >
+      <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Technician */}
           <FadeIn style={[styles.card, styles.techCard]}>
@@ -387,7 +383,7 @@ const ReservationDetails = ({ route, navigation }) => {
             )}
           </PressableScale>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <LocationPickerModal
         visible={mapVisible}
@@ -395,7 +391,7 @@ const ReservationDetails = ({ route, navigation }) => {
         onConfirm={handleLocationPicked}
         onClose={() => setMapVisible(false)}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

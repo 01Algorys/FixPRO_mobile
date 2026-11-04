@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, Image, ActivityIndicator,
-  KeyboardAvoidingView, Platform, StatusBar,
+  KeyboardAvoidingView, StatusBar,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import PressableScale from '../ui/PressableScale';
 import OnlineBadge from '../OnlineBadge';
 import OnlineStatusText from '../OnlineStatusText';
@@ -65,7 +65,8 @@ const ChatView = ({
   const scrollRef = useRef(null);
   // The app's root view already pads the status bar, so this view starts that
   // far down the screen; KeyboardAvoidingView needs the offset to lift enough.
-  const insets = useSafeAreaInsets();
+  // useSafeAreaInsets reads 0 inside that padding: only the device's value is right.
+  const topInset = initialWindowMetrics?.insets.top ?? 0;
   const closed = String(status || '').toUpperCase() === 'COMPLETED';
 
   useEffect(() => {
@@ -103,7 +104,7 @@ const ChatView = ({
   const hasRealMessages = messages.some((m) => !(m.type === 'system' || m.isSystem));
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top}>
+    <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={topInset}>
       <StatusBar barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
@@ -139,6 +140,7 @@ const ChatView = ({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+        onLayout={() => scrollRef.current?.scrollToEnd({ animated: false })}
       >
         {rows.map((row) => {
           if (row.type === 'day') {

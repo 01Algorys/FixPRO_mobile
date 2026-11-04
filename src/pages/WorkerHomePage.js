@@ -247,7 +247,7 @@ export default function WorkerHomePage({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
       >
         {/* Header */}
-        <LinearGradient colors={['#1a56db', NAVY]} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={styles.header}>
+        <LinearGradient colors={['#1a56db', NAVY]} style={styles.header}>
           <View style={styles.headerGlow} />
           <View style={styles.brandRow}>
             <Image source={require('../assets/tool.png')} style={styles.brandLogo} />
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   headerGlow: {
-    position: 'absolute', right: -90, top: -60, width: 280, height: 280,
+    position: 'absolute', right: -90, top: 0, width: 280, height: 280,
     borderRadius: 140, backgroundColor: 'rgba(255,255,255,0.06)',
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
