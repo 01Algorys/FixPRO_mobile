@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: Colors.headerBackground,
-    paddingTop: 56,
+    paddingTop: 12,
     paddingHorizontal: 20,
     paddingBottom: 18,
     flexDirection: 'row',

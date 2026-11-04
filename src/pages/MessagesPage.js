@@ -771,6 +771,7 @@ const MessagesPage = ({ route, navigation }) => {
         onSend={onSend}
         sending={sending}
         onBack={handleBack}
+        onOpenReservation={() => navigation.navigate('OrderTracking', { reservationId: activeConversation.id })}
         quickReplies={QUICK_REPLIES}
       />
     );

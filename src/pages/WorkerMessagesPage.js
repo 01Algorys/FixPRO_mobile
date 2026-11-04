@@ -389,6 +389,7 @@ const WorkerMessagesPage = ({ route, navigation }) => {
         onSend={onSend}
         sending={sending}
         onBack={handleBack}
+        onOpenReservation={() => navigation.navigate('WorkerReservationDetails', { reservation: activeConversation })}
         quickReplies={QUICK_REPLIES}
       />
     );

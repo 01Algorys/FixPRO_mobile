@@ -29,7 +29,7 @@ const WorkerReservationsPage = ({ navigation }) => {
       console.log('Worker ID:', workerId);
       
       if (workerId) {
-        const response = await apiService.getWorkerReservations(workerId);
+        const response = await apiService.getWorkerReservations(workerId, { limit: 100 });
         console.log(response);
         const list = response.data?.reservations || response.reservations || response.data || response || [];
         setReservations(Array.isArray(list) ? list : []);
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   // Header - matches other screens
   header: {
     backgroundColor: Colors.headerBackground,
-    paddingTop: 60,
+    paddingTop: 12,
     paddingHorizontal: 20,
     paddingBottom: 20,
   },

@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: Colors.headerBackground,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingHorizontal: 20,
     paddingBottom: 20,
     flexDirection: 'row',

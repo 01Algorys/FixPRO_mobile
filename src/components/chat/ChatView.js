@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, Image, ActivityIndicator,
   KeyboardAvoidingView, Platform, StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,6 +59,7 @@ const ChatView = ({
   onSend,
   sending,
   onBack,
+  onOpenReservation,
   quickReplies = [],
 }) => {
   const scrollRef = useRef(null);
@@ -122,12 +124,12 @@ const ChatView = ({
           </View>
         )}
       </View>
-      {!!subtitle && (
-        <View style={styles.contextBar}>
-          <Ionicons name="construct-outline" size={14} color={PRIMARY} />
-          <Text style={styles.contextText} numberOfLines={1}>{subtitle}</Text>
-        </View>
-      )}
+      <TouchableOpacity style={styles.contextBar} onPress={onOpenReservation} activeOpacity={0.7}>
+        <Ionicons name="construct-outline" size={14} color={PRIMARY} />
+        <Text style={styles.contextText} numberOfLines={1}>{subtitle || 'Réservation'}</Text>
+        <Text style={styles.contextLink}>Voir la réservation</Text>
+        <Ionicons name="chevron-forward" size={15} color={PRIMARY} />
+      </TouchableOpacity>
 
       {/* Messages */}
       <ScrollView
@@ -252,6 +254,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
   },
   contextText: { flex: 1, fontSize: 13, color: '#1e3a8a', fontWeight: '600' },
+  contextLink: { fontSize: 13, fontWeight: '700', color: PRIMARY },
 
   avatar: { backgroundColor: '#e3edff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarText: { color: PRIMARY, fontWeight: '700' },
