@@ -302,16 +302,6 @@ const OrderTracking = ({ route, navigation }) => {
             </View>
           </View>
 
-          {reservation.workerPhone && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Contact</Text>
-              <View style={styles.detailRow}>
-                <Ionicons name="call-outline" size={16} color={Colors.textSecondary} />
-                <Text style={styles.detailText}>{reservation.workerPhone}</Text>
-              </View>
-            </View>
-          )}
-
           {reservation.status?.toUpperCase() === 'PENDING' && (
             <TouchableOpacity
               style={styles.cancelButton}

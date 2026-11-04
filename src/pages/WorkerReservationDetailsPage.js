@@ -120,7 +120,6 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
       { text: action, style: destructive ? 'destructive' : 'default', onPress: () => updateStatus(next) },
     ]);
 
-  const call = () => client.phone && Linking.openURL(`tel:${client.phone}`);
   const message = () =>
     navigation.navigate('WorkerDashboard', { screen: 'Messages', params: { conversationId: reservation.id } });
   // Directions in the Google Maps app, or in the browser without it
@@ -191,16 +190,11 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
             <View style={{ flex: 1 }}>
               <Text style={styles.clientName}>{clientName}</Text>
               <Text style={styles.clientSub}>
-                {canContact && client.phone ? client.phone : 'Coordonnées visibles après acceptation'}
+                {canContact ? 'Contactez le client par message' : 'Messagerie disponible après acceptation'}
               </Text>
             </View>
             {canContact && (
               <View style={styles.contactBtns}>
-                {!!client.phone && (
-                  <PressableScale style={styles.roundBtn} scaleTo={0.9} onPress={call}>
-                    <Ionicons name="call" size={19} color={PRIMARY} />
-                  </PressableScale>
-                )}
                 <PressableScale style={styles.roundBtn} scaleTo={0.9} onPress={message}>
                   <Ionicons name="chatbubble-ellipses" size={19} color={PRIMARY} />
                 </PressableScale>
