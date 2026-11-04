@@ -17,9 +17,9 @@ const TABS = {
   Profil: { label: 'Profil', icon: 'person', iconOff: 'person-outline' },
 };
 
-// Client bottom bar: four labelled tabs with a raised "Demande" button in the
-// middle. `badges` maps a route name to its unread count; `locked` routes show
-// a padlock (guest mode).
+// Bottom bar: four labelled tabs, with a raised "Demande" button in the middle
+// when `onNewRequest` is set. `badges` maps a route name to its unread count;
+// `locked` routes show a padlock (guest mode).
 // The root view already pads the home-indicator area, so the bar adds none.
 const ClientTabBar = ({ state, descriptors, navigation, onNewRequest, fabLabel = 'Demande', badges = {}, locked = [] }) => {
   // A screen can hide the bar (e.g. a full-screen chat) with tabBarStyle: { display: 'none' }
@@ -64,12 +64,14 @@ const ClientTabBar = ({ state, descriptors, navigation, onNewRequest, fabLabel =
   return (
     <View style={styles.bar}>
       {state.routes.slice(0, half).map((route, i) => renderTab(route, i))}
-      <View style={styles.tab}>
-        <PressableScale style={styles.fab} scaleTo={0.92} onPress={onNewRequest}>
-          <Ionicons name="add" size={36} color="#fff" />
-        </PressableScale>
-        <Text style={[styles.label, styles.fabLabel]} numberOfLines={1} adjustsFontSizeToFit>{fabLabel}</Text>
-      </View>
+      {!!onNewRequest && (
+        <View style={styles.tab}>
+          <PressableScale style={styles.fab} scaleTo={0.92} onPress={onNewRequest}>
+            <Ionicons name="add" size={36} color="#fff" />
+          </PressableScale>
+          <Text style={[styles.label, styles.fabLabel]} numberOfLines={1} adjustsFontSizeToFit>{fabLabel}</Text>
+        </View>
+      )}
       {state.routes.slice(half).map((route, i) => renderTab(route, i + half))}
     </View>
   );

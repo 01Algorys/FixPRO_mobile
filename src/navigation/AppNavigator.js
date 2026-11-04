@@ -90,9 +90,7 @@ const WorkerTabs = () => {
       tabBar={(props) => (
         <ClientTabBar
           {...props}
-          fabLabel="Nouvelle demande"
           badges={{ Messages: unreadMessages, Demandes: reservationUnread }}
-          onNewRequest={() => props.navigation.navigate('Demandes')}
         />
       )}
     >

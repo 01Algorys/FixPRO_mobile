@@ -8,20 +8,21 @@ const HANDYMAN = { label: 'Bricolage', icon: 'tools', lib: 'mci', color: '#f9731
 const ELECTRICAL = { label: 'Électricité', icon: 'lightning-bolt', lib: 'mci', color: '#f5b400', bg: '#fff6dc', gradient: ['#ffd84d', '#f59e0b'], profession: 'Électricien' };
 const HVAC = { label: 'Climatisation', icon: 'snowflake', lib: 'mci', color: '#0ea5e9', bg: '#e6f4fd', gradient: ['#67d8ff', '#0b8fd8'], profession: 'Frigoriste' };
 const PAINTING = { label: 'Peinture', icon: 'format-paint', lib: 'mci', color: '#ec4868', bg: '#fdebef', gradient: ['#ff7aa2', '#e0315f'], profession: 'Peintre' };
-const CLEANING = { label: 'Nettoyage', icon: 'spray-bottle', lib: 'mci', color: '#10b981', bg: '#e3f8f0', gradient: ['#4fe3b4', '#0e9f74'], profession: 'Agent de nettoyage' };
+const CLEANING = { label: 'Nettoyage', icon: 'broom', lib: 'mci', color: '#10b981', bg: '#e3f8f0', gradient: ['#4fe3b4', '#0e9f74'], profession: 'Agent de nettoyage' };
 const TRANSPORT = { label: 'Transporteur', icon: 'truck-fast', lib: 'mci', color: '#6d4aff', bg: '#efeaff', gradient: ['#a08bff', '#5b3df0'], profession: 'Transporteur' };
 const GARDENING = { label: 'Jardinage', icon: 'sprout', lib: 'mci', color: '#16a34a', bg: '#e5f6ea', gradient: ['#7ee06a', '#23a043'], profession: 'Jardinier' };
 
 // Keys are generated from the category name when it is created in the dashboard
 // and never change, so a category keeps its original key after a rename
-// (e.g. "Serrurerie" renamed "Transporteur" is still LOCKSMITH).
+// (e.g. "Serrurerie" renamed "Transporteur" is still LOCKSMITH, and the cleaning
+// category is still ELECTRICITE).
 const META = {
   PLUMBING, PLOMBERIE: PLUMBING,
   HANDYMAN, BRICOLAGE: HANDYMAN,
-  ELECTRICAL, ELECTRICITE: ELECTRICAL,
+  ELECTRICAL,
   HVAC, CLIMATISATION: HVAC,
   PAINTING, PEINTURE: PAINTING,
-  CLEANING, NETTOYAGE: CLEANING,
+  CLEANING, NETTOYAGE: CLEANING, ELECTRICITE: CLEANING,
   TRANSPORT, TRANSPORTEUR: TRANSPORT, LOCKSMITH: TRANSPORT,
   GARDENING, JARDINAGE: GARDENING, JARDINIER: GARDENING,
   APPLIANCE: { label: 'Électroménager', icon: 'washing-machine', lib: 'mci', color: '#2563eb', bg: '#e8effd', profession: 'Réparateur électroménager' },

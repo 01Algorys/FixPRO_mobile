@@ -1,54 +1,77 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  RefreshControl,
-  TextInput,
-  Image,
+  View, Text, FlatList, ScrollView, TextInput, RefreshControl, StatusBar, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import apiService from '../services/api';
-import { Colors } from '../styles/theme';
 import { getCurrentCoords } from '../utils/location';
+import { categoryMeta } from '../utils/categoryMeta';
+import { useScreenChrome } from '../context/ChromeContext';
+import PressableScale from '../components/ui/PressableScale';
+import {
+  BLUE, NAVY, PRIMARY, MUTED, PAGE, SORTS, SORTERS, nameOf, prosLabel,
+  CategoryIcon, Chip, WorkerCard, SkeletonCard, EmptyState, styles,
+} from '../components/workers/WorkerCard';
 
+// "Électricité" and "electricite" match each other
+const normalize = (text) => String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+const hasCategory = (worker, key) => (worker.services || []).some((s) => s.category === key);
+
+// Every technician, with search by name or trade, category filter and sorting.
+// The whole list is loaded once, so these all run on the phone, instantly.
 const ProfessionalsPage = ({ navigation }) => {
+  useScreenChrome(BLUE, PAGE);
   const [workers, setWorkers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState(null);
+  const [sortBy, setSortBy] = useState('rating');
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [coords, setCoords] = useState(null);
-  const [sortByDistance, setSortByDistance] = useState(false);
+  const latestRequest = useRef(0);
 
-  useEffect(() => {
-    getCurrentCoords().then(setCoords);
-  }, []);
-
-  const loadWorkers = useCallback(async () => {
+  // Location can arrive after the first results: they refresh in place, and an
+  // older response never overwrites a newer one
+  const loadWorkers = async () => {
+    const request = ++latestRequest.current;
     try {
-      setLoading(true);
       const params = { limit: 100, minRating: 0 };
       if (coords) {
         params.lat = coords.latitude;
         params.lng = coords.longitude;
       }
-      const response = await apiService.getWorkers(params);
-      const rawWorkers = response.data?.workers || response.workers || response.data || response || [];
-      setWorkers(Array.isArray(rawWorkers) ? rawWorkers : []);
+      const [workersData, categoriesData] = await Promise.all([
+        apiService.getWorkers(params),
+        apiService.getPublicCategories().catch(() => null),
+      ]);
+      if (request !== latestRequest.current) return;
+      const list = workersData.data?.workers || workersData.workers || [];
+      setWorkers(Array.isArray(list) ? list : []);
+      const categoryList = categoriesData?.data || categoriesData;
+      if (Array.isArray(categoryList)) setCategories(categoryList);
+      setFailed(false);
     } catch (error) {
       console.error('Failed to load professionals:', error);
-      setWorkers([]);
+      if (request === latestRequest.current) setFailed(true);
     } finally {
-      setLoading(false);
+      if (request === latestRequest.current) setLoading(false);
     }
-  }, [coords]);
+  };
 
   useEffect(() => {
-    loadWorkers();
-  }, [loadWorkers]);
+    getCurrentCoords().then((position) => {
+      if (!position) return;
+      setCoords(position);
+      setSortBy('distance');
+    });
+  }, []);
+
+  useEffect(() => { loadWorkers(); }, [coords]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -56,276 +79,148 @@ const ProfessionalsPage = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const filteredWorkers = workers
-    .filter((worker) => {
-      const name = worker.user?.name || worker.name || '';
-      const profession = worker.services?.[0]?.name || worker.profession || '';
-      const term = searchTerm.toLowerCase();
-      return name.toLowerCase().includes(term) || profession.toLowerCase().includes(term);
-    })
-    .sort((a, b) => {
-      if (!sortByDistance) return 0;
-      const aDist = typeof a.distanceKm === 'number' ? a.distanceKm : Infinity;
-      const bDist = typeof b.distanceKm === 'number' ? b.distanceKm : Infinity;
-      return aDist - bDist;
-    });
+  const categoryNames = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.key, c.name])),
+    [categories]
+  );
 
-  const goToWorkerProfile = (worker) => {
-    navigation.navigate('WorkerProfile', { workerId: worker.id || worker.userId || worker._id });
+  // Only categories someone can actually be found in
+  const categoryChips = useMemo(
+    () => categories.filter((c) => workers.some((w) => hasCategory(w, c.key))),
+    [categories, workers]
+  );
+
+  const visible = useMemo(() => {
+    const query = normalize(search.trim());
+    const matchesSearch = (w) => {
+      const trades = (w.services || []).flatMap((s) => [s.name, categoryNames[s.category]]);
+      return [nameOf(w), ...trades].some((text) => normalize(text).includes(query));
+    };
+    return workers
+      .filter((w) => !category || hasCategory(w, category))
+      .filter((w) => !onlyAvailable || w.isActive)
+      .filter((w) => !query || matchesSearch(w))
+      .sort(SORTERS[sortBy]);
+  }, [workers, search, category, sortBy, onlyAvailable, categoryNames]);
+
+  const resetFilters = () => {
+    setSearch('');
+    setCategory(null);
+    setOnlyAvailable(false);
   };
 
-  if (loading) {
+  const renderEmpty = () => {
+    if (loading) return <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>;
+    if (failed) {
+      return (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Connexion impossible"
+          text="Vérifiez votre connexion et réessayez."
+          action="Réessayer"
+          onAction={() => { setLoading(true); loadWorkers(); }}
+        />
+      );
+    }
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <EmptyState
+        icon="search-outline"
+        title="Aucun résultat"
+        text="Essayez un autre nom ou retirez vos filtres."
+        action="Réinitialiser"
+        onAction={resetFilters}
+      />
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tous les professionnels</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={16} color={Colors.textSecondary} />
+      <StatusBar barStyle="light-content" />
+      <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
+        <View style={styles.headerRow}>
+          <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={23} color="#fff" />
+          </PressableScale>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title} numberOfLines={1}>Tous les professionnels</Text>
+            <Text style={styles.subtitle}>{loading ? 'Recherche…' : prosLabel(visible.length)}</Text>
+          </View>
+        </View>
+        <View style={styles.search}>
+          <Ionicons name="search" size={19} color={MUTED} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un professionnel..."
-            placeholderTextColor={Colors.textSecondary}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
+            placeholder="Nom ou métier"
+            placeholderTextColor={MUTED}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            autoCorrect={false}
           />
-        </View>
-
-        <View style={styles.resultRow}>
-          <Text style={styles.resultCount}>
-            {filteredWorkers.length} professionnel{filteredWorkers.length > 1 ? 's' : ''} trouvé
-            {filteredWorkers.length > 1 ? 's' : ''}
-          </Text>
-          {coords && (
-            <TouchableOpacity
-              style={[styles.nearestChip, sortByDistance && styles.nearestChipActive]}
-              onPress={() => setSortByDistance(!sortByDistance)}
-            >
-              <Ionicons
-                name="locate"
-                size={13}
-                color={sortByDistance ? Colors.textLight : Colors.primary}
-              />
-              <Text style={[styles.nearestChipText, sortByDistance && styles.nearestChipTextActive]}>
-                Plus proches
-              </Text>
+          {!!search && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close-circle" size={19} color="#94a3b8" />
             </TouchableOpacity>
           )}
         </View>
+      </LinearGradient>
 
-        {filteredWorkers.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={54} color={Colors.textTertiary} />
-            <Text style={styles.emptyText}>Aucun professionnel trouvé</Text>
-          </View>
-        ) : (
-          filteredWorkers.map((worker) => (
-            <TouchableOpacity
-              key={worker.id || worker.userId || worker._id}
-              style={styles.card}
-              onPress={() => goToWorkerProfile(worker)}
-            >
-              <View style={styles.avatar}>
-                {worker.user?.avatar || worker.avatar ? (
-                  <Image
-                    source={{ uri: worker.user?.avatar || worker.avatar }}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <Text style={styles.avatarInitial}>
-                    {(worker.user?.name || worker.name || 'W')?.[0]?.toUpperCase()}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={styles.name}>{worker.user?.name || worker.name || 'Technicien'}</Text>
-                <Text style={styles.profession}>
-                  {worker.services?.[0]?.name || worker.profession || 'Professionnel'}
-                </Text>
-                <View style={styles.metaRow}>
-                  <Ionicons name="star" size={14} color={Colors.star} />
-                  <Text style={styles.metaText}>
-                    {worker.averageRating || 0} ({worker.totalReviews || 0} avis)
-                  </Text>
-                  {typeof worker.distanceKm === 'number' && (
-                    <>
-                      <Text style={styles.metaText}> · </Text>
-                      <Ionicons name="location" size={13} color={Colors.textSecondary} />
-                      <Text style={styles.metaText}>
-                        {' '}
-                        {worker.distanceKm < 1
-                          ? `${Math.round(worker.distanceKm * 1000)} m`
-                          : `${worker.distanceKm} km`}
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
+      <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.chips, { paddingBottom: 6 }]}
+        >
+          <Chip label="Toutes" active={!category} onPress={() => setCategory(null)} />
+          {categoryChips.map((c) => {
+            const meta = categoryMeta(c.key, c);
+            const active = category === c.key;
+            return (
+              <Chip
+                key={c.key}
+                label={c.name}
+                active={active}
+                leading={<CategoryIcon meta={meta} size={16} color={active ? '#fff' : meta.color} />}
+                onPress={() => setCategory(active ? null : c.key)}
+              />
+            );
+          })}
+        </ScrollView>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.chips, { paddingTop: 6 }]}
+        >
+          <Chip label="Disponibles" icon="ellipse" active={onlyAvailable} onPress={() => setOnlyAvailable(!onlyAvailable)} />
+          {SORTS.filter((s) => !s.needsLocation || coords).map((s) => (
+            <Chip key={s.key} label={s.label} active={sortBy === s.key} onPress={() => setSortBy(s.key)} />
+          ))}
+        </ScrollView>
+      </View>
+
+      <FlatList
+        style={{ flex: 1 }}
+        data={visible}
+        keyExtractor={(worker) => String(worker.id)}
+        renderItem={({ item }) => (
+          <WorkerCard
+            worker={item}
+            categoryNames={categoryNames}
+            onOpen={() => navigation.navigate('WorkerProfile', { workerId: item.id })}
+            onBook={() => navigation.navigate('ReservationDetails', { workerId: item.id })}
+          />
         )}
-      </ScrollView>
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={styles.list}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  headerSpacer: {
-    width: 24,
-  },
-  scrollView: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  searchContainer: {
-    marginTop: 14,
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-  },
-  resultRow: {
-    marginTop: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  resultCount: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-  },
-  nearestChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.primary + '15',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  nearestChipActive: {
-    backgroundColor: Colors.primary,
-  },
-  nearestChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  nearestChipTextActive: {
-    color: Colors.textLight,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 50,
-  },
-  emptyText: {
-    marginTop: 10,
-    color: Colors.textSecondary,
-  },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  avatarInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  profession: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 4,
-  },
-  metaText: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-  },
-});
 
 export default ProfessionalsPage;

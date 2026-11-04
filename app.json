@@ -90,7 +90,7 @@
       "package": "com.fixpro.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#ffffff"
       },
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
