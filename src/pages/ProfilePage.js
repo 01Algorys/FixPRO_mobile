@@ -21,6 +21,8 @@ import socketService from '../services/socketService';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
 import * as ImagePicker from 'expo-image-picker';
+import CountryCodePicker from '../components/CountryCodePicker';
+import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
 
 const ProfilePage = ({ navigation }) => {
   const { user, logout, updateProfile } = useAuth();
@@ -34,6 +36,7 @@ const ProfilePage = ({ navigation }) => {
   // Edit profile modal
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editCountry, setEditCountry] = useState(DEFAULT_COUNTRY);
   const [editPhone, setEditPhone] = useState('');
   const [editCity, setEditCity] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -200,7 +203,9 @@ const ProfilePage = ({ navigation }) => {
 
   const handleOpenEditProfile = () => {
     setEditName(profileData?.user?.name || '');
-    setEditPhone(profileData?.user?.phone || '');
+    const { country, number } = splitPhone(profileData?.user?.phone);
+    setEditCountry(country);
+    setEditPhone(number);
     setEditCity(profileData?.location?.city || '');
     setEditModalVisible(true);
   };
@@ -214,7 +219,7 @@ const ProfilePage = ({ navigation }) => {
       setSavingProfile(true);
       const updateData = {
         name: editName.trim(),
-        phone: editPhone.trim(),
+        phone: fullPhone(editCountry, editPhone),
       };
       if (editCity.trim()) {
         updateData.location = { city: editCity.trim() };
@@ -693,7 +698,7 @@ const ProfilePage = ({ navigation }) => {
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Téléphone</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="call-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+                <CountryCodePicker country={editCountry} onChange={setEditCountry} />
                 <TextInput
                   style={styles.input}
                   value={editPhone}

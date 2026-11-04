@@ -24,6 +24,7 @@ import ServiceWorkersPage from '../pages/ServiceWorkersPage';
 import ProfessionalsPage from '../pages/ProfessionalsPage';
 import ReservationDetails from '../pages/ReservationDetails';
 import RatingPage from '../pages/RatingPage';
+import NotificationsPage from '../pages/NotificationsPage';
 import OrderTracking from '../pages/OrderTracking';
 import WorkerProfile from '../pages/WorkerProfile';
 import WorkerDashboard from '../pages/WorkerDashboard';
@@ -140,6 +141,7 @@ const AppNavigator = forwardRef((props, ref) => {
         ) : user?.role === 'WORKER' ? (
           <>
             <Stack.Screen name="WorkerDashboard" component={WorkerTabs} />
+            <Stack.Screen name="Notifications" component={NotificationsPage} />
             <Stack.Screen
               name="WorkerReservationDetails"
               component={WorkerReservationDetailsPage}
@@ -154,6 +156,7 @@ const AppNavigator = forwardRef((props, ref) => {
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="Notifications" component={NotificationsPage} />
             <Stack.Screen
               name="ServiceWorkers"
               component={ServiceWorkersPage}

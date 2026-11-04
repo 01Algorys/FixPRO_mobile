@@ -10,6 +10,7 @@ class SocketService {
     this.presenceListeners = new Set();
     this.reservationListeners = new Set();
     this.newReservationListeners = new Set();
+    this.notificationListeners = new Set();
   }
 
   // Sign-in, app start and App.js all call this, often at the same moment;
@@ -115,6 +116,11 @@ class SocketService {
       });
       this.socket.on('job_completed', (data) => {
         notifyReservationListeners('job_completed', data);
+      });
+
+      // A new entry in the user's notification list
+      this.socket.on('new_notification', (data) => {
+        this.notificationListeners.forEach((cb) => cb(data));
       });
 
       // A client just sent this technician a request
@@ -293,6 +299,11 @@ class SocketService {
   onReservationUpdate(callback) {
     this.reservationListeners.add(callback);
     return () => this.reservationListeners.delete(callback); // returns unsubscribe fn
+  }
+
+  onNotification(callback) {
+    this.notificationListeners.add(callback);
+    return () => this.notificationListeners.delete(callback); // returns unsubscribe fn
   }
 
   // Works before the socket connects and across reconnects

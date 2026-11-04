@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, Image, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { useScreenChrome } from '../context/ChromeContext';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
-import { AuthHeader, PRIMARY, INK, MUTED } from '../components/auth/AuthUI';
+import { AuthShell, AuthTitle, PRIMARY, INK, MUTED } from '../components/auth/AuthUI';
 
 const ROLES = [
   {
@@ -24,20 +23,14 @@ const ROLES = [
   },
 ];
 
-// Sign-up step 1. With route.params.social (a new Google / Apple account:
-// { provider, credentials, profile }) the choice finishes that sign-up
-// instead of opening the email form.
+// Role choice for a new Google / Apple account signing in from the login
+// screen. route.params.social = { provider, credentials, profile }.
 export default function RoleSelectionScreen({ navigation, route }) {
-  useScreenChrome('#ffffff');
   const { loginWithSocial } = useAuth();
   const social = route.params?.social;
   const [busyRole, setBusyRole] = useState(null);
 
   const choose = async (role) => {
-    if (!social) {
-      navigation.navigate('CreateAccount', { role });
-      return;
-    }
     if (role === 'WORKER') {
       navigation.navigate('SocialWorkerSetup', social);
       return;
@@ -52,52 +45,39 @@ export default function RoleSelectionScreen({ navigation, route }) {
   const firstName = social?.profile?.name?.split(' ')[0];
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <AuthHeader
-          title={firstName ? `Bienvenue ${firstName} !` : 'Créer un compte'}
-          subtitle="Comment souhaitez-vous utiliser FixPro ?"
-          onBack={() => navigation.goBack()}
-        />
+    <AuthShell onBack={() => navigation.goBack()}>
+      <AuthTitle
+        title={firstName ? `Bienvenue ${firstName} !` : 'Bienvenue !'}
+        subtitle="Comment souhaitez-vous utiliser FixPro ?"
+      />
 
-        {ROLES.map((r, i) => (
-          <FadeIn key={r.role} delay={i * 70}>
-            <PressableScale style={styles.card} onPress={() => choose(r.role)} disabled={!!busyRole}>
-              <View style={styles.cardText}>
-                <View style={styles.iconTile}>
-                  <Ionicons name={r.icon} size={22} color={PRIMARY} />
-                </View>
-                <Text style={styles.cardTitle}>{r.title}</Text>
-                <Text style={styles.cardDesc}>{r.desc}</Text>
-                <View style={styles.cardCta}>
-                  {busyRole === r.role ? <ActivityIndicator size="small" color={PRIMARY} /> : (
-                    <>
-                      <Text style={styles.cardCtaText}>Continuer</Text>
-                      <Ionicons name="arrow-forward" size={16} color={PRIMARY} />
-                    </>
-                  )}
-                </View>
+      {ROLES.map((r, i) => (
+        <FadeIn key={r.role} delay={i * 70}>
+          <PressableScale style={styles.card} onPress={() => choose(r.role)} disabled={!!busyRole}>
+            <View style={styles.cardText}>
+              <View style={styles.iconTile}>
+                <Ionicons name={r.icon} size={22} color={PRIMARY} />
               </View>
-              <Image source={r.image} style={styles.cardImage} resizeMode="contain" />
-            </PressableScale>
-          </FadeIn>
-        ))}
-
-        {!social && (
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Déjà inscrit ?</Text>
-            <Text style={styles.footerLink} onPress={() => navigation.navigate('Login')}>Se connecter</Text>
-          </View>
-        )}
-      </ScrollView>
-    </View>
+              <Text style={styles.cardTitle}>{r.title}</Text>
+              <Text style={styles.cardDesc}>{r.desc}</Text>
+              <View style={styles.cardCta}>
+                {busyRole === r.role ? <ActivityIndicator size="small" color={PRIMARY} /> : (
+                  <>
+                    <Text style={styles.cardCtaText}>Continuer</Text>
+                    <Ionicons name="arrow-forward" size={16} color={PRIMARY} />
+                  </>
+                )}
+              </View>
+            </View>
+            <Image source={r.image} style={styles.cardImage} resizeMode="contain" />
+          </PressableScale>
+        </FadeIn>
+      ))}
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { paddingHorizontal: 22, paddingBottom: 30 },
   card: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#f6f9ff', borderRadius: 24, padding: 18,
     marginBottom: 14, borderWidth: 1, borderColor: '#e3ecff', overflow: 'hidden',
@@ -109,7 +89,4 @@ const styles = StyleSheet.create({
   cardCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, height: 20 },
   cardCtaText: { color: PRIMARY, fontSize: 14.5, fontWeight: '700' },
   cardImage: { width: 104, height: 124 },
-  footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 16 },
-  footerText: { fontSize: 14.5, color: MUTED },
-  footerLink: { fontSize: 14.5, color: PRIMARY, fontWeight: '700' },
 });

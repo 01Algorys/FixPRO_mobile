@@ -7,6 +7,7 @@ import socketService from '../services/socketService';
 import { Colors } from '../styles/theme';
 import { responsiveStyles, responsive } from '../styles/responsiveStyles';
 import { useNotifications } from '../context/NotificationContext';
+import AcceptedModal from '../components/worker/AcceptedModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -15,6 +16,7 @@ const WorkerReservationsPage = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reservations, setReservations] = useState([]);
+  const [acceptedId, setAcceptedId] = useState(null);
 
   // `silent` refreshes in the background (new request, back on the tab)
   // without swapping the list for a spinner
@@ -137,14 +139,8 @@ const WorkerReservationsPage = ({ navigation }) => {
     try {
       await apiService.updateReservationStatus(reservationId, status);
       
-      // If accepting reservation, navigate to messages
-      if (status === 'accepted') {
-        navigation.navigate('Messages', { 
-          conversationId: reservationId 
-        });
-      } else {
-        await loadReservations();
-      }
+      if (status === 'accepted') setAcceptedId(reservationId);
+      await loadReservations({ silent: true });
     } catch (error) {
       console.error('Failed to update reservation status:', error);
       Alert.alert('Erreur', "Impossible de mettre à jour le statut de la réservation.");
@@ -325,6 +321,18 @@ const WorkerReservationsPage = ({ navigation }) => {
         {/* Bottom spacing */}
         <View style={{ height: 24 }} />
       </ScrollView>
+      <AcceptedModal
+        visible={!!acceptedId}
+        onClose={() => setAcceptedId(null)}
+        onContact={() => {
+          navigation.navigate('Messages', { conversationId: acceptedId });
+          setAcceptedId(null);
+        }}
+        onViewJobs={() => {
+          navigation.navigate('Dashboard');
+          setAcceptedId(null);
+        }}
+      />
     </View>
   );
 };

@@ -103,7 +103,19 @@ class ApiService {
 
   // Users endpoints
   async getUserReservations() {
-    return this.request('/users/reservations');
+    return this.request('/users/reservations?limit=100');
+  }
+
+  async getNotifications() {
+    return this.request('/users/notifications?limit=50');
+  }
+
+  // Without ids, marks everything as read
+  async markNotificationsRead(ids) {
+    return this.request('/users/notifications/read', {
+      method: 'PATCH',
+      body: JSON.stringify(ids ? { ids } : {}),
+    });
   }
 
   // Workers endpoints

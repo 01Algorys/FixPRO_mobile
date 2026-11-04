@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { useScreenChrome } from '../context/ChromeContext';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
+import CountryCodePicker from '../components/CountryCodePicker';
+import { DEFAULT_COUNTRY, fullPhone } from '../utils/countries';
 import {
-  AuthHeader, SocialButtons, Divider, PrimaryButton, Field, PhonePrefix, PRIMARY, INK, MUTED,
+  AuthShell, AuthTitle, SocialButtons, Divider, PrimaryButton, Field, PRIMARY, INK, MUTED,
 } from '../components/auth/AuthUI';
 
 export default function LoginScreen({ navigation }) {
-  useScreenChrome('#ffffff');
   const { login, loginWithSocial } = useAuth();
   const [tab, setTab] = useState('phone');
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +22,7 @@ export default function LoginScreen({ navigation }) {
   const [socialLoading, setSocialLoading] = useState(null);
 
   const handleLogin = async () => {
-    const identifier = tab === 'phone' ? phone.trim() : email.trim();
+    const identifier = tab === 'phone' ? fullPhone(country, phone) : email.trim();
     if (!identifier || !password) {
       Alert.alert('Champs manquants', 'Renseignez votre identifiant et votre mot de passe.');
       return;
@@ -62,99 +61,86 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <AuthHeader
-            title="Bon retour 👋"
-            subtitle="Connectez-vous pour réserver ou gérer vos interventions."
-            onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+    <AuthShell onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}>
+      <AuthTitle title="Bon retour 👋" subtitle="Connectez-vous pour réserver ou gérer vos interventions." />
+
+      <FadeIn delay={60}>
+        <View style={styles.segment}>
+          {[['phone', 'Téléphone', 'call-outline'], ['email', 'Email', 'mail-outline']].map(([key, label, icon]) => {
+            const active = tab === key;
+            return (
+              <PressableScale key={key} style={[styles.segmentItem, active && styles.segmentActive]} onPress={() => setTab(key)}>
+                <Ionicons name={icon} size={16} color={active ? PRIMARY : MUTED} />
+                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
+              </PressableScale>
+            );
+          })}
+        </View>
+
+        {tab === 'phone' ? (
+          <Field
+            left={<CountryCodePicker country={country} onChange={setCountry} />}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="12 345 678"
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
           />
-
-          <FadeIn>
-            <SocialButtons onPress={handleSocial} loading={socialLoading} disabled={loading} />
-            <Divider label="ou avec votre compte" />
-          </FadeIn>
-
-          <FadeIn delay={60}>
-            <View style={styles.segment}>
-              {[['phone', 'Téléphone', 'call-outline'], ['email', 'Email', 'mail-outline']].map(([key, label, icon]) => {
-                const active = tab === key;
-                return (
-                  <PressableScale key={key} style={[styles.segmentItem, active && styles.segmentActive]} onPress={() => setTab(key)}>
-                    <Ionicons name={icon} size={16} color={active ? PRIMARY : MUTED} />
-                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
-                  </PressableScale>
-                );
-              })}
-            </View>
-
-            {tab === 'phone' ? (
-              <Field
-                left={<PhonePrefix />}
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="12 345 678"
-                keyboardType="phone-pad"
-                textContentType="telephoneNumber"
-              />
-            ) : (
-              <Field
-                icon="mail-outline"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="email@exemple.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                textContentType="emailAddress"
-              />
-            )}
-            <Field
-              icon="lock-closed-outline"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Mot de passe"
-              secureTextEntry={!showPassword}
-              textContentType="password"
-              onSubmitEditing={handleLogin}
-              returnKeyType="go"
-              right={(
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#94a3b8" />
-                </TouchableOpacity>
-              )}
-            />
-
-            <TouchableOpacity
-              style={styles.forgot}
-              onPress={() => Alert.alert(
-                'Mot de passe oublié',
-                'Contactez le support à support@fixpro.com pour réinitialiser votre mot de passe.',
-              )}
-            >
-              <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+        ) : (
+          <Field
+            icon="mail-outline"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="email@exemple.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+        )}
+        <Field
+          icon="lock-closed-outline"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Mot de passe"
+          secureTextEntry={!showPassword}
+          textContentType="password"
+          onSubmitEditing={handleLogin}
+          returnKeyType="go"
+          right={(
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#94a3b8" />
             </TouchableOpacity>
+          )}
+        />
 
-            <PrimaryButton label="Se connecter" onPress={handleLogin} loading={loading} disabled={!!socialLoading} />
-          </FadeIn>
+        <TouchableOpacity
+          style={styles.forgot}
+          onPress={() => Alert.alert(
+            'Mot de passe oublié',
+            'Contactez le support à support@fixpro.com pour réinitialiser votre mot de passe.',
+          )}
+        >
+          <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+        </TouchableOpacity>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore de compte ?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
-              <Text style={styles.footerLink}>Créer un compte</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        <PrimaryButton label="Se connecter" onPress={handleLogin} loading={loading} disabled={!!socialLoading} />
+      </FadeIn>
+
+      <Divider label="ou continuer avec" />
+      <SocialButtons onPress={handleSocial} loading={socialLoading} disabled={loading} />
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Pas encore de compte ?</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('CreateAccount')}>
+          <Text style={styles.footerLink}>Créer un compte</Text>
+        </TouchableOpacity>
+      </View>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { paddingHorizontal: 22, paddingBottom: 30, flexGrow: 1 },
   segment: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 14, padding: 4, marginBottom: 16 },
   segmentItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 40, borderRadius: 11 },
   segmentActive: {
@@ -165,7 +151,7 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: INK },
   forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 20, paddingVertical: 4 },
   forgotText: { color: PRIMARY, fontSize: 14, fontWeight: '600' },
-  footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 'auto', paddingTop: 28 },
-  footerText: { fontSize: 14.5, color: MUTED },
+  footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 20 },
+  footerText: { fontSize: 14.5, color: INK },
   footerLink: { fontSize: 14.5, color: PRIMARY, fontWeight: '700' },
 });

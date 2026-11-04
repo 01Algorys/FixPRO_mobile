@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Alert, Image, Linking, Platform, ActivityIndicator, StatusBar,
+  View, Text, StyleSheet, ScrollView, Alert, Image, Linking, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
+import AcceptedModal from '../components/worker/AcceptedModal';
 import { categoryMeta } from '../utils/categoryMeta';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
@@ -43,6 +44,7 @@ const Row = ({ icon, label, value, last }) => (
 
 const WorkerReservationDetailsPage = ({ route, navigation }) => {
   const [reservation, setReservation] = useState(route.params?.reservation || null);
+  const [showAccepted, setShowAccepted] = useState(false);
   const [busy, setBusy] = useState(null);
 
   // Refresh from the API so the screen has the latest status and client details
@@ -98,12 +100,11 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
     try {
       setBusy(next);
       await apiService.updateReservationStatus(reservation.id, next);
-      if (next === 'accepted') {
-        navigation.navigate('WorkerDashboard', { screen: 'Messages', params: { conversationId: reservation.id } });
-      } else if (next === 'rejected') {
+      if (next === 'rejected') {
         navigation.goBack();
       } else {
         setReservation((prev) => ({ ...prev, status: upper(next) }));
+        if (next === 'accepted') setShowAccepted(true);
       }
     } catch (error) {
       console.error('Failed to update reservation from details:', error);
@@ -122,14 +123,12 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
   const call = () => client.phone && Linking.openURL(`tel:${client.phone}`);
   const message = () =>
     navigation.navigate('WorkerDashboard', { screen: 'Messages', params: { conversationId: reservation.id } });
+  // Directions in the Google Maps app, or in the browser without it
   const openMaps = () => {
     const lat = loc.latitude ?? loc.lat;
     const lng = loc.longitude ?? loc.lng;
-    const q = encodeURIComponent(address);
-    const url = typeof lat === 'number' && typeof lng === 'number'
-      ? Platform.select({ ios: `http://maps.apple.com/?daddr=${lat},${lng}`, default: `geo:${lat},${lng}?q=${lat},${lng}` })
-      : Platform.select({ ios: `http://maps.apple.com/?daddr=${q}`, default: `geo:0,0?q=${q}` });
-    Linking.openURL(url).catch(() => {});
+    const destination = typeof lat === 'number' && typeof lng === 'number' ? `${lat},${lng}` : encodeURIComponent(address);
+    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`).catch(() => {});
   };
 
   const canContact = ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(status);
@@ -302,6 +301,18 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
           </PressableScale>
         </View>
       )}
+      <AcceptedModal
+        visible={showAccepted}
+        onClose={() => setShowAccepted(false)}
+        onContact={() => {
+          setShowAccepted(false);
+          message();
+        }}
+        onViewJobs={() => {
+          setShowAccepted(false);
+          navigation.navigate('WorkerDashboard', { screen: 'Dashboard' });
+        }}
+      />
     </View>
   );
 };

@@ -43,7 +43,7 @@ const CategoryIcon = ({ meta, size, color = meta.color }) =>
 
 const UserHomePage = ({ navigation }) => {
   const { user, isGuest } = useAuth();
-  const { unreadMessages } = useNotifications();
+  const { unreadNotifications } = useNotifications();
   const { width } = useResponsive();
   const insets = useSafeAreaInsets();
   const styles = createStyles(width, insets);
@@ -259,7 +259,7 @@ const UserHomePage = ({ navigation }) => {
   };
 
   const handleCategoryClick = (category) => {
-    guardedNavigate('ServiceWorkers', { category: category.key.toLowerCase() });
+    guardedNavigate('ServiceWorkers', { category: category.key.toLowerCase(), categoryData: category });
   };
 
   const handleSeeAllProfessionals = () => {
@@ -322,9 +322,9 @@ const UserHomePage = ({ navigation }) => {
                 <Text style={styles.locationText} numberOfLines={1}>{displayCityName}</Text>
                 <Ionicons name="chevron-down" size={14} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.bellButton} onPress={() => guardedNavigate('Messages')}>
+              <TouchableOpacity style={styles.bellButton} onPress={() => guardedNavigate('Notifications')}>
                 <Ionicons name="notifications" size={24} color="#fff" />
-                {unreadMessages > 0 && <View style={styles.bellBadge} />}
+                {unreadNotifications > 0 && <View style={styles.bellBadge} />}
               </TouchableOpacity>
             </View>
           </View>

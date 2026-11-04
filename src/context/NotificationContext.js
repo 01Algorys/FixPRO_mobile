@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import socketService from '../services/socketService';
 import apiService from '../services/api';
@@ -10,6 +11,7 @@ export const NotificationProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [reservationUnread, setReservationUnread] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [newConversation, setNewConversation] = useState(null);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const activeConversationRef = useRef(null);
@@ -134,6 +136,34 @@ export const NotificationProvider = ({ children }) => {
     };
   }, []);
 
+  // Bell badge: counted by the server, refreshed live and on return to the app
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const response = await apiService.getNotifications();
+      setUnreadNotifications(response.data?.unreadCount || 0);
+    } catch (error) {
+      console.warn('Failed to load notification count:', error.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadNotifications(0);
+      return undefined;
+    }
+    refreshNotifications();
+    const unsubscribe = socketService.onNotification((data) => {
+      if (data?.notification?.type !== 'NEW_MESSAGE') refreshNotifications();
+    });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshNotifications();
+    });
+    return () => {
+      unsubscribe();
+      appState.remove();
+    };
+  }, [isAuthenticated, refreshNotifications]);
+
   const resetUnreadMessages = async () => {
     setUnreadMessages(0);
     await AsyncStorage.setItem('unreadCount', '0');
@@ -163,6 +193,9 @@ export const NotificationProvider = ({ children }) => {
       resetUnreadMessages,
       reservationUnread,
       setReservationUnread,
+      unreadNotifications,
+      setUnreadNotifications,
+      refreshNotifications,
       resetReservationUnread,
       newConversation,
       setNewConversation,

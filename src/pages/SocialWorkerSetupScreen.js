@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, Image,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { useScreenChrome } from '../context/ChromeContext';
 import ServicePicker from '../components/auth/ServicePicker';
 import FadeIn from '../components/ui/FadeIn';
-import { AuthHeader, PrimaryButton, Field, PhonePrefix, INK, MUTED } from '../components/auth/AuthUI';
+import { AuthShell, AuthTitle, PrimaryButton, Field, INK, MUTED } from '../components/auth/AuthUI';
+import CountryCodePicker from '../components/CountryCodePicker';
+import { DEFAULT_COUNTRY, fullPhone } from '../utils/countries';
 
 // Last step of a technician's Google / Apple sign-up: the provider gives us
 // their name and email; we still need a phone number and the services they offer before the
 // account is created (it then waits for admin approval).
 export default function SocialWorkerSetupScreen({ navigation, route }) {
-  useScreenChrome('#ffffff');
   const { loginWithSocial } = useAuth();
   const { provider, credentials, profile } = route.params || {};
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [services, setServices] = useState([]);
   const [errors, setErrors] = useState({});
@@ -28,7 +27,7 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
     if (Object.keys(e).length) return;
 
     setLoading(true);
-    const result = await loginWithSocial(provider, { credentials, role: 'WORKER', phone: phone.trim(), services });
+    const result = await loginWithSocial(provider, { credentials, role: 'WORKER', phone: fullPhone(country, phone), services });
     setLoading(false);
 
     if (result.pendingApproval) {
@@ -40,65 +39,57 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <AuthHeader
-            title="Votre expertise"
-            subtitle="Dernière étape : vos clients doivent pouvoir vous joindre et savoir ce que vous proposez."
-            onBack={() => navigation.goBack()}
-          />
+    <AuthShell onBack={() => navigation.goBack()}>
+      <AuthTitle
+        title="Votre expertise"
+        subtitle="Dernière étape : vos clients doivent pouvoir vous joindre et savoir ce que vous proposez."
+      />
 
-          {!!profile && (
-            <FadeIn style={styles.account}>
-              {profile.picture ? (
-                <Image source={{ uri: profile.picture }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarText}>{(profile.name || '?').charAt(0).toUpperCase()}</Text>
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.accountName} numberOfLines={1}>{profile.name}</Text>
-                <Text style={styles.accountEmail} numberOfLines={1}>{profile.email}</Text>
-              </View>
-            </FadeIn>
+      {!!profile && (
+        <FadeIn style={styles.account}>
+          {profile.picture ? (
+            <Image source={{ uri: profile.picture }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <Text style={styles.avatarText}>{(profile.name || '?').charAt(0).toUpperCase()}</Text>
+            </View>
           )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.accountName} numberOfLines={1}>{profile.name}</Text>
+            <Text style={styles.accountEmail} numberOfLines={1}>{profile.email}</Text>
+          </View>
+        </FadeIn>
+      )}
 
-          <FadeIn delay={60}>
-            <Field
-              label="Téléphone"
-              left={<PhonePrefix />}
-              value={phone}
-              onChangeText={(v) => { setPhone(v); setErrors((p) => ({ ...p, phone: '' })); }}
-              placeholder="12 345 678"
-              keyboardType="phone-pad"
-              textContentType="telephoneNumber"
-              error={errors.phone}
-            />
+      <FadeIn delay={60}>
+        <Field
+          label="Téléphone"
+          left={<CountryCodePicker country={country} onChange={setCountry} />}
+          value={phone}
+          onChangeText={(v) => { setPhone(v); setErrors((p) => ({ ...p, phone: '' })); }}
+          placeholder="12 345 678"
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          error={errors.phone}
+        />
 
-            <Text style={styles.servicesTitle}>Vos services</Text>
-            <Text style={styles.servicesHint}>Sélectionnez tout ce que vous proposez.</Text>
-            <ServicePicker
-              selected={services}
-              onChange={(next) => { setServices(next); setErrors((p) => ({ ...p, services: '' })); }}
-              error={errors.services}
-            />
+        <Text style={styles.servicesTitle}>Vos services</Text>
+        <Text style={styles.servicesHint}>Sélectionnez tout ce que vous proposez.</Text>
+        <ServicePicker
+          selected={services}
+          onChange={(next) => { setServices(next); setErrors((p) => ({ ...p, services: '' })); }}
+          error={errors.services}
+        />
 
-            <View style={{ height: 10 }} />
-            <PrimaryButton label="Envoyer ma candidature" onPress={submit} loading={loading} />
-            <Text style={styles.note}>Notre équipe vérifie chaque technicien avant activation du compte.</Text>
-          </FadeIn>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        <View style={{ height: 10 }} />
+        <PrimaryButton label="Envoyer ma candidature" onPress={submit} loading={loading} />
+        <Text style={styles.note}>Notre équipe vérifie chaque technicien avant activation du compte.</Text>
+      </FadeIn>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { paddingHorizontal: 22, paddingBottom: 30 },
   account: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginBottom: 20,
     backgroundColor: '#f6f9ff', borderRadius: 18, borderWidth: 1, borderColor: '#e3ecff',

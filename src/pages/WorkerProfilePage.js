@@ -14,6 +14,8 @@ import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { getCurrentCoords } from '../utils/location';
 import { professionTitle, titleCase } from '../utils/categoryMeta';
+import CountryCodePicker from '../components/CountryCodePicker';
+import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
 
 const { width } = Dimensions.get('window');
 const THEME = '#1d5ff0';
@@ -34,7 +36,13 @@ export default function WorkerProfile({ navigation }) {
   const [saving, setSaving] = useState(false);
 
   // Editable fields
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
+  const applyPhone = (value) => {
+    const parts = splitPhone(value);
+    setCountry(parts.country);
+    setPhone(parts.number);
+  };
   const [bio, setBio] = useState('');
   const [experience, setExperience] = useState('');
   const [priceMin, setPriceMin] = useState('');
@@ -86,7 +94,7 @@ export default function WorkerProfile({ navigation }) {
       }
       
       // Populate editable fields
-      setPhone(profileData?.user?.phone ?? '');
+      applyPhone(profileData?.user?.phone);
       setBio(profileData?.bio ?? '');
       setExperience(String(profileData?.experience ?? ''));
       setPriceMin(String(profileData?.hourlyRate ?? ''));
@@ -116,7 +124,7 @@ export default function WorkerProfile({ navigation }) {
 
   const handleCancelEdit = () => {
     // Reset fields to original values
-    setPhone(profile?.user?.phone ?? '');
+    applyPhone(profile?.user?.phone);
     setBio(profile?.bio ?? '');
     setExperience(String(profile?.experience ?? ''));
     setPriceMin(String(profile?.hourlyRate ?? ''));
@@ -135,7 +143,7 @@ export default function WorkerProfile({ navigation }) {
       
       // Prepare update data
       const updateData = {
-        phone: phone.trim(),
+        phone: fullPhone(country, phone),
         bio: bio.trim(),
         experience: parseInt(experience) || 0,
         hourlyRate: parseFloat(priceMin) || 0,
@@ -478,7 +486,7 @@ export default function WorkerProfile({ navigation }) {
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>Téléphone</Text>
                   <View style={styles.inputWrapper}>
-                    <Ionicons name="call-outline" size={18} color="#94a3b8" />
+                    <CountryCodePicker country={country} onChange={setCountry} />
                     <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Téléphone" placeholderTextColor="#94a3b8" keyboardType="phone-pad" />
                   </View>
                 </View>

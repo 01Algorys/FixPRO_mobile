@@ -9,6 +9,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
 import socketService from '../services/socketService';
+import AcceptedModal from '../components/worker/AcceptedModal';
+import { useNotifications } from '../context/NotificationContext';
 import { categoryMeta } from '../utils/categoryMeta';
 import { reverseGeocodeCity } from '../utils/location';
 import PressableScale from '../components/ui/PressableScale';
@@ -103,6 +105,8 @@ export default function WorkerHomePage({ navigation }) {
   const [city, setCity] = useState(null);
   const [tab, setTab] = useState('upcoming');
   const [busyId, setBusyId] = useState(null);
+  const [acceptedId, setAcceptedId] = useState(null);
+  const { unreadNotifications } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -152,9 +156,7 @@ export default function WorkerHomePage({ navigation }) {
     try {
       setBusyId(reservation.id);
       await apiService.updateReservationStatus(reservation.id, status);
-      if (status === 'accepted') {
-        navigation.navigate('Messages', { conversationId: reservation.id });
-      }
+      if (status === 'accepted') setAcceptedId(reservation.id);
       await fetchAll();
     } catch (err) {
       console.error('Failed to update reservation status:', err);
@@ -259,9 +261,9 @@ export default function WorkerHomePage({ navigation }) {
               <Text style={styles.locationText} numberOfLines={1}>{city || 'Ma position'}</Text>
               <Ionicons name="chevron-down" size={14} color="#fff" />
             </PressableScale>
-            <PressableScale style={styles.bell} scaleTo={0.9} onPress={() => navigation.navigate('Messages')}>
+            <PressableScale style={styles.bell} scaleTo={0.9} onPress={() => navigation.navigate('Notifications')}>
               <Ionicons name="notifications" size={23} color="#fff" />
-              {pending.length > 0 && <View style={styles.bellDot} />}
+              {unreadNotifications > 0 && <View style={styles.bellDot} />}
             </PressableScale>
           </View>
 
@@ -515,6 +517,18 @@ export default function WorkerHomePage({ navigation }) {
           </FadeIn>
         </View>
       </ScrollView>
+      <AcceptedModal
+        visible={!!acceptedId}
+        onClose={() => setAcceptedId(null)}
+        onContact={() => {
+          navigation.navigate('Messages', { conversationId: acceptedId });
+          setAcceptedId(null);
+        }}
+        onViewJobs={() => {
+          setTab('upcoming');
+          setAcceptedId(null);
+        }}
+      />
     </View>
   );
 }
