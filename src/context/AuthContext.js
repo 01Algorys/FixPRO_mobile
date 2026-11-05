@@ -114,6 +114,7 @@ export const AuthProvider = ({ children }) => {
       await startSession(token, userData);
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
+      if (error.code === 'DOCUMENTS_REQUIRED') return { documentsRequired: true, uploadToken: error.uploadToken };
       console.error('Login failed:', error);
       return { success: false, error: mapLoginError(error.message) };
     }
@@ -143,7 +144,7 @@ export const AuthProvider = ({ children }) => {
       }
       const data = response.data || {};
 
-      if (response.pendingApproval) return { pendingApproval: true };
+      if (response.pendingApproval) return { pendingApproval: true, uploadToken: data.uploadToken };
       if (data.needsRole) return { needsRole: true, profile: data.profile, credentials: creds };
       if (data.needsWorkerDetails) return { needsWorkerDetails: true, profile: data.profile, credentials: creds };
 
@@ -151,6 +152,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user, role: data.user.role };
     } catch (error) {
       if (social.isCancelled(error)) return { cancelled: true };
+      if (error.code === 'DOCUMENTS_REQUIRED') return { documentsRequired: true, uploadToken: error.uploadToken };
       console.error(`${social.label} sign-in failed:`, error);
       // A server without the endpoint answers as if login were required
       if (/no token provided|not found/i.test(error.message || '')) {
@@ -183,7 +185,7 @@ export const AuthProvider = ({ children }) => {
       // We check both the backend flag and the role so this works even if the
       // backend hasn't been redeployed yet (old backend returns a token for workers).
       if (response.pendingApproval || userData.role === 'WORKER') {
-        return { success: true, pendingApproval: true };
+        return { success: true, pendingApproval: true, uploadToken: response.data?.uploadToken };
       }
 
       // For regular users, auto-login after successful registration

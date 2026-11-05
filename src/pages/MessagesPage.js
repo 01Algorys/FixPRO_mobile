@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OnlineBadge from '../components/OnlineBadge';
 import OnlineStatusText from '../components/OnlineStatusText';
 import ChatView from '../components/chat/ChatView';
+import { sendChatImage } from '../utils/chatImages';
 import ConversationList from '../components/chat/ConversationList';
 
 const QUICK_REPLIES = ['Bonjour !', 'Quand pouvez-vous venir ?', "Je vous envoie l'adresse exacte", 'Merci beaucoup !'];
@@ -765,6 +766,12 @@ const MessagesPage = ({ route, navigation }) => {
         subtitle={activeConversation.service?.name || activeConversation.serviceName}
         status={activeConversation.status}
         messages={messages}
+        onSendImage={(asset) => sendChatImage({
+          asset,
+          reservationId: activeConversationId,
+          sender: { id: userId, name: user?.name, role: user?.role || 'USER', avatar: user?.avatar },
+          setMessages,
+        })}
         isMine={(m) => !!m._localId || (user?.id ? m.senderId === user.id : m.sender?.role === 'USER')}
         draft={draft}
         onChangeDraft={setDraft}

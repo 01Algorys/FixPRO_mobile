@@ -16,10 +16,15 @@ import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
 import {
   THEME, INK, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, DangerButtons, BottomSheet, PasswordField, styles,
 } from '../components/profile/ProfileParts';
+import PortfolioGrid from '../components/profile/PortfolioGrid';
+import { pickImage } from '../utils/pickImage';
+
+const MAX_PORTFOLIO_IMAGES = 12;
 
 export default function WorkerProfile({ navigation }) {
   const { logout, updateAvatar } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [addingPhoto, setAddingPhoto] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -213,6 +218,38 @@ export default function WorkerProfile({ navigation }) {
     } finally {
       setSavingPassword(false);
     }
+  };
+
+  const handleAddPhoto = async () => {
+    const asset = await pickImage({ title: 'Ajouter une réalisation' });
+    if (!asset) return;
+    try {
+      setAddingPhoto(true);
+      const res = await api.addPortfolioImage(asset);
+      setProfile((prev) => ({ ...prev, portfolio: res.data.portfolio }));
+    } catch (err) {
+      Alert.alert('Envoi impossible', err.message || 'Réessayez.');
+    } finally {
+      setAddingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = (image) => {
+    Alert.alert('Supprimer cette photo ?', 'Elle ne sera plus visible sur votre profil.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await api.removePortfolioImage(image.id);
+            setProfile((prev) => ({ ...prev, portfolio: res.data.portfolio }));
+          } catch (err) {
+            Alert.alert('Suppression impossible', err.message || 'Réessayez.');
+          }
+        },
+      },
+    ]);
   };
 
   const handleImageSelected = async (asset) => {
@@ -423,6 +460,18 @@ export default function WorkerProfile({ navigation }) {
                 {profile?.bio?.trim() || 'Présentez-vous en quelques mots pour rassurer vos clients.'}
               </Text>
             </PressableScale>
+          </FadeIn>
+
+          {/* Past work */}
+          <FadeIn delay={140}>
+            <SectionHead icon="images-outline" title="Mes réalisations" />
+            <PortfolioGrid
+              images={Array.isArray(profile?.portfolio) ? profile.portfolio : []}
+              max={MAX_PORTFOLIO_IMAGES}
+              adding={addingPhoto}
+              onAdd={handleAddPhoto}
+              onRemove={handleRemovePhoto}
+            />
           </FadeIn>
 
           {/* Services */}

@@ -23,6 +23,7 @@ import OnlineBadge from '../components/OnlineBadge';
 import OnlineStatusText from '../components/OnlineStatusText';
 import { usePresence } from '../hooks/usePresence';
 import ChatView from '../components/chat/ChatView';
+import { sendChatImage } from '../utils/chatImages';
 import ConversationList from '../components/chat/ConversationList';
 
 const QUICK_REPLIES = ['Bonjour, je suis en route 🚗', "J'arrive dans 15 min", "Pouvez-vous m'envoyer une photo du problème ?", "Merci, à bientôt !"];
@@ -383,6 +384,12 @@ const WorkerMessagesPage = ({ route, navigation }) => {
         subtitle={activeConversation.service?.name || activeConversation.serviceName}
         status={activeConversation.status}
         messages={messages}
+        onSendImage={(asset) => sendChatImage({
+          asset,
+          reservationId: activeConversationId,
+          sender: { id: userId, name: user?.name, role: user?.role || 'WORKER', avatar: user?.avatar },
+          setMessages,
+        })}
         isMine={(m) => !!m._localId || (user?.id ? m.senderId === user.id : m.sender?.role === 'WORKER')}
         draft={draft}
         onChangeDraft={setDraft}
