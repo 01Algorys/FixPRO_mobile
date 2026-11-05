@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, Image, ActivityIndicator,
   KeyboardAvoidingView, StatusBar,
@@ -7,6 +7,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
 import PressableScale from '../ui/PressableScale';
+import ImageViewer from '../ui/ImageViewer';
+import { pickImage } from '../../utils/pickImage';
 import OnlineBadge from '../OnlineBadge';
 import OnlineStatusText from '../OnlineStatusText';
 
@@ -60,9 +62,16 @@ const ChatView = ({
   sending,
   onBack,
   onOpenReservation,
+  onSendImage,
   quickReplies = [],
 }) => {
   const scrollRef = useRef(null);
+  const [viewing, setViewing] = useState(null);
+
+  const attach = async () => {
+    const asset = await pickImage({ title: 'Envoyer une photo' });
+    if (asset) onSendImage(asset);
+  };
   // The app's root view already pads the status bar, so this view starts that
   // far down the screen; KeyboardAvoidingView needs the offset to lift enough.
   // useSafeAreaInsets reads 0 inside that padding: only the device's value is right.
@@ -160,6 +169,7 @@ const ChatView = ({
           }
           const { message, mine, last } = row;
           const pending = !!message._localId;
+          const photo = message.imageUrl || message._localUri;
           return (
             <View key={row.key} style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowTheirs, last && styles.msgRowLast]}>
               {!mine && (
@@ -172,9 +182,21 @@ const ChatView = ({
                   styles.bubble,
                   mine ? styles.bubbleMine : styles.bubbleTheirs,
                   last && (mine ? styles.tailMine : styles.tailTheirs),
+                  photo && styles.bubblePhoto,
                 ]}
               >
-                <Text style={[styles.msgText, mine && styles.msgTextMine]}>{message.content}</Text>
+                {photo ? (
+                  <TouchableOpacity activeOpacity={0.85} disabled={pending} onPress={() => setViewing(photo)}>
+                    <Image source={{ uri: photo }} style={styles.photo} />
+                    {pending && (
+                      <View style={styles.photoLoading}>
+                        <ActivityIndicator color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[styles.msgText, mine && styles.msgTextMine]}>{message.content}</Text>
+                )}
                 <View style={styles.meta}>
                   <Text style={[styles.metaTime, mine && styles.metaTimeMine]}>{formatTime(message.createdAt)}</Text>
                   {mine && (
@@ -216,6 +238,11 @@ const ChatView = ({
             </ScrollView>
           )}
           <View style={styles.composer}>
+            {!!onSendImage && (
+              <PressableScale style={styles.attachBtn} scaleTo={0.88} onPress={attach} disabled={sending} accessibilityLabel="Envoyer une photo">
+                <Ionicons name="image-outline" size={23} color={PRIMARY} />
+              </PressableScale>
+            )}
             <TextInput
               style={styles.input}
               placeholder="Écrire un message…"
@@ -235,6 +262,7 @@ const ChatView = ({
           </View>
         </View>
       )}
+      <ImageViewer uri={viewing} onClose={() => setViewing(null)} />
     </KeyboardAvoidingView>
   );
 };
@@ -282,6 +310,12 @@ const styles = StyleSheet.create({
   msgAvatarSlot: { width: 28, marginRight: 6 },
   bubble: { maxWidth: '78%', paddingHorizontal: 13, paddingTop: 8, paddingBottom: 6, borderRadius: 20 },
   bubbleMine: { backgroundColor: PRIMARY },
+  bubblePhoto: { paddingHorizontal: 4, paddingTop: 4, paddingBottom: 4 },
+  photo: { width: 220, height: 220, borderRadius: 16, backgroundColor: '#e2e8f0' },
+  photoLoading: {
+    ...StyleSheet.absoluteFillObject, borderRadius: 16,
+    backgroundColor: 'rgba(15,23,42,0.35)', alignItems: 'center', justifyContent: 'center',
+  },
   bubbleTheirs: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e8edf5' },
   tailMine: { borderBottomRightRadius: 6 },
   tailTheirs: { borderBottomLeftRadius: 6 },
@@ -311,6 +345,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9', borderRadius: 21,
     paddingHorizontal: 16, paddingTop: 11, paddingBottom: 11,
   },
+  attachBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#eef4ff', alignItems: 'center', justifyContent: 'center' },
   sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
   sendBtnOff: { backgroundColor: '#cbd5e1' },
   closedBar: {

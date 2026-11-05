@@ -9,6 +9,7 @@ import { categoryMeta, professionTitle, titleCase } from '../utils/categoryMeta'
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { Stars } from '../components/reservations/ReservationParts';
+import PortfolioGrid from '../components/profile/PortfolioGrid';
 import {
   THEME, INK, MUTED, SURFACE, ProfileHeader, SectionHead, StatsRow, styles,
 } from '../components/profile/ProfileParts';
@@ -250,6 +251,14 @@ const WorkerProfile = ({ route, navigation }) => {
               </Text>
             </View>
           </FadeIn>
+
+          {/* Past work */}
+          {worker.portfolio?.length > 0 && (
+            <FadeIn delay={100}>
+              <SectionHead icon="images-outline" title="Réalisations" />
+              <PortfolioGrid images={worker.portfolio} />
+            </FadeIn>
+          )}
 
           {/* Services */}
           {trades.length > 0 && (

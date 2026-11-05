@@ -65,8 +65,8 @@ export default function CreateAccountScreen({ navigation, route }) {
         ...(isWorker && { services }),
       });
       if (result.pendingApproval) {
-        // Worker account created but awaiting admin approval — go to info screen
-        navigation.replace('PendingApproval');
+        // Technicians send their documents before the account goes to review
+        navigation.replace(result.uploadToken ? 'VerificationDocuments' : 'PendingApproval', { uploadToken: result.uploadToken });
         return;
       }
       if (!result.success) Alert.alert('Inscription impossible', result.error || 'Échec de la création du compte');
@@ -96,6 +96,8 @@ export default function CreateAccountScreen({ navigation, route }) {
     setSocialLoading(null);
     if (result.needsWorkerDetails) {
       navigation.navigate('SocialWorkerSetup', { provider, credentials: result.credentials, profile: result.profile });
+    } else if (result.uploadToken) {
+      navigation.replace('VerificationDocuments', { uploadToken: result.uploadToken });
     } else if (result.pendingApproval) {
       navigation.replace('PendingApproval');
     } else if (result.success === false) {

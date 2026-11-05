@@ -38,6 +38,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
     setBusyRole(role);
     const result = await loginWithSocial(social.provider, { credentials: social.credentials, role });
     setBusyRole(null);
+    if (result.uploadToken) navigation.navigate('VerificationDocuments', { uploadToken: result.uploadToken });
     if (result.success === false) Alert.alert('Connexion impossible', result.error);
     // On success the navigator switches to the signed-in app
   };

@@ -30,7 +30,9 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
     const result = await loginWithSocial(provider, { credentials, role: 'WORKER', phone: fullPhone(country, phone), services });
     setLoading(false);
 
-    if (result.pendingApproval) {
+    if (result.uploadToken) {
+      navigation.reset({ index: 0, routes: [{ name: 'VerificationDocuments', params: { uploadToken: result.uploadToken } }] });
+    } else if (result.pendingApproval) {
       navigation.reset({ index: 0, routes: [{ name: 'PendingApproval' }] });
     } else if (result.success === false) {
       Alert.alert('Inscription impossible', result.error);

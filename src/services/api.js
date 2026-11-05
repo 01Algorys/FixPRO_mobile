@@ -33,6 +33,7 @@ class ApiService {
         }
         const failure = new Error(error.message || `HTTP error! status: ${response.status}`);
         failure.code = error.code;
+        failure.uploadToken = error.uploadToken;
         throw failure;
       }
 
@@ -160,6 +161,47 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify(passwordData),
     });
+  }
+
+  // Multipart image upload. `token` overrides the session token (verification)
+  async uploadImage(endpoint, asset, token) {
+    const authToken = token || await this.getToken();
+    const formData = new FormData();
+    formData.append('image', {
+      uri: asset.uri,
+      type: asset.mimeType || 'image/jpeg',
+      name: asset.fileName || `photo_${Date.now()}.jpg`,
+    });
+
+    // No Content-Type: fetch sets it with the multipart boundary
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "L'envoi de la photo a échoué");
+    return data;
+  }
+
+  async getVerificationStatus(token) {
+    return this.request('/verification', { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async uploadVerificationDocument(type, asset, token) {
+    return this.uploadImage(`/verification/documents/${type}`, asset, token);
+  }
+
+  async addPortfolioImage(asset) {
+    return this.uploadImage('/workers/portfolio', asset);
+  }
+
+  async removePortfolioImage(imageId) {
+    return this.request(`/workers/portfolio/${imageId}`, { method: 'DELETE' });
+  }
+
+  async sendChatImage(reservationId, asset) {
+    return this.uploadImage(`/messages/${reservationId}/image`, asset);
   }
 
   async uploadAvatar(formData) {
