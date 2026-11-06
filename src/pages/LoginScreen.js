@@ -114,7 +114,7 @@ export default function LoginScreen({ navigation }) {
           style={styles.forgot}
           onPress={() => Alert.alert(
             'Mot de passe oublié',
-            'Contactez le support à support@fixpro.com pour réinitialiser votre mot de passe.',
+            'Contactez le support à fixproo.support@gmail.com pour réinitialiser votre mot de passe.',
           )}
         >
           <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
