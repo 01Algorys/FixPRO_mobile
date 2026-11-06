@@ -16,10 +16,9 @@ const DOCUMENTS = [
   { type: 'PROOF', title: "Preuve d'activité", hint: 'Patente, diplôme, attestation de travail ou facture.', icon: 'document-text-outline' },
 ];
 
-// Last sign-up step for technicians. A pending account can't log in, so requests
-// use the temporary token from sign-up or login (route.params.uploadToken).
-export default function VerificationDocumentsScreen({ navigation, route }) {
-  const { uploadToken } = route.params || {};
+// Opened from the technician's profile. Once our team approves the documents,
+// the technician gets the verified badge and comes first in search results.
+export default function VerificationDocumentsScreen({ navigation }) {
   const [status, setStatus] = useState(null);
   const [previews, setPreviews] = useState({});
   const [uploading, setUploading] = useState(null);
@@ -28,12 +27,12 @@ export default function VerificationDocumentsScreen({ navigation, route }) {
   const load = useCallback(async () => {
     try {
       setFailed(false);
-      const res = await apiService.getVerificationStatus(uploadToken);
+      const res = await apiService.getVerificationStatus();
       setStatus(res.data);
     } catch (error) {
       setFailed(true);
     }
-  }, [uploadToken]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -42,7 +41,7 @@ export default function VerificationDocumentsScreen({ navigation, route }) {
     if (!asset) return;
     setUploading(doc.type);
     try {
-      const res = await apiService.uploadVerificationDocument(doc.type, asset, uploadToken);
+      const res = await apiService.uploadVerificationDocument(doc.type, asset);
       setStatus(res.data);
       setPreviews((prev) => ({ ...prev, [doc.type]: asset.uri }));
     } catch (error) {
@@ -52,16 +51,14 @@ export default function VerificationDocumentsScreen({ navigation, route }) {
     }
   };
 
-  const finish = () => navigation.reset({ index: 0, routes: [{ name: 'PendingApproval' }] });
-
   const sent = (type) => status?.documents.find((d) => d.type === type);
   const remaining = status ? status.missing.length + status.rejected.length : DOCUMENTS.length;
 
   return (
-    <AuthShell>
+    <AuthShell onBack={() => navigation.goBack()}>
         <AuthTitle
-          title="Vérifions votre compte"
-          subtitle="Ces documents restent privés : seule notre équipe les consulte, pour valider votre compte."
+          title="Devenez technicien vérifié"
+          subtitle="Badge vérifié et priorité dans les recherches. Vos documents restent privés : seule notre équipe les consulte."
         />
 
         {failed ? (
@@ -111,11 +108,11 @@ export default function VerificationDocumentsScreen({ navigation, route }) {
 
         <View style={{ height: 12 }} />
         <PrimaryButton
-          label={status?.complete ? 'Envoyer pour vérification' : `Encore ${remaining} document${remaining > 1 ? 's' : ''}`}
-          onPress={finish}
+          label={status?.complete ? 'Terminé' : `Encore ${remaining} document${remaining > 1 ? 's' : ''}`}
+          onPress={() => navigation.goBack()}
           disabled={!status?.complete || !!uploading}
         />
-        <Text style={styles.note}>Vous pouvez quitter et reprendre plus tard en vous reconnectant.</Text>
+        <Text style={styles.note}>Vous pouvez quitter et reprendre plus tard depuis votre profil.</Text>
     </AuthShell>
   );
 }

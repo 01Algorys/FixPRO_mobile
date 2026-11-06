@@ -14,7 +14,7 @@ import { categoryMeta, titleCase } from '../utils/categoryMeta';
 import CountryCodePicker from '../components/CountryCodePicker';
 import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
 import {
-  THEME, INK, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, DangerButtons, BottomSheet, PasswordField, styles,
+  THEME, INK, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, VerificationCard, DangerButtons, BottomSheet, PasswordField, styles,
 } from '../components/profile/ProfileParts';
 import PortfolioGrid from '../components/profile/PortfolioGrid';
 import { pickImage } from '../utils/pickImage';
@@ -24,6 +24,7 @@ const MAX_PORTFOLIO_IMAGES = 12;
 export default function WorkerProfile({ navigation }) {
   const { logout, updateAvatar } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [categoryNames, setCategoryNames] = useState({});
   const [addingPhoto, setAddingPhoto] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +72,13 @@ export default function WorkerProfile({ navigation }) {
       const response = await api.getWorkerProfile();
       const profileData = response?.data || response;
       setProfile(profileData);
+
+      // Names managed in the dashboard; the service names themselves are not shown
+      const categoriesResponse = await api.getPublicCategories().catch(() => null);
+      const categoryList = categoriesResponse?.data || categoriesResponse;
+      if (Array.isArray(categoryList)) {
+        setCategoryNames(Object.fromEntries(categoryList.map((c) => [c.key, c.name])));
+      }
       
       // Calculate stats from profile data
       const statsData = {
@@ -349,7 +357,7 @@ export default function WorkerProfile({ navigation }) {
   }
 
   const rating = Number(profile?.averageRating || 0);
-  const services = profile?.services || [];
+  const trades = [...new Set((profile?.services || []).map((s) => s?.category).filter(Boolean))];
   const rate = profile?.hourlyRate;
   const years = profile?.experience;
   const openEdit = () => setIsEditing(true);
@@ -414,6 +422,17 @@ export default function WorkerProfile({ navigation }) {
             ]}
           />
 
+          {/* Verified badge */}
+          {!!profile?.verification && (
+            <FadeIn delay={60} style={{ marginTop: 14 }}>
+              <VerificationCard
+                verified={profile.isVerified}
+                verification={profile.verification}
+                onPress={() => navigation.navigate('VerificationDocuments')}
+              />
+            </FadeIn>
+          )}
+
           {/* Location */}
           <FadeIn delay={80}>
             <SectionHead
@@ -475,18 +494,18 @@ export default function WorkerProfile({ navigation }) {
           </FadeIn>
 
           {/* Services */}
-          {services.length > 0 && (
+          {trades.length > 0 && (
             <FadeIn delay={160}>
               <SectionHead icon="layers-outline" title="Mes services" />
               <View style={styles.servicesGrid}>
-                {services.map((s) => {
-                  const meta = categoryMeta(s.category, { name: s.name });
+                {trades.map((key) => {
+                  const meta = categoryMeta(key, { name: categoryNames[key] });
                   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
                   return (
-                    <View key={s.id} style={[styles.serviceTile, { backgroundColor: meta.bg }]}>
+                    <View key={key} style={[styles.serviceTile, { backgroundColor: meta.bg }]}>
                       <Icon name={meta.icon} size={27} color={meta.color} />
                       <Text style={[styles.serviceName, { color: meta.color }]} numberOfLines={1} adjustsFontSizeToFit>
-                        {s.name}
+                        {categoryNames[key] || meta.label}
                       </Text>
                     </View>
                   );

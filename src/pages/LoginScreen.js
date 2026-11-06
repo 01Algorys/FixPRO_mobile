@@ -34,11 +34,7 @@ export default function LoginScreen({ navigation }) {
         ? { phone: identifier, password }
         : { email: identifier, password };
       const result = await login(credentials);
-      if (result.documentsRequired) {
-        navigation.navigate('VerificationDocuments', { uploadToken: result.uploadToken });
-      } else if (!result.success) {
-        Alert.alert('Connexion impossible', result.error || 'Identifiants incorrects');
-      }
+      if (!result.success) Alert.alert('Connexion impossible', result.error || 'Identifiants incorrects');
       // On success, navigation is driven by isAuthenticated state in AppNavigator
     } finally {
       setLoading(false);
@@ -55,10 +51,6 @@ export default function LoginScreen({ navigation }) {
       navigation.navigate('RoleSelection', { social });
     } else if (result.needsWorkerDetails) {
       navigation.navigate('SocialWorkerSetup', social);
-    } else if (result.documentsRequired || result.uploadToken) {
-      navigation.navigate('VerificationDocuments', { uploadToken: result.uploadToken });
-    } else if (result.pendingApproval) {
-      navigation.navigate('PendingApproval');
     } else if (result.success === false) {
       Alert.alert('Connexion impossible', result.error);
     }

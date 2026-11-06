@@ -179,6 +179,7 @@ function AppContent() {
       if (data.type === 'RESERVATION_STATUS' && data.reservationId) {
         navigationRef.current?.navigate(user?.role === 'WORKER' ? 'Demandes' : 'Reservations');
       }
+      if (data.type === 'VERIFICATION_REJECTED') navigationRef.current?.navigate('VerificationDocuments');
       if (data.type === 'JOB_COMPLETED' && data.reservationId) openReview(data);
     };
     const subscription = addNotificationTapListener(openFromNotification);

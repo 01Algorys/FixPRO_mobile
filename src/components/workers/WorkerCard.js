@@ -21,13 +21,16 @@ export const SORTS = [
   { key: 'price', label: 'Prix' },
 ];
 
+// Verified technicians come first, whatever the sort
+const verifiedFirst = (compare) => (a, b) => (Number(!!b.isVerified) - Number(!!a.isVerified)) || compare(a, b);
+
 export const SORTERS = {
-  distance: (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity),
-  rating: (a, b) => (b.averageRating || 0) - (a.averageRating || 0),
-  experience: (a, b) => (b.experience || 0) - (a.experience || 0),
-  jobs: (a, b) => (b.jobsCompleted || 0) - (a.jobsCompleted || 0),
+  distance: verifiedFirst((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)),
+  rating: verifiedFirst((a, b) => (b.averageRating || 0) - (a.averageRating || 0)),
+  experience: verifiedFirst((a, b) => (b.experience || 0) - (a.experience || 0)),
+  jobs: verifiedFirst((a, b) => (b.jobsCompleted || 0) - (a.jobsCompleted || 0)),
   // Cheapest first; technicians without a rate go last
-  price: (a, b) => (a.hourlyRate || Infinity) - (b.hourlyRate || Infinity),
+  price: verifiedFirst((a, b) => (a.hourlyRate || Infinity) - (b.hourlyRate || Infinity)),
 };
 
 export const nameOf = (worker) => titleCase(worker.user?.name || worker.name || 'Technicien');

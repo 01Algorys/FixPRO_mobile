@@ -33,7 +33,6 @@ class ApiService {
         }
         const failure = new Error(error.message || `HTTP error! status: ${response.status}`);
         failure.code = error.code;
-        failure.uploadToken = error.uploadToken;
         throw failure;
       }
 
@@ -163,9 +162,9 @@ class ApiService {
     });
   }
 
-  // Multipart image upload. `token` overrides the session token (verification)
-  async uploadImage(endpoint, asset, token) {
-    const authToken = token || await this.getToken();
+  // Multipart image upload
+  async uploadImage(endpoint, asset) {
+    const authToken = await this.getToken();
     const formData = new FormData();
     formData.append('image', {
       uri: asset.uri,
@@ -184,12 +183,12 @@ class ApiService {
     return data;
   }
 
-  async getVerificationStatus(token) {
-    return this.request('/verification', { headers: { Authorization: `Bearer ${token}` } });
+  async getVerificationStatus() {
+    return this.request('/verification');
   }
 
-  async uploadVerificationDocument(type, asset, token) {
-    return this.uploadImage(`/verification/documents/${type}`, asset, token);
+  async uploadVerificationDocument(type, asset) {
+    return this.uploadImage(`/verification/documents/${type}`, asset);
   }
 
   async addPortfolioImage(asset) {
