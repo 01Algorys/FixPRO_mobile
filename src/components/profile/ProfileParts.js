@@ -87,6 +87,31 @@ export const InfoRow = ({ icon, label, value, onPress, last }) => {
   );
 };
 
+const verificationLook = (verified, { rejected, complete }) => {
+  if (verified) return { icon: 'shield-checkmark', color: '#16a34a', title: 'Technicien vérifié', text: 'Vous passez en priorité dans les recherches.' };
+  if (rejected) return { icon: 'alert-circle', color: '#dc2626', title: 'Document refusé', text: 'Renvoyez-le pour obtenir le badge vérifié.' };
+  if (complete) return { icon: 'time', color: '#d97706', title: 'Vérification en cours', text: 'Notre équipe examine vos documents.' };
+  return { icon: 'shield-outline', color: THEME, title: 'Devenez technicien vérifié', text: 'Envoyez vos documents : badge vérifié et priorité dans les recherches.' };
+};
+
+// `verification`: { complete, missing, rejected } from the technician's profile
+export const VerificationCard = ({ verified, verification, onPress }) => {
+  const look = verificationLook(verified, verification);
+  const Card = verified ? View : PressableScale;
+  return (
+    <Card {...(verified ? {} : { onPress, scaleTo: 0.985 })} style={[styles.card, styles.locationRow]}>
+      <View style={styles.locationIcon}>
+        <Ionicons name={look.icon} size={22} color={look.color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.locationTitle}>{look.title}</Text>
+        <Text style={styles.locationText}>{look.text}</Text>
+      </View>
+      {!verified && <Ionicons name="chevron-forward" size={17} color="#94a3b8" />}
+    </Card>
+  );
+};
+
 export const AccountTile = ({ icon, label, onPress }) => (
   <PressableScale style={[styles.card, styles.accountTile]} onPress={onPress}>
     <Ionicons name={icon} size={25} color={THEME} />

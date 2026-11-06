@@ -114,7 +114,6 @@ export const AuthProvider = ({ children }) => {
       await startSession(token, userData);
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
-      if (error.code === 'DOCUMENTS_REQUIRED') return { documentsRequired: true, uploadToken: error.uploadToken };
       console.error('Login failed:', error);
       return { success: false, error: mapLoginError(error.message) };
     }
@@ -124,8 +123,8 @@ export const AuthProvider = ({ children }) => {
   // returned credentials back on the follow-up calls (role choice, technician
   // details) so the provider's sheet isn't shown again.
   // Returns one of: { success } (signed in), { needsRole, profile, credentials },
-  // { needsWorkerDetails, profile, credentials }, { pendingApproval },
-  // { cancelled } or { success: false, error }.
+  // { needsWorkerDetails, profile, credentials }, { cancelled } or
+  // { success: false, error }.
   const loginWithSocial = async (provider, { credentials, role, phone, services } = {}) => {
     const social = SOCIAL_PROVIDERS[provider];
     let creds = credentials;
@@ -144,7 +143,6 @@ export const AuthProvider = ({ children }) => {
       }
       const data = response.data || {};
 
-      if (response.pendingApproval) return { pendingApproval: true, uploadToken: data.uploadToken };
       if (data.needsRole) return { needsRole: true, profile: data.profile, credentials: creds };
       if (data.needsWorkerDetails) return { needsWorkerDetails: true, profile: data.profile, credentials: creds };
 
@@ -152,7 +150,6 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user, role: data.user.role };
     } catch (error) {
       if (social.isCancelled(error)) return { cancelled: true };
-      if (error.code === 'DOCUMENTS_REQUIRED') return { documentsRequired: true, uploadToken: error.uploadToken };
       console.error(`${social.label} sign-in failed:`, error);
       // A server without the endpoint answers as if login were required
       if (/no token provided|not found/i.test(error.message || '')) {
@@ -179,16 +176,9 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      const response = await apiService.register(userData);
+      await apiService.register(userData);
 
-      // Workers NEVER get auto-logged in — they must wait for admin approval.
-      // We check both the backend flag and the role so this works even if the
-      // backend hasn't been redeployed yet (old backend returns a token for workers).
-      if (response.pendingApproval || userData.role === 'WORKER') {
-        return { success: true, pendingApproval: true, uploadToken: response.data?.uploadToken };
-      }
-
-      // For regular users, auto-login after successful registration
+      // Auto-login after successful registration
       const loginResult = await login({
         email: userData.email,
         password: userData.password,

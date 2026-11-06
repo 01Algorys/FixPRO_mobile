@@ -30,14 +30,8 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
     const result = await loginWithSocial(provider, { credentials, role: 'WORKER', phone: fullPhone(country, phone), services });
     setLoading(false);
 
-    if (result.uploadToken) {
-      navigation.reset({ index: 0, routes: [{ name: 'VerificationDocuments', params: { uploadToken: result.uploadToken } }] });
-    } else if (result.pendingApproval) {
-      navigation.reset({ index: 0, routes: [{ name: 'PendingApproval' }] });
-    } else if (result.success === false) {
-      Alert.alert('Inscription impossible', result.error);
-    }
-    // An existing account (same email) is simply signed in
+    if (result.success === false) Alert.alert('Inscription impossible', result.error);
+    // On success the navigator switches to the signed-in app
   };
 
   return (
@@ -85,7 +79,7 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
 
         <View style={{ height: 10 }} />
         <PrimaryButton label="Envoyer ma candidature" onPress={submit} loading={loading} />
-        <Text style={styles.note}>Notre équipe vérifie chaque technicien avant activation du compte.</Text>
+        <Text style={styles.note}>Votre compte est actif dès sa création.</Text>
       </FadeIn>
     </AuthShell>
   );

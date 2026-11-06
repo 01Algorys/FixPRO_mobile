@@ -14,7 +14,6 @@ import LoginScreen from '../pages/LoginScreen';
 import RoleSelectionScreen from '../pages/RoleSelectionScreen';
 import AuthPage from '../pages/AuthPage';
 import CreateAccountScreen from '../pages/CreateAccountScreen';
-import PendingApprovalScreen from '../pages/PendingApprovalScreen';
 import SocialWorkerSetupScreen from '../pages/SocialWorkerSetupScreen';
 import VerificationDocumentsScreen from '../pages/VerificationDocumentsScreen';
 import UserHomePage from '../pages/UserHomePage';
@@ -126,8 +125,6 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
             <Stack.Screen name="SocialWorkerSetup" component={SocialWorkerSetupScreen} />
-            <Stack.Screen name="VerificationDocuments" component={VerificationDocumentsScreen} options={{ gestureEnabled: false }} />
-            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : !isAuthenticated && isGuest ? (
           <>
@@ -137,14 +134,13 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
             <Stack.Screen name="SocialWorkerSetup" component={SocialWorkerSetupScreen} />
-            <Stack.Screen name="VerificationDocuments" component={VerificationDocumentsScreen} options={{ gestureEnabled: false }} />
-            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : user?.role === 'WORKER' ? (
           <>
             <Stack.Screen name="WorkerDashboard" component={WorkerTabs} />
             <Stack.Screen name="Notifications" component={NotificationsPage} />
             <Stack.Screen name="WorkerStats" component={WorkerStatsPage} />
+            <Stack.Screen name="VerificationDocuments" component={VerificationDocumentsScreen} />
             <Stack.Screen
               name="WorkerReservationDetails"
               component={WorkerReservationDetailsPage}
