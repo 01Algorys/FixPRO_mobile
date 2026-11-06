@@ -2,7 +2,7 @@
   "expo": {
     "name": "FixPro",
     "slug": "fixpro-mobile",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "fixpro",
@@ -22,8 +22,8 @@
       "buildNumber": "1",
       "minimumOsVersion": "16.0",
       "infoPlist": {
-        "NSCameraUsageDescription": "FixPro needs access to your camera to take profile pictures and document job completion.",
-        "NSPhotoLibraryUsageDescription": "FixPro needs access to your photo library to select profile pictures.",
+        "NSCameraUsageDescription": "FixPro uses your camera to take profile photos, photos of your work, verification documents and photos to send in chat.",
+        "NSPhotoLibraryUsageDescription": "FixPro uses your photo library so you can choose profile photos, photos of your work, verification documents and photos to send in chat.",
         "NSPhotoLibraryAddUsageDescription": "FixPro needs permission to save photos to your library.",
         "NSLocationWhenInUseUsageDescription": "FixPro uses your location to show nearby service professionals and track job progress.",
         "NSUserNotificationsUsageDescription": "FixPro sends you notifications for reservation updates and messages.",
@@ -120,8 +120,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "FixPro needs access to your photo library to select profile pictures.",
-          "cameraPermission": "FixPro needs access to your camera to take profile pictures."
+          "photosPermission": "FixPro uses your photo library so you can choose profile photos, photos of your work, verification documents and photos to send in chat.",
+          "cameraPermission": "FixPro uses your camera to take profile photos, photos of your work, verification documents and photos to send in chat."
         }
       ],
       [
