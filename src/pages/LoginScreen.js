@@ -51,6 +51,8 @@ export default function LoginScreen({ navigation }) {
       navigation.navigate('RoleSelection', { social });
     } else if (result.needsWorkerDetails) {
       navigation.navigate('SocialWorkerSetup', social);
+    } else if (result.pendingApproval) {
+      navigation.navigate('PendingApproval');
     } else if (result.success === false) {
       Alert.alert('Connexion impossible', result.error);
     }

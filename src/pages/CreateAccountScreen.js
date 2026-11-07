@@ -64,8 +64,12 @@ export default function CreateAccountScreen({ navigation, route }) {
         phone: fullPhone(country, phone),
         ...(isWorker && { services }),
       });
+      if (result.pendingApproval) {
+        navigation.replace('PendingApproval');
+        return;
+      }
       if (!result.success) Alert.alert('Inscription impossible', result.error || 'Échec de la création du compte');
-      // Once signed in, the navigator switches to the app
+      // Clients are signed in; the navigator switches to the app
     } finally {
       setLoading(false);
     }
@@ -91,6 +95,8 @@ export default function CreateAccountScreen({ navigation, route }) {
     setSocialLoading(null);
     if (result.needsWorkerDetails) {
       navigation.navigate('SocialWorkerSetup', { provider, credentials: result.credentials, profile: result.profile });
+    } else if (result.pendingApproval) {
+      navigation.replace('PendingApproval');
     } else if (result.success === false) {
       Alert.alert('Inscription impossible', result.error);
     }
@@ -209,7 +215,7 @@ export default function CreateAccountScreen({ navigation, route }) {
       {step === 3 && (
         <FadeIn>
           <Stepper steps={WORKER_STEPS} current={3} />
-          <AuthTitle title="Vérifiez vos informations" subtitle="Votre compte est actif dès sa création." />
+          <AuthTitle title="Vérifiez votre candidature" subtitle="Notre équipe valide chaque technicien avant l'activation du compte." />
           <View style={styles.summary}>
             <SummaryRow icon="person-outline" text={name.trim()} />
             <SummaryRow icon="mail-outline" text={email.trim().toLowerCase()} />

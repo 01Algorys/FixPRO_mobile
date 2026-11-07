@@ -15,6 +15,7 @@ import RoleSelectionScreen from '../pages/RoleSelectionScreen';
 import AuthPage from '../pages/AuthPage';
 import CreateAccountScreen from '../pages/CreateAccountScreen';
 import SocialWorkerSetupScreen from '../pages/SocialWorkerSetupScreen';
+import PendingApprovalScreen from '../pages/PendingApprovalScreen';
 import VerificationDocumentsScreen from '../pages/VerificationDocumentsScreen';
 import UserHomePage from '../pages/UserHomePage';
 import MessagesPage from '../pages/MessagesPage';
@@ -125,6 +126,7 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
             <Stack.Screen name="SocialWorkerSetup" component={SocialWorkerSetupScreen} />
+            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : !isAuthenticated && isGuest ? (
           <>
@@ -134,6 +136,7 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen name="Auth" component={AuthPage} />
             <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
             <Stack.Screen name="SocialWorkerSetup" component={SocialWorkerSetupScreen} />
+            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} options={{ gestureEnabled: false }} />
           </>
         ) : user?.role === 'WORKER' ? (
           <>
