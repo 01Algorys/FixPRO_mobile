@@ -123,8 +123,8 @@ export const AuthProvider = ({ children }) => {
   // returned credentials back on the follow-up calls (role choice, technician
   // details) so the provider's sheet isn't shown again.
   // Returns one of: { success } (signed in), { needsRole, profile, credentials },
-  // { needsWorkerDetails, profile, credentials }, { cancelled } or
-  // { success: false, error }.
+  // { needsWorkerDetails, profile, credentials }, { pendingApproval },
+  // { cancelled } or { success: false, error }.
   const loginWithSocial = async (provider, { credentials, role, phone, services } = {}) => {
     const social = SOCIAL_PROVIDERS[provider];
     let creds = credentials;
@@ -150,6 +150,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user, role: data.user.role };
     } catch (error) {
       if (social.isCancelled(error)) return { cancelled: true };
+      if (error.code === 'ACCOUNT_PENDING_APPROVAL') return { pendingApproval: true };
       console.error(`${social.label} sign-in failed:`, error);
       // A server without the endpoint answers as if login were required
       if (/no token provided|not found/i.test(error.message || '')) {
@@ -176,7 +177,10 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      await apiService.register(userData);
+      const response = await apiService.register(userData);
+
+      // Technicians wait for an admin to approve their account
+      if (response.pendingApproval) return { success: true, pendingApproval: true };
 
       // Auto-login after successful registration
       const loginResult = await login({
