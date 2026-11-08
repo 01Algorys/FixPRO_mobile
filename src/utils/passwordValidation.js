@@ -1,27 +1,28 @@
+import { t } from '../i18n';
 export const PASSWORD_REQUIREMENTS = [
   {
     key: 'length',
-    label: 'Au moins 8 caractères',
+    label: t('auth.pwLength'),
     test: (p) => p.length >= 8,
   },
   {
     key: 'uppercase',
-    label: 'Une lettre majuscule (A-Z)',
+    label: t('auth.pwUpper'),
     test: (p) => /[A-Z]/.test(p),
   },
   {
     key: 'lowercase',
-    label: 'Une lettre minuscule (a-z)',
+    label: t('auth.pwLower'),
     test: (p) => /[a-z]/.test(p),
   },
   {
     key: 'number',
-    label: 'Un chiffre (0-9)',
+    label: t('auth.pwDigit'),
     test: (p) => /[0-9]/.test(p),
   },
   {
     key: 'special',
-    label: 'Un caractère spécial (!@#$%...)',
+    label: t('auth.pwSpecial'),
     test: (p) => /[!@#$%^&*()\-_=+\[\]{};':"\\|,.<>/?`~]/.test(p),
   },
 ];

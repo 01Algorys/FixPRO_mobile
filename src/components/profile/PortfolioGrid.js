@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, ActivityIndicator, Dimensions } from 're
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from '../ui/PressableScale';
 import ImageViewer from '../ui/ImageViewer';
+import { t } from '../../i18n';
 
 const PRIMARY = '#1d5ff0';
 const GAP = 8;
@@ -22,7 +23,7 @@ const PortfolioGrid = ({ images = [], onAdd, onRemove, adding, max }) => {
             <Image source={{ uri: image.url }} style={styles.tile} />
           </PressableScale>
           {!!onRemove && (
-            <PressableScale style={styles.remove} scaleTo={0.88} onPress={() => onRemove(image)} accessibilityLabel="Supprimer la photo">
+            <PressableScale style={styles.remove} scaleTo={0.88} onPress={() => onRemove(image)} accessibilityLabel={t('picker.deletePhoto')}>
               <Ionicons name="close" size={15} color="#fff" />
             </PressableScale>
           )}
@@ -33,7 +34,7 @@ const PortfolioGrid = ({ images = [], onAdd, onRemove, adding, max }) => {
           {adding ? <ActivityIndicator color={PRIMARY} /> : (
             <>
               <Ionicons name="add" size={26} color={PRIMARY} />
-              <Text style={styles.addText}>Ajouter</Text>
+              <Text style={styles.addText}>{t('picker.add')}</Text>
             </>
           )}
         </PressableScale>

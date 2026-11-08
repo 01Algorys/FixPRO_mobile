@@ -1,14 +1,15 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Colors } from '../styles/theme';
+import { t } from '../i18n';
 
 // Generic confirm/cancel dialog, styled consistently with the app's card/button look.
 const ConfirmModal = ({
   visible,
   title,
   message,
-  confirmLabel = 'Confirmer',
-  cancelLabel = 'Annuler',
+  confirmLabel = t('common.confirm'),
+  cancelLabel = t('common.cancel'),
   destructive = false,
   loading = false,
   onConfirm,

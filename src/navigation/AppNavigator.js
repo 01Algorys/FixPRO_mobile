@@ -37,6 +37,7 @@ import WorkerReservationDetailsPage from '../pages/WorkerReservationDetailsPage'
 import WorkerStatsPage from '../pages/WorkerStatsPage';
 import LockedScreen from '../components/LockedScreen';
 import ClientTabBar from '../components/ClientTabBar';
+import { t } from '../i18n';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -77,9 +78,9 @@ const GuestTabs = () => {
       )}
     >
       <GuestTab.Screen name="Home" component={UserHomePage} />
-      <GuestTab.Screen name="Messages" component={LockedScreen} initialParams={{ title: 'Messagerie réservée', message: 'Connectez-vous pour discuter avec les professionnels.' }} />
-      <GuestTab.Screen name="Reservations" component={LockedScreen} initialParams={{ title: 'Réservations réservées', message: 'Connectez-vous pour voir et gérer vos réservations.' }} />
-      <GuestTab.Screen name="Profile" component={LockedScreen} initialParams={{ title: 'Profil réservé', message: 'Connectez-vous pour accéder à votre profil.' }} />
+      <GuestTab.Screen name="Messages" component={LockedScreen} initialParams={{ title: t('nav.lockedMessagesTitle'), message: t('nav.lockedMessages') }} />
+      <GuestTab.Screen name="Reservations" component={LockedScreen} initialParams={{ title: t('nav.lockedReservationsTitle'), message: t('nav.lockedReservations') }} />
+      <GuestTab.Screen name="Profile" component={LockedScreen} initialParams={{ title: t('nav.lockedProfileTitle'), message: t('nav.lockedProfile') }} />
     </GuestTab.Navigator>
   );
 };

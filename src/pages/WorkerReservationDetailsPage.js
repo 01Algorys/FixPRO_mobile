@@ -9,6 +9,9 @@ import AcceptedModal from '../components/worker/AcceptedModal';
 import { categoryMeta } from '../utils/categoryMeta';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
+import { t } from '../i18n';
+import { formatDate, formatPrice, directional } from '../i18n/format';
+import { serviceName } from '../i18n/serverText';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -16,19 +19,19 @@ const MUTED = '#64748b';
 const SURFACE = '#f4f7fc';
 
 const STATUS = {
-  PENDING: { label: 'Nouvelle demande', color: '#b45309', bg: '#fef3c7', icon: 'time' },
-  ACCEPTED: { label: 'Confirmée', color: '#15803d', bg: '#dcfce7', icon: 'checkmark-circle' },
-  IN_PROGRESS: { label: 'En cours', color: PRIMARY, bg: '#dbeafe', icon: 'construct' },
-  COMPLETED: { label: 'Terminée', color: '#7c3aed', bg: '#ede9fe', icon: 'checkmark-done-circle' },
-  CANCELLED: { label: 'Annulée', color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
-  REJECTED: { label: 'Refusée', color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
-  EXPIRED: { label: 'Expirée', color: MUTED, bg: '#f1f5f9', icon: 'hourglass' },
+  PENDING: { label: t('status.new'), color: '#b45309', bg: '#fef3c7', icon: 'time' },
+  ACCEPTED: { label: t('status.confirmed'), color: '#15803d', bg: '#dcfce7', icon: 'checkmark-circle' },
+  IN_PROGRESS: { label: t('status.inProgress'), color: PRIMARY, bg: '#dbeafe', icon: 'construct' },
+  COMPLETED: { label: t('status.completed'), color: '#7c3aed', bg: '#ede9fe', icon: 'checkmark-done-circle' },
+  CANCELLED: { label: t('status.cancelled'), color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
+  REJECTED: { label: t('status.rejected'), color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
+  EXPIRED: { label: t('status.expired'), color: MUTED, bg: '#f1f5f9', icon: 'hourglass' },
 };
 
 const upper = (s) => String(s || '').toUpperCase();
 
 const longDate = (d) =>
-  d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '—';
+  d ? formatDate(d, { weekday: 'long', day: 'numeric', month: 'long' }) : '—';
 
 const Row = ({ icon, label, value, last }) => (
   <View style={[styles.row, last && { borderBottomWidth: 0 }]}>
@@ -80,7 +83,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
   if (!reservation) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>Réservation introuvable.</Text>
+        <Text style={styles.emptyText}>{t('wdetails.notFound')}</Text>
       </View>
     );
   }
@@ -90,9 +93,9 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
   const meta = categoryMeta(reservation.service?.category, { name: reservation.service?.name });
   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
   const client = reservation.user || {};
-  const clientName = reservation.clientName || client.name || 'Client';
+  const clientName = reservation.clientName || client.name || t('common.client');
   const loc = reservation.location || {};
-  const address = [loc.address || reservation.address, loc.city].filter(Boolean).join(', ') || 'Adresse non précisée';
+  const address = [loc.address || reservation.address, loc.city].filter(Boolean).join(', ') || t('wdetails.noAddress');
   const price = reservation.actualPrice ?? reservation.estimatedPrice ?? reservation.service?.basePrice;
   const images = Array.isArray(reservation.images) ? reservation.images : [];
 
@@ -108,7 +111,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Failed to update reservation from details:', error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour la demande.');
+      Alert.alert(t('common.error'), t('wdetails.updateFailed'));
     } finally {
       setBusy(null);
     }
@@ -116,7 +119,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
 
   const confirm = (title, message, action, next, destructive) =>
     Alert.alert(title, message, [
-      { text: 'Annuler', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
       { text: action, style: destructive ? 'destructive' : 'default', onPress: () => updateStatus(next) },
     ]);
 
@@ -137,9 +140,9 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color={INK} />
+          <Ionicons name={directional('chevron-back')} size={24} color={INK} />
         </PressableScale>
-        <Text style={styles.headerTitle}>Détail de la demande</Text>
+        <Text style={styles.headerTitle}>{t('wdetails.title')}</Text>
         <Text style={styles.ref}>#{String(reservation.id).padStart(4, '0')}</Text>
       </View>
 
@@ -154,7 +157,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
             {reservation.emergency && (
               <View style={styles.urgentPill}>
                 <Ionicons name="flash" size={13} color="#fff" />
-                <Text style={styles.urgentText}>Urgent</Text>
+                <Text style={styles.urgentText}>{t('common.urgent')}</Text>
               </View>
             )}
           </View>
@@ -164,13 +167,13 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroTitle}>{meta.label}</Text>
-              {!!reservation.service?.name && reservation.service.name !== meta.label && (
-                <Text style={styles.heroSub} numberOfLines={2}>{reservation.service.name}</Text>
+              {!!reservation.service?.name && serviceName(reservation.service.name) !== meta.label && (
+                <Text style={styles.heroSub} numberOfLines={2}>{serviceName(reservation.service.name)}</Text>
               )}
             </View>
             {price != null && (
               <View style={styles.pricePill}>
-                <Text style={styles.priceText}>{price} TND</Text>
+                <Text style={styles.priceText}>{formatPrice(price)}</Text>
               </View>
             )}
           </View>
@@ -178,7 +181,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
 
         {/* Client */}
         <FadeIn delay={50}>
-          <Text style={styles.sectionLabel}>Client</Text>
+          <Text style={styles.sectionLabel}>{t('common.client')}</Text>
           <View style={[styles.card, styles.clientCard]}>
             {client.avatar ? (
               <Image source={{ uri: client.avatar }} style={styles.clientAvatar} />
@@ -190,7 +193,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
             <View style={{ flex: 1 }}>
               <Text style={styles.clientName}>{clientName}</Text>
               <Text style={styles.clientSub}>
-                {canContact ? 'Contactez le client par message' : 'Messagerie disponible après acceptation'}
+                {canContact ? t('wdetails.contactHint') : t('wdetails.chatAfterAccept')}
               </Text>
             </View>
             {canContact && (
@@ -205,23 +208,23 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
 
         {/* Schedule & place */}
         <FadeIn delay={100}>
-          <Text style={styles.sectionLabel}>Rendez-vous</Text>
+          <Text style={styles.sectionLabel}>{t('wdetails.appointment')}</Text>
           <View style={styles.card}>
-            <Row icon="calendar-outline" label="Date" value={longDate(reservation.date)} />
-            <Row icon="time-outline" label="Heure" value={`${reservation.time || '—'}${reservation.duration ? ` · ${reservation.duration} min` : ''}`} />
-            <Row icon="location-outline" label="Adresse" value={address} last />
+            <Row icon="calendar-outline" label={t('common.date')} value={longDate(reservation.date)} />
+            <Row icon="time-outline" label={t('common.time')} value={`${reservation.time || '—'}${reservation.duration ? t('wdetails.duration', { count: reservation.duration }) : ''}`} />
+            <Row icon="location-outline" label={t('common.address')} value={address} last />
             <PressableScale style={styles.mapsBtn} onPress={openMaps}>
               <Ionicons name="navigate" size={16} color={PRIMARY} />
-              <Text style={styles.mapsText}>Itinéraire</Text>
+              <Text style={styles.mapsText}>{t('wdetails.directions')}</Text>
             </PressableScale>
           </View>
         </FadeIn>
 
         {/* Description */}
         <FadeIn delay={150}>
-          <Text style={styles.sectionLabel}>Description</Text>
+          <Text style={styles.sectionLabel}>{t('common.description')}</Text>
           <View style={[styles.card, styles.pad]}>
-            <Text style={styles.description}>{reservation.description || 'Aucune description.'}</Text>
+            <Text style={styles.description}>{reservation.description || t('wdetails.noDescription')}</Text>
             {images.length > 0 && (
               <View style={styles.photos}>
                 {images.map((uri) => (
@@ -235,7 +238,7 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
         {!!reservation.cancellationReason && (
           <FadeIn delay={180}>
             <View style={[styles.card, styles.pad, styles.cancelBox]}>
-              <Text style={styles.cancelTitle}>Motif d'annulation</Text>
+              <Text style={styles.cancelTitle}>{t('wdetails.cancelReason')}</Text>
               <Text style={styles.cancelText}>{reservation.cancellationReason}</Text>
             </View>
           </FadeIn>
@@ -248,16 +251,16 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
           <PressableScale
             style={[styles.actionBtn, styles.rejectBtn]}
             disabled={!!busy}
-            onPress={() => confirm('Refuser la demande', 'Le client sera informé que vous ne pouvez pas intervenir.', 'Refuser', 'rejected', true)}
+            onPress={() => confirm(t('wdetails.refuseTitle'), t('wdetails.refuseHint'), t('common.refuse'), 'rejected', true)}
           >
             <Ionicons name="close" size={20} color="#dc2626" />
-            <Text style={styles.rejectText}>Refuser</Text>
+            <Text style={styles.rejectText}>{t('common.refuse')}</Text>
           </PressableScale>
           <PressableScale style={[styles.actionBtn, styles.primaryBtn]} disabled={!!busy} onPress={() => updateStatus('accepted')}>
             {busy === 'accepted' ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.primaryText}>Accepter</Text>
+                <Text style={styles.primaryText}>{t('common.accept')}</Text>
               </>
             )}
           </PressableScale>
@@ -268,12 +271,12 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
           <PressableScale
             style={[styles.actionBtn, styles.primaryBtn]}
             disabled={!!busy}
-            onPress={() => confirm("Commencer l'intervention", 'Le client verra que vous êtes sur place.', 'Commencer', 'in_progress')}
+            onPress={() => confirm(t('wdetails.startTitle'), t('wdetails.startHint'), t('common.start'), 'in_progress')}
           >
             {busy ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Ionicons name="play" size={18} color="#fff" />
-                <Text style={styles.primaryText}>Commencer l'intervention</Text>
+                <Text style={styles.primaryText}>{t('wdetails.startTitle')}</Text>
               </>
             )}
           </PressableScale>
@@ -284,12 +287,12 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
           <PressableScale
             style={[styles.actionBtn, styles.doneBtn]}
             disabled={!!busy}
-            onPress={() => confirm("Terminer l'intervention", 'Le client pourra ensuite laisser un avis.', 'Terminer', 'completed')}
+            onPress={() => confirm(t('wdetails.finishTitle'), t('wdetails.finishHint'), t('common.finish'), 'completed')}
           >
             {busy ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Ionicons name="checkmark-done" size={20} color="#fff" />
-                <Text style={styles.primaryText}>Terminer l'intervention</Text>
+                <Text style={styles.primaryText}>{t('wdetails.finishTitle')}</Text>
               </>
             )}
           </PressableScale>

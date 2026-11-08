@@ -10,6 +10,8 @@ import { useScreenChrome } from '../context/ChromeContext';
 import { titleCase } from '../utils/categoryMeta';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
+import { t } from '../i18n';
+import { directional } from '../i18n/format';
 
 const BLUE = '#1a56db';
 const NAVY = '#0b3fb3';
@@ -22,11 +24,11 @@ const STAR = '#f5b400';
 const MAX_COMMENT = 1000;
 
 const RATING_LABELS = {
-  1: { text: 'Très décevant', color: '#dc2626' },
-  2: { text: 'Décevant', color: '#ea580c' },
-  3: { text: 'Correct', color: '#b45309' },
-  4: { text: 'Très bien', color: '#16a34a' },
-  5: { text: 'Excellent !', color: '#16a34a' },
+  1: { text: t('rating.veryBad'), color: '#dc2626' },
+  2: { text: t('rating.bad'), color: '#ea580c' },
+  3: { text: t('rating.ok'), color: '#b45309' },
+  4: { text: t('rating.good'), color: '#16a34a' },
+  5: { text: t('rating.excellent'), color: '#16a34a' },
 };
 
 const RatingPage = ({ route, navigation }) => {
@@ -38,7 +40,7 @@ const RatingPage = ({ route, navigation }) => {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const name = titleCase(workerName || 'Technicien');
+  const name = titleCase(workerName || t('common.technician'));
   const label = RATING_LABELS[rating];
 
   const handleSubmit = async () => {
@@ -51,7 +53,7 @@ const RatingPage = ({ route, navigation }) => {
         comment: comment.trim(),
         wouldHireAgain,
       });
-      Alert.alert('Merci !', 'Votre avis a bien été envoyé.', [
+      Alert.alert(t('rating.thanks'), t('rating.sent'), [
         {
           text: 'OK',
           onPress: () => {
@@ -65,10 +67,10 @@ const RatingPage = ({ route, navigation }) => {
       ]);
     } catch (error) {
       console.error('Failed to submit review:', error);
-      const alreadySent = /already exists/i.test(error?.message || '');
+      const alreadySent = /already exists/i.test(error?.serverMessage || '');
       Alert.alert(
-        alreadySent ? 'Avis déjà envoyé' : 'Erreur',
-        alreadySent ? 'Vous avez déjà évalué cette intervention.' : "Impossible d'envoyer votre avis. Réessayez."
+        alreadySent ? t('rating.alreadySent') : t('common.error'),
+        alreadySent ? t('rating.alreadyRated') : t('rating.sendFailed')
       );
     } finally {
       setSubmitting(false);
@@ -96,11 +98,11 @@ const RatingPage = ({ route, navigation }) => {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={23} color="#fff" />
+          <Ionicons name={directional('arrow-back')} size={23} color="#fff" />
         </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Votre avis</Text>
-          <Text style={styles.subtitle}>Il aide les autres clients à choisir</Text>
+          <Text style={styles.title}>{t('rating.title')}</Text>
+          <Text style={styles.subtitle}>{t('rating.subtitle')}</Text>
         </View>
       </LinearGradient>
 
@@ -115,8 +117,8 @@ const RatingPage = ({ route, navigation }) => {
           <View style={styles.avatar}>
             <Text style={styles.avatarLetter}>{name[0]}</Text>
           </View>
-          <Text style={styles.question}>Comment s'est passée l'intervention ?</Text>
-          <Text style={styles.workerName}>avec {name}</Text>
+          <Text style={styles.question}>{t('rating.question')}</Text>
+          <Text style={styles.workerName}>{t('rating.with', { name })}</Text>
 
           <View style={styles.stars}>
             {[1, 2, 3, 4, 5].map((n) => (
@@ -126,26 +128,26 @@ const RatingPage = ({ route, navigation }) => {
             ))}
           </View>
           <Text style={[styles.ratingLabel, label && { color: label.color }]}>
-            {label ? label.text : 'Touchez une étoile pour noter'}
+            {label ? label.text : t('rating.tapStar')}
           </Text>
         </FadeIn>
 
         <FadeIn delay={60} style={[styles.card, styles.cardLeft]}>
-          <Text style={styles.sectionTitle}>Feriez-vous de nouveau appel à {name} ?</Text>
+          <Text style={styles.sectionTitle}>{t('rating.again', { name })}</Text>
           <View style={styles.choices}>
-            {choice(true, 'Oui', 'thumbs-up-outline')}
-            {choice(false, 'Non', 'thumbs-down-outline')}
+            {choice(true, t('common.yes'), 'thumbs-up-outline')}
+            {choice(false, t('common.no'), 'thumbs-down-outline')}
           </View>
         </FadeIn>
 
         <FadeIn delay={120} style={[styles.card, styles.cardLeft]}>
           <View style={styles.commentHead}>
-            <Text style={styles.sectionTitle}>Votre commentaire</Text>
-            <Text style={styles.optional}>Optionnel</Text>
+            <Text style={styles.sectionTitle}>{t('rating.comment')}</Text>
+            <Text style={styles.optional}>{t('rating.optional')}</Text>
           </View>
           <TextInput
             style={styles.commentInput}
-            placeholder="Ponctualité, qualité du travail, accueil..."
+            placeholder={t('rating.commentPlaceholder')}
             placeholderTextColor="#94a3b8"
             multiline
             maxLength={MAX_COMMENT}
@@ -166,7 +168,7 @@ const RatingPage = ({ route, navigation }) => {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitText}>Envoyer mon avis</Text>
+            <Text style={styles.submitText}>{t('rating.send')}</Text>
           )}
         </PressableScale>
       </View>

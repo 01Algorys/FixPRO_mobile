@@ -14,6 +14,9 @@ import apiService from '../services/api';
 import socketService from '../services/socketService';
 import ConfirmModal from '../components/ConfirmModal';
 import { Colors } from '../styles/theme';
+import { t } from '../i18n';
+import { formatDate, directional } from '../i18n/format';
+import { serviceName } from '../i18n/serverText';
 
 const OrderTracking = ({ route, navigation }) => {
   const { reservationId } = route.params || {};
@@ -59,7 +62,7 @@ const OrderTracking = ({ route, navigation }) => {
       setCancelModalVisible(false);
     } catch (error) {
       console.error('Failed to cancel reservation:', error);
-      Alert.alert('Erreur', error.message || "Impossible d'annuler cette réservation.");
+      Alert.alert(t('common.error'), error.message || t('tracking.cancelFailed'));
     } finally {
       setCancelling(false);
     }
@@ -83,13 +86,13 @@ const OrderTracking = ({ route, navigation }) => {
   const getStatusConfig = (status) => {
     const statusLower = status?.toLowerCase() || 'pending';
     const configs = {
-      pending: { color: '#eab308', bg: '#fef9c3', text: 'En attente', icon: 'time' },
-      accepted: { color: '#1a56db', bg: '#dbeafe', text: 'Accepté', icon: 'checkmark-circle' },
-      in_progress: { color: '#8b5cf6', bg: '#ede9fe', text: 'En cours', icon: 'sync-outline' },
-      completed: { color: '#22c55e', bg: '#dcfce7', text: 'Terminé', icon: 'checkmark-done-circle' },
-      cancelled: { color: '#ef4444', bg: '#fee2e2', text: 'Annulé', icon: 'close-circle' },
-      rejected: { color: '#ef4444', bg: '#fee2e2', text: 'Refusé', icon: 'close-circle' },
-      expired: { color: '#6b7280', bg: '#f3f4f6', text: 'Expiré', icon: 'hourglass-outline' },
+      pending: { color: '#eab308', bg: '#fef9c3', text: t('status.pending'), icon: 'time' },
+      accepted: { color: '#1a56db', bg: '#dbeafe', text: t('tracking.accepted'), icon: 'checkmark-circle' },
+      in_progress: { color: '#8b5cf6', bg: '#ede9fe', text: t('status.inProgress'), icon: 'sync-outline' },
+      completed: { color: '#22c55e', bg: '#dcfce7', text: t('tracking.done'), icon: 'checkmark-done-circle' },
+      cancelled: { color: '#ef4444', bg: '#fee2e2', text: t('tracking.cancelled'), icon: 'close-circle' },
+      rejected: { color: '#ef4444', bg: '#fee2e2', text: t('tracking.refused'), icon: 'close-circle' },
+      expired: { color: '#6b7280', bg: '#f3f4f6', text: t('tracking.expired'), icon: 'hourglass-outline' },
     };
     return configs[statusLower] || configs.pending;
   };
@@ -98,40 +101,40 @@ const OrderTracking = ({ route, navigation }) => {
     const statusLower = status?.toLowerCase() || 'pending';
     const baseTimeline = [
       {
-        title: 'Réservation créée',
-        time: new Date(reservation?.createdAt || Date.now()).toLocaleDateString('fr-FR', {
+        title: t('tracking.created'),
+        time: formatDate(reservation?.createdAt || Date.now(), {
           hour: '2-digit',
           minute: '2-digit'
         }),
         completed: true
       },
       {
-        title: 'En attente de confirmation',
-        time: statusLower === 'pending' ? 'En attente' : 'Confirmé',
+        title: t('tracking.waiting'),
+        time: statusLower === 'pending' ? t('status.pending') : t('tracking.confirmed'),
         completed: statusLower !== 'pending'
       },
       {
-        title: 'Accepté par le professionnel',
+        title: t('tracking.acceptedByPro'),
         time: statusLower === 'accepted' || statusLower === 'in_progress' || statusLower === 'completed' 
-          ? 'Accepté' 
-          : 'En attente',
+          ? t('tracking.accepted') 
+          : t('status.pending'),
         completed: statusLower === 'accepted' || statusLower === 'in_progress' || statusLower === 'completed'
       },
       {
-        title: 'En cours de réalisation',
-        time: statusLower === 'in_progress' || statusLower === 'completed' ? 'En cours' : 'En attente',
+        title: t('tracking.inProgress'),
+        time: statusLower === 'in_progress' || statusLower === 'completed' ? t('status.inProgress') : t('status.pending'),
         completed: statusLower === 'in_progress' || statusLower === 'completed'
       },
       {
-        title: 'Terminé',
-        time: statusLower === 'completed' ? 'Terminé' : 'En attente',
+        title: t('tracking.done'),
+        time: statusLower === 'completed' ? t('tracking.done') : t('status.pending'),
         completed: statusLower === 'completed'
       }
     ];
 
     // Handle cancelled/rejected/expired status
     if (statusLower === 'cancelled' || statusLower === 'rejected' || statusLower === 'expired') {
-      const labels = { cancelled: 'Annulé', rejected: 'Refusé', expired: 'Expiré' };
+      const labels = { cancelled: t('tracking.cancelled'), rejected: t('tracking.refused'), expired: t('tracking.expired') };
       return [
         baseTimeline[0],
         {
@@ -149,7 +152,7 @@ const OrderTracking = ({ route, navigation }) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Chargement...</Text>
+        <Text style={styles.loadingText}>{t('tracking.loading')}</Text>
       </View>
     );
   }
@@ -159,14 +162,14 @@ const OrderTracking = ({ route, navigation }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
+            <Ionicons name={directional('arrow-back')} size={24} color={Colors.textLight} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Détails de réservation</Text>
+          <Text style={styles.headerTitle}>{t('tracking.title')}</Text>
         </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={Colors.error} />
-          <Text style={styles.errorTitle}>Réservation non trouvée</Text>
-          <Text style={styles.errorText}>ID: {reservationId}</Text>
+          <Text style={styles.errorTitle}>{t('tracking.notFound')}</Text>
+          <Text style={styles.errorText}>{t('tracking.id', { id: reservationId })}</Text>
         </View>
       </View>
     );
@@ -178,9 +181,9 @@ const OrderTracking = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
+          <Ionicons name={directional('arrow-back')} size={24} color={Colors.textLight} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Détails de réservation</Text>
+        <Text style={styles.headerTitle}>{t('tracking.title')}</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -192,12 +195,12 @@ const OrderTracking = ({ route, navigation }) => {
                 {statusConfig.text}
               </Text>
             </View>
-            <Text style={styles.reservationId}>ID: {reservation.id}</Text>
+            <Text style={styles.reservationId}>{t('tracking.id', { id: reservation.id })}</Text>
           </View>
 
           {/* Status Timeline */}
           <View style={styles.timelineSection}>
-            <Text style={styles.sectionTitle}>Suivi de la réservation</Text>
+            <Text style={styles.sectionTitle}>{t('tracking.timeline')}</Text>
             <View style={styles.timeline}>
               {getStatusTimeline(reservation.status).map((step, index) => (
                 <View key={index} style={styles.timelineItem}>
@@ -241,9 +244,9 @@ const OrderTracking = ({ route, navigation }) => {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Service</Text>
+            <Text style={styles.sectionTitle}>{t('common.service')}</Text>
             <Text style={styles.serviceName}>
-              {reservation.service?.name || reservation.service || 'Service'}
+              {serviceName(reservation.service?.name || reservation.service) || t('common.service')}
             </Text>
             {reservation.description && (
               <Text style={styles.description}>{reservation.description}</Text>
@@ -251,7 +254,7 @@ const OrderTracking = ({ route, navigation }) => {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Professionnel</Text>
+            <Text style={styles.sectionTitle}>{t('common.professional')}</Text>
             <View style={styles.workerRow}>
               <View style={styles.workerAvatar}>
                 {reservation.worker?.avatar || reservation.workerAvatar ? (
@@ -267,18 +270,18 @@ const OrderTracking = ({ route, navigation }) => {
               </View>
               <View style={styles.workerInfo}>
                 <Text style={styles.workerName}>
-                  {reservation.workerName || reservation.worker?.name || 'Professionnel'}
+                  {reservation.workerName || reservation.worker?.name || t('common.professional')}
                 </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Date et heure</Text>
+            <Text style={styles.sectionTitle}>{t('tracking.dateTime')}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
               <Text style={styles.detailText}>
-                {new Date(reservation.date).toLocaleDateString('fr-FR', {
+                {formatDate(reservation.date, {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
@@ -293,11 +296,11 @@ const OrderTracking = ({ route, navigation }) => {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Adresse</Text>
+            <Text style={styles.sectionTitle}>{t('common.address')}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
               <Text style={styles.detailText}>
-                {reservation.location?.address || reservation.address || 'Adresse non spécifiée'}
+                {reservation.location?.address || reservation.address || t('tracking.noAddress')}
               </Text>
             </View>
           </View>
@@ -308,7 +311,7 @@ const OrderTracking = ({ route, navigation }) => {
               onPress={() => setCancelModalVisible(true)}
             >
               <Ionicons name="close-circle-outline" size={18} color={Colors.error} />
-              <Text style={styles.cancelButtonText}>Annuler la réservation</Text>
+              <Text style={styles.cancelButtonText}>{t('tracking.cancelButton')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -316,10 +319,10 @@ const OrderTracking = ({ route, navigation }) => {
 
       <ConfirmModal
         visible={cancelModalVisible}
-        title="Annuler la réservation ?"
-        message="Êtes-vous sûr de vouloir annuler cette réservation ? Cette action est irréversible."
-        confirmLabel="Oui, annuler"
-        cancelLabel="Retour"
+        title={t('tracking.cancelTitle')}
+        message={t('tracking.cancelMessage')}
+        confirmLabel={t('tracking.cancelConfirm')}
+        cancelLabel={t('common.back')}
         destructive
         loading={cancelling}
         onConfirm={handleCancelReservation}

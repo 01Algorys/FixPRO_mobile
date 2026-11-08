@@ -14,23 +14,25 @@ import { SectionHead } from '../components/profile/ProfileParts';
 import {
   BLUE, NAVY, PRIMARY, INK, MUTED, PAGE, STATUS, statusOf, FilterChips, EmptyList,
 } from '../components/reservations/ReservationParts';
+import { t } from '../i18n';
+import { formatDate, formatRating, formatPrice, directional } from '../i18n/format';
 
 const CHART_HEIGHT = 130;
 const CHART_MONTHS = 6;
 
 const PERIODS = [
-  { key: 'month', label: 'Ce mois' },
-  { key: 'quarter', label: '3 mois' },
-  { key: 'all', label: 'Tout' },
+  { key: 'month', label: t('stats.thisMonth') },
+  { key: 'quarter', label: t('stats.threeMonths') },
+  { key: 'all', label: t('stats.all') },
 ];
 
 const BREAKDOWN = [
-  { label: 'Terminées', look: 'COMPLETED', statuses: ['COMPLETED'] },
-  { label: 'En cours', look: 'IN_PROGRESS', statuses: ['ACCEPTED', 'IN_PROGRESS'] },
-  { label: 'En attente', look: 'PENDING', statuses: ['PENDING'] },
-  { label: 'Refusées', look: 'REJECTED', statuses: ['REJECTED'] },
-  { label: 'Expirées', look: 'EXPIRED', statuses: ['EXPIRED'] },
-  { label: 'Annulées', look: 'CANCELLED', statuses: ['CANCELLED'] },
+  { label: t('status.completedPlural'), look: 'COMPLETED', statuses: ['COMPLETED'] },
+  { label: t('status.inProgress'), look: 'IN_PROGRESS', statuses: ['ACCEPTED', 'IN_PROGRESS'] },
+  { label: t('status.pending'), look: 'PENDING', statuses: ['PENDING'] },
+  { label: t('status.rejectedPlural'), look: 'REJECTED', statuses: ['REJECTED'] },
+  { label: t('status.expiredPlural'), look: 'EXPIRED', statuses: ['EXPIRED'] },
+  { label: t('status.cancelledPlural'), look: 'CANCELLED', statuses: ['CANCELLED'] },
 ];
 
 const priceOf = (r) => r.actualPrice ?? r.estimatedPrice ?? r.service?.basePrice ?? 0;
@@ -116,8 +118,8 @@ const WorkerStatsPage = ({ navigation }) => {
       });
       return {
         key: start.toISOString(),
-        short: start.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''),
-        long: titleCase(start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })),
+        short: formatDate(start, { month: 'short' }).replace('.', ''),
+        long: titleCase(formatDate(start, { month: 'long', year: 'numeric' })),
         revenue: sumRevenue(jobs),
         jobs: jobs.filter(isDone).length,
       };
@@ -136,11 +138,11 @@ const WorkerStatsPage = ({ navigation }) => {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={23} color="#fff" />
+          <Ionicons name={directional('arrow-back')} size={23} color="#fff" />
         </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Statistiques</Text>
-          <Text style={styles.subtitle}>Votre activité sur FixPro</Text>
+          <Text style={styles.title}>{t('stats.title')}</Text>
+          <Text style={styles.subtitle}>{t('stats.subtitle')}</Text>
         </View>
       </LinearGradient>
 
@@ -156,7 +158,7 @@ const WorkerStatsPage = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
         >
           {failed ? (
-            <EmptyList icon="cloud-offline-outline" title="Connexion impossible" text="Tirez vers le bas pour réessayer." />
+            <EmptyList icon="cloud-offline-outline" title={t('common.connectionFailed')} text={t('common.pullToRetry')} />
           ) : (
             <>
               <View style={styles.periods}>
@@ -172,18 +174,18 @@ const WorkerStatsPage = ({ navigation }) => {
               </View>
 
               <FadeIn style={styles.tiles}>
-                <Tile icon="cash-outline" color="#16a34a" label="Revenus" value={`${revenue} TND`} />
-                <Tile icon="checkmark-done-outline" label="Terminées" value={doneCount} />
-                <Tile icon="thumbs-up-outline" label="Acceptation" value={acceptance} />
-                <Tile icon="pricetag-outline" color="#f59e0b" label="Prix moyen" value={doneCount ? `${Math.round(revenue / doneCount)} TND` : '—'} />
+                <Tile icon="cash-outline" color="#16a34a" label={t('stats.revenue')} value={formatPrice(revenue)} />
+                <Tile icon="checkmark-done-outline" label={t('status.completedPlural')} value={doneCount} />
+                <Tile icon="thumbs-up-outline" label={t('stats.acceptance')} value={acceptance} />
+                <Tile icon="pricetag-outline" color="#f59e0b" label={t('stats.averagePrice')} value={doneCount ? formatPrice(Math.round(revenue / doneCount)) : '—'} />
               </FadeIn>
 
               <FadeIn delay={60}>
-                <SectionHead icon="bar-chart-outline" title="Revenus par mois" />
+                <SectionHead icon="bar-chart-outline" title={t('stats.revenueByMonth')} />
                 <View style={[styles.card, styles.pad]}>
-                  <Text style={styles.chartValue}>{chosen.revenue} TND</Text>
+                  <Text style={styles.chartValue}>{formatPrice(chosen.revenue)}</Text>
                   <Text style={styles.chartCaption}>
-                    {chosen.long} · {chosen.jobs} intervention{chosen.jobs > 1 ? 's' : ''}
+                    {chosen.long} · {t('common.interventions', { count: chosen.jobs })}
                   </Text>
                   <View style={styles.chart}>
                     {months.map((month, i) => (
@@ -203,7 +205,7 @@ const WorkerStatsPage = ({ navigation }) => {
               </FadeIn>
 
               <FadeIn delay={120}>
-                <SectionHead icon="pie-chart-outline" title="Mes demandes" />
+                <SectionHead icon="pie-chart-outline" title={t('stats.myRequests')} />
                 <View style={styles.card}>
                   {BREAKDOWN.map((row, i) => {
                     const look = STATUS[row.look];
@@ -219,12 +221,12 @@ const WorkerStatsPage = ({ navigation }) => {
               </FadeIn>
 
               <FadeIn delay={180}>
-                <SectionHead icon="star-outline" title="Mes avis" />
+                <SectionHead icon="star-outline" title={t('stats.myReviews')} />
                 <View style={[styles.card, styles.pad]}>
                   <View style={styles.ratingTop}>
-                    <Text style={styles.ratingValue}>{Number(profile?.averageRating || 0).toFixed(1)}</Text>
+                    <Text style={styles.ratingValue}>{formatRating(profile?.averageRating)}</Text>
                     <Text style={styles.ratingCaption}>
-                      Note moyenne sur {profile?.totalReviews || 0} avis
+                      {t('stats.ratingOver', { count: profile?.totalReviews || 0 })}
                     </Text>
                   </View>
                   {reviews.length > 0 && ratingCounts.map(({ stars, count }) => (

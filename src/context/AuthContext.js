@@ -4,6 +4,7 @@ import apiService from '../services/api';
 import socketService from '../services/socketService';
 import { getGoogleAccessToken, signOutGoogle, GoogleSignInCancelled } from '../services/googleAuth';
 import { getAppleCredentials, AppleSignInCancelled } from '../services/appleAuth';
+import { t } from '../i18n';
 
 const AuthContext = createContext();
 
@@ -30,21 +31,6 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-// Map backend error codes / messages to user-facing French strings
-const mapLoginError = (rawMessage) => {
-  if (!rawMessage) return 'Identifiants incorrects';
-  if (rawMessage.includes('ACCOUNT_PENDING_APPROVAL')) {
-    return "Votre compte est en cours de validation par nos administrateurs. Veuillez patienter jusqu'à l'approbation de votre compte.";
-  }
-  if (rawMessage.includes('ACCOUNT_REJECTED')) {
-    return 'Votre demande de compte a été refusée. Veuillez contacter notre support pour plus d\'informations.';
-  }
-  if (rawMessage.toLowerCase().includes('invalid credentials')) {
-    return 'Identifiants incorrects. Vérifiez votre email/téléphone et mot de passe.';
-  }
-  return rawMessage;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -115,7 +101,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: userData, role: userData.role };
     } catch (error) {
       console.error('Login failed:', error);
-      return { success: false, error: mapLoginError(error.message) };
+      return { success: false, error: error.message || t('auth.wrongCredentials') };
     }
   };
 
@@ -153,10 +139,10 @@ export const AuthProvider = ({ children }) => {
       if (error.code === 'ACCOUNT_PENDING_APPROVAL') return { pendingApproval: true };
       console.error(`${social.label} sign-in failed:`, error);
       // A server without the endpoint answers as if login were required
-      if (/no token provided|not found/i.test(error.message || '')) {
-        return { success: false, error: `La connexion ${social.label} n'est pas encore disponible. Utilisez votre téléphone ou votre email.` };
+      if (/no token provided|not found/i.test(error.serverMessage || '')) {
+        return { success: false, error: t('auth.socialUnavailable', { provider: social.label }) };
       }
-      return { success: false, error: mapLoginError(error.message) };
+      return { success: false, error: error.message || t('auth.wrongCredentials') };
     }
   };
 

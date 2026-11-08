@@ -9,6 +9,9 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useScreenChrome } from '../context/ChromeContext';
 import PressableScale from '../components/ui/PressableScale';
+import { t } from '../i18n';
+import { formatDate, directional } from '../i18n/format';
+import { localizeNotification } from '../i18n/serverText';
 
 const BLUE = '#1a56db';
 const NAVY = '#0b3fb3';
@@ -30,12 +33,12 @@ const DEFAULT_STYLE = { icon: 'notifications', color: PRIMARY, bg: '#e8f0ff' };
 
 const timeAgo = (date) => {
   const minutes = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
-  if (minutes < 1) return "À l'instant";
-  if (minutes < 60) return `Il y a ${minutes} min`;
+  if (minutes < 1) return t('common.justNow');
+  if (minutes < 60) return t('common.minutesAgo', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Il y a ${hours} h`;
-  if (hours < 48) return 'Hier';
-  return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  if (hours < 24) return t('common.hoursAgo', { count: hours });
+  if (hours < 48) return t('common.yesterday');
+  return formatDate(date, { day: 'numeric', month: 'short' });
 };
 
 // Older notifications were saved with an emoji in front of the title
@@ -43,14 +46,15 @@ const cleanTitle = (title) => String(title || '').replace(/^[^A-Za-zÀ-ÿ0-9]+/,
 
 const NotificationRow = ({ item, onPress }) => {
   const look = STYLES_BY_TYPE[item.type] || DEFAULT_STYLE;
+  const { title, message } = localizeNotification({ ...item, title: cleanTitle(item.title) });
   return (
     <PressableScale style={[styles.row, !item.isRead && styles.rowUnread]} scaleTo={0.985} onPress={onPress}>
       <View style={[styles.icon, { backgroundColor: look.bg }]}>
         <Ionicons name={look.icon} size={22} color={look.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, !item.isRead && styles.rowTitleUnread]} numberOfLines={1}>{cleanTitle(item.title)}</Text>
-        <Text style={styles.rowMessage} numberOfLines={2}>{item.message}</Text>
+        <Text style={[styles.rowTitle, !item.isRead && styles.rowTitleUnread]} numberOfLines={1}>{title}</Text>
+        <Text style={styles.rowMessage} numberOfLines={2}>{message}</Text>
         <Text style={styles.rowTime}>{timeAgo(item.createdAt)}</Text>
       </View>
       {!item.isRead && <View style={styles.unreadDot} />}
@@ -125,9 +129,9 @@ const NotificationsPage = ({ navigation }) => {
         <View style={styles.emptyIcon}>
           <Ionicons name={failed ? 'cloud-offline-outline' : 'notifications-outline'} size={30} color={PRIMARY} />
         </View>
-        <Text style={styles.emptyTitle}>{failed ? 'Connexion impossible' : 'Aucune notification'}</Text>
+        <Text style={styles.emptyTitle}>{failed ? t('common.connectionFailed') : t('notif.emptyTitle')}</Text>
         <Text style={styles.emptyText}>
-          {failed ? 'Tirez vers le bas pour réessayer.' : 'Vous verrez ici les nouvelles de vos réservations.'}
+          {failed ? t('common.pullToRetry') : t('notif.emptyText')}
         </Text>
       </View>
     );
@@ -138,18 +142,18 @@ const NotificationsPage = ({ navigation }) => {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={23} color="#fff" />
+          <Ionicons name={directional('arrow-back')} size={23} color="#fff" />
         </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Notifications</Text>
+          <Text style={styles.title}>{t('common.notifications')}</Text>
           <Text style={styles.subtitle}>
-            {unread > 0 ? `${unread} non lue${unread > 1 ? 's' : ''}` : 'Vous êtes à jour'}
+            {unread > 0 ? t('notif.unread', { count: unread }) : t('notif.upToDate')}
           </Text>
         </View>
         {unread > 0 && (
           <TouchableOpacity style={styles.readAll} onPress={() => markRead()}>
             <Ionicons name="checkmark-done" size={17} color="#fff" />
-            <Text style={styles.readAllText}>Tout lire</Text>
+            <Text style={styles.readAllText}>{t('notif.readAll')}</Text>
           </TouchableOpacity>
         )}
       </LinearGradient>

@@ -27,8 +27,9 @@ import OnlineStatusText from '../components/OnlineStatusText';
 import ChatView from '../components/chat/ChatView';
 import { sendChatImage } from '../utils/chatImages';
 import ConversationList from '../components/chat/ConversationList';
+import { t } from '../i18n';
 
-const QUICK_REPLIES = ['Bonjour !', 'Quand pouvez-vous venir ?', "Je vous envoie l'adresse exacte", 'Merci beaucoup !'];
+const QUICK_REPLIES = [t('chat.quickHello'), t('chat.quickWhen'), t('chat.quickAddress'), t('chat.quickThanks')];
 
 const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleSheet.create({
   container: {
@@ -350,13 +351,13 @@ const createStyles = (width, height, isTablet, isSmallPhone, insets) => StyleShe
   },
   userBubble: {
     backgroundColor: Colors.primary,
-    borderBottomRightRadius: scale(4),
+    borderBottomEndRadius: scale(4),
   },
   otherBubble: {
     backgroundColor: Colors.card,
     borderColor: Colors.border,
     borderWidth: 1,
-    borderBottomLeftRadius: scale(4),
+    borderBottomStartRadius: scale(4),
   },
   messageText: {
     color: Colors.text,
@@ -446,29 +447,6 @@ const MessagesPage = ({ route, navigation }) => {
   const isSendingRef = useRef(false);
 
   const userId = user?.id || user?.userId || user?.email || 'guest';
-
-  // Helper functions for time formatting
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Aujourd\'hui';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Hier';
-    } else {
-      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-    }
-  };
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -702,7 +680,7 @@ const MessagesPage = ({ route, navigation }) => {
         senderId: userId,
         sender: {
           id: userId,
-          name: user?.name || 'You',
+          name: user?.name || t('chat.you'),
           role: user?.role || 'USER',
           avatar: user?.avatar
         },
@@ -754,7 +732,7 @@ const MessagesPage = ({ route, navigation }) => {
   }
 
   const participantOf = (c) => ({
-    name: c.worker?.user?.name || c.workerName || c.worker?.name || c.participantName || 'Technicien',
+    name: c.worker?.user?.name || c.workerName || c.worker?.name || c.participantName || t('common.technician'),
     avatar: c.worker?.user?.avatar || c.workerAvatar || c.worker?.avatar || c.participantAvatar,
     userId: c.worker?.userId || c.worker?.id,
   });
@@ -791,7 +769,7 @@ const MessagesPage = ({ route, navigation }) => {
       onSearch={setSearch}
       onOpen={onOpenConversation}
       getParticipant={participantOf}
-      emptyText="Vos échanges avec les techniciens apparaîtront ici dès qu'une réservation est acceptée."
+      emptyText={t('chat.clientEmpty')}
       refreshing={refreshing}
       onRefresh={async () => { setRefreshing(true); await loadConversations({ silent: true }); setRefreshing(false); }}
     />

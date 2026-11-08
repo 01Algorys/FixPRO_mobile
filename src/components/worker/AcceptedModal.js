@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from '../ui/PressableScale';
+import { t } from '../../i18n';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -34,18 +35,18 @@ const AcceptedModal = ({ visible, onContact, onViewJobs, onClose }) => (
           </View>
         </View>
 
-        <Text style={styles.title}>Demande acceptée !</Text>
+        <Text style={styles.title}>{t('wdetails.accepted')}</Text>
         <Text style={styles.text}>
-          Le client a été notifié.{'\n'}Vous pouvez le contacter pour confirmer les détails.
+          {t('wdetails.clientNotified')}{'\n'}{t('wdetails.contactToConfirm')}
         </Text>
 
         <PressableScale style={styles.primaryBtn} onPress={onContact}>
           <Ionicons name="chatbubble-ellipses-outline" size={21} color="#fff" />
-          <Text style={styles.primaryText}>Contacter le client</Text>
+          <Text style={styles.primaryText}>{t('wdetails.contactClient')}</Text>
         </PressableScale>
         <PressableScale style={styles.secondaryBtn} onPress={onViewJobs}>
           <Ionicons name="list" size={21} color={INK} />
-          <Text style={styles.secondaryText}>Voir mes interventions</Text>
+          <Text style={styles.secondaryText}>{t('wdetails.seeJobs')}</Text>
         </PressableScale>
       </View>
     </View>

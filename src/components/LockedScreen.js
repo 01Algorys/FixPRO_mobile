@@ -1,15 +1,19 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LanguageButton } from './LanguagePicker';
+import { t } from '../i18n';
 
 const BLUE = '#1a56db';
 
 export default function LockedScreen({ navigation, route }) {
-  const title = route?.params?.title || 'Contenu réservé';
-  const message = route?.params?.message || "Connectez-vous ou créez un compte pour accéder à cette fonctionnalité.";
+  const insets = useSafeAreaInsets();
+  const title = route?.params?.title || t('nav.lockedTitle');
+  const message = route?.params?.message || t('nav.lockedMessage');
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <LanguageButton style={[styles.language, { top: insets.top + 12 }]} color={BLUE} />
       <View style={styles.content}>
         <View style={styles.iconWrap}>
           <Ionicons name="lock-closed" size={40} color={BLUE} />
@@ -22,7 +26,7 @@ export default function LockedScreen({ navigation, route }) {
           onPress={() => navigation.navigate('Login')}
           activeOpacity={0.85}
         >
-          <Text style={styles.loginBtnText}>Se connecter</Text>
+          <Text style={styles.loginBtnText}>{t('common.login')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -30,7 +34,7 @@ export default function LockedScreen({ navigation, route }) {
           onPress={() => navigation.navigate('CreateAccount')}
           activeOpacity={0.85}
         >
-          <Text style={styles.registerBtnText}>Créer un compte</Text>
+          <Text style={styles.registerBtnText}>{t('common.createAccount')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -38,6 +42,7 @@ export default function LockedScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  language: { position: 'absolute', right: 16, zIndex: 1 },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { t } from '../i18n';
 
 // iOS client from GCP. Android needs no id here: Google matches the app by its
 // package name and signing-key SHA-1 registered on the Android OAuth client.
@@ -23,7 +24,7 @@ export class GoogleSignInCancelled extends Error {}
 // check with Google. Throws GoogleSignInCancelled if the user backs out.
 export const getGoogleAccessToken = async () => {
   if (!GoogleSignin) {
-    throw new Error("La connexion Google nécessite la dernière version de l'application.");
+    throw new Error(t('auth.googleUpdate'));
   }
   try {
     if (Platform.OS === 'android') {
@@ -40,7 +41,7 @@ export const getGoogleAccessToken = async () => {
     // Keep Google's code in the logs: on Android "10" (DEVELOPER_ERROR) means the
     // build's signing-key SHA-1 isn't registered on an Android OAuth client.
     console.warn('Google sign-in error', error?.code, error?.message);
-    throw new Error('Connexion Google impossible. Réessayez.');
+    throw new Error(t('auth.googleFailed'));
   }
 };
 

@@ -13,30 +13,33 @@ import AcceptedModal from '../components/worker/AcceptedModal';
 import {
   BLUE, NAVY, PRIMARY, MUTED, STATUS, TRACK_STEP, statusOf, Progress, Stars, SkeletonCard, FilterChips, EmptyList, styles,
 } from '../components/reservations/ReservationParts';
+import { t } from '../i18n';
+import { formatDate, formatPrice } from '../i18n/format';
+import { serviceName } from '../i18n/serverText';
 
 const FILTERS = [
-  { key: 'all', label: 'Toutes' },
-  { key: 'pending', label: 'Nouvelles', statuses: ['PENDING'] },
-  { key: 'active', label: 'En cours', statuses: ['ACCEPTED', 'IN_PROGRESS'] },
-  { key: 'done', label: 'Terminées', statuses: ['COMPLETED'] },
-  { key: 'closed', label: 'Refusées', statuses: ['REJECTED', 'EXPIRED'] },
+  { key: 'all', label: t('status.allPlural') },
+  { key: 'pending', label: t('status.newPlural'), statuses: ['PENDING'] },
+  { key: 'active', label: t('status.inProgress'), statuses: ['ACCEPTED', 'IN_PROGRESS'] },
+  { key: 'done', label: t('status.completedPlural'), statuses: ['COMPLETED'] },
+  { key: 'closed', label: t('status.rejectedPlural'), statuses: ['REJECTED', 'EXPIRED'] },
 ];
 
-const TRACK = ['Reçue', 'Acceptée', 'En cours', 'Terminée'];
+const TRACK = [t('status.received'), t('status.accepted'), t('status.inProgress'), t('status.completed')];
 
 const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, onFinish }) => {
   const status = statusOf(reservation);
   const look = STATUS[status] || STATUS.PENDING;
   const meta = categoryMeta(reservation.service?.category);
   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
-  const service = typeof reservation.service === 'string' ? reservation.service : reservation.service?.name || 'Service';
-  const clientName = titleCase(reservation.clientName || reservation.user?.name || 'Client');
+  const service = serviceName(typeof reservation.service === 'string' ? reservation.service : reservation.service?.name) || t('common.service');
+  const clientName = titleCase(reservation.clientName || reservation.user?.name || t('common.client'));
   const clientAvatar = reservation.user?.avatar || reservation.userAvatar;
   const address = [reservation.location?.address, reservation.location?.city].filter(Boolean).join(', ') || reservation.address;
   const price = reservation.actualPrice ?? reservation.estimatedPrice ?? reservation.service?.basePrice;
   const date = reservation.date
-    ? new Date(reservation.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-    : 'Date non spécifiée';
+    ? formatDate(reservation.date, { weekday: 'short', day: 'numeric', month: 'short' })
+    : t('wres.noDate');
   const isPending = status === 'PENDING';
   const isActive = status === 'ACCEPTED' || status === 'IN_PROGRESS';
 
@@ -48,7 +51,7 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
         </LinearGradient>
         <View style={{ flex: 1 }}>
           <Text style={styles.service} numberOfLines={1}>{service}</Text>
-          <Text style={styles.when}>{date}{reservation.time ? ` à ${reservation.time}` : ''}</Text>
+          <Text style={styles.when}>{reservation.time ? t('common.dateAtTime', { date, time: reservation.time }) : date}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: look.bg }]}>
           <Ionicons name={look.icon} size={13} color={look.color} />
@@ -67,7 +70,7 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
           </View>
         )}
         <Text style={styles.workerName} numberOfLines={1}>{clientName}</Text>
-        {price > 0 && <Text style={styles.price}>{price} TND</Text>}
+        {price > 0 && <Text style={styles.price}>{formatPrice(price)}</Text>}
       </View>
 
       {!!address && (
@@ -85,7 +88,7 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
         <>
           <View style={styles.review}>
             <Stars rating={Math.floor(reservation.review.rating || 0)} />
-            <Text style={styles.reviewLabel}>Avis du client</Text>
+            <Text style={styles.reviewLabel}>{t('wres.clientReview')}</Text>
           </View>
           {!!reservation.review.comment && (
             <Text style={local.description} numberOfLines={3}>{reservation.review.comment}</Text>
@@ -99,11 +102,11 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
             <>
               <PressableScale style={[styles.action, local.decline]} onPress={onReject}>
                 <Ionicons name="close" size={18} color="#dc2626" />
-                <Text style={[styles.actionText, { color: '#dc2626' }]}>Décliner</Text>
+                <Text style={[styles.actionText, { color: '#dc2626' }]}>{t('wres.decline')}</Text>
               </PressableScale>
               <PressableScale style={[styles.action, local.positive]} onPress={onAccept}>
                 <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={styles.actionText}>Accepter</Text>
+                <Text style={styles.actionText}>{t('common.accept')}</Text>
               </PressableScale>
             </>
           )}
@@ -111,11 +114,11 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
             <>
               <PressableScale style={styles.action} onPress={onContact}>
                 <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
-                <Text style={styles.actionText}>Contacter</Text>
+                <Text style={styles.actionText}>{t('common.contact')}</Text>
               </PressableScale>
               <PressableScale style={[styles.action, local.positive]} onPress={onFinish}>
                 <Ionicons name="checkmark-done" size={18} color="#fff" />
-                <Text style={styles.actionText}>Terminer</Text>
+                <Text style={styles.actionText}>{t('common.finish')}</Text>
               </PressableScale>
             </>
           )}
@@ -232,7 +235,7 @@ const WorkerReservationsPage = ({ navigation }) => {
       await loadReservations({ silent: true });
     } catch (error) {
       console.error('Failed to update reservation status:', error);
-      Alert.alert('Erreur', "Impossible de mettre à jour le statut de la réservation.");
+      Alert.alert(t('common.error'), t('wres.updateFailed'));
     }
   };
 
@@ -246,8 +249,8 @@ const WorkerReservationsPage = ({ navigation }) => {
     return (
       <EmptyList
         icon={failed ? 'cloud-offline-outline' : 'clipboard-outline'}
-        title={failed ? 'Connexion impossible' : 'Aucune demande ici'}
-        text={failed ? 'Tirez vers le bas pour réessayer.' : 'Les demandes de vos clients apparaîtront ici.'}
+        title={failed ? t('common.connectionFailed') : t('wres.emptyTitle')}
+        text={failed ? t('common.pullToRetry') : t('wres.emptyText')}
       />
     );
   };
@@ -256,9 +259,9 @@ const WorkerReservationsPage = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
-        <Text style={styles.title}>Mes demandes</Text>
+        <Text style={styles.title}>{t('wres.title')}</Text>
         <Text style={styles.subtitle}>
-          {newCount > 0 ? `${newCount} nouvelle${newCount > 1 ? 's' : ''} demande${newCount > 1 ? 's' : ''}` : 'Gérez vos missions en direct'}
+          {newCount > 0 ? t('wres.newCount', { count: newCount }) : t('wres.manageLive')}
         </Text>
       </LinearGradient>
 

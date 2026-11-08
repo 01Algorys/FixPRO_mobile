@@ -14,25 +14,28 @@ import PressableScale from '../components/ui/PressableScale';
 import {
   BLUE, NAVY, PRIMARY, MUTED, STATUS, TRACK_STEP, statusOf, Progress, Stars, SkeletonCard, FilterChips, EmptyList, styles,
 } from '../components/reservations/ReservationParts';
+import { t } from '../i18n';
+import { formatDate, formatPrice } from '../i18n/format';
+import { serviceName } from '../i18n/serverText';
 
 const FILTERS = [
-  { key: 'all', label: 'Toutes' },
-  { key: 'pending', label: 'En attente', statuses: ['PENDING'] },
-  { key: 'active', label: 'En cours', statuses: ['ACCEPTED', 'IN_PROGRESS'] },
-  { key: 'done', label: 'Terminées', statuses: ['COMPLETED'] },
-  { key: 'closed', label: 'Annulées', statuses: ['CANCELLED', 'REJECTED', 'EXPIRED'] },
+  { key: 'all', label: t('status.allPlural') },
+  { key: 'pending', label: t('status.pending'), statuses: ['PENDING'] },
+  { key: 'active', label: t('status.inProgress'), statuses: ['ACCEPTED', 'IN_PROGRESS'] },
+  { key: 'done', label: t('status.completedPlural'), statuses: ['COMPLETED'] },
+  { key: 'closed', label: t('status.cancelledPlural'), statuses: ['CANCELLED', 'REJECTED', 'EXPIRED'] },
 ];
 
-const TRACK = ['Envoyée', 'Acceptée', 'En cours', 'Terminée'];
+const TRACK = [t('status.sent'), t('status.accepted'), t('status.inProgress'), t('status.completed')];
 const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
   const status = statusOf(reservation);
   const look = STATUS[status] || STATUS.PENDING;
   const meta = categoryMeta(reservation.service?.category);
   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
-  const workerName = titleCase(reservation.workerName || 'Technicien');
+  const workerName = titleCase(reservation.workerName || t('common.technician'));
   const address = [reservation.location?.address, reservation.location?.city].filter(Boolean).join(', ');
   const price = reservation.actualPrice ?? reservation.estimatedPrice;
-  const date = new Date(reservation.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const date = formatDate(reservation.date, { weekday: 'short', day: 'numeric', month: 'short' });
   const canContact = status === 'ACCEPTED' || status === 'IN_PROGRESS';
   const canRate = status === 'COMPLETED' && !reservation.review;
 
@@ -43,8 +46,8 @@ const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
           <Icon name={meta.icon} size={22} color="#fff" />
         </LinearGradient>
         <View style={{ flex: 1 }}>
-          <Text style={styles.service} numberOfLines={1}>{reservation.service?.name || 'Service'}</Text>
-          <Text style={styles.when}>{date} à {reservation.time}</Text>
+          <Text style={styles.service} numberOfLines={1}>{serviceName(reservation.service?.name) || t('common.service')}</Text>
+          <Text style={styles.when}>{t('common.dateAtTime', { date, time: reservation.time })}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: look.bg }]}>
           <Ionicons name={look.icon} size={13} color={look.color} />
@@ -63,7 +66,7 @@ const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
           </View>
         )}
         <Text style={styles.workerName} numberOfLines={1}>{workerName}</Text>
-        {price > 0 && <Text style={styles.price}>{price} TND</Text>}
+        {price > 0 && <Text style={styles.price}>{formatPrice(price)}</Text>}
       </View>
 
       {!!address && (
@@ -76,7 +79,7 @@ const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
       {!!reservation.review && (
         <View style={styles.review}>
           <Stars rating={reservation.review.rating} />
-          <Text style={styles.reviewLabel}>Votre avis</Text>
+          <Text style={styles.reviewLabel}>{t('res.yourReview')}</Text>
         </View>
       )}
 
@@ -85,13 +88,13 @@ const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
           {canContact && (
             <PressableScale style={styles.action} onPress={onContact}>
               <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
-              <Text style={styles.actionText}>Contacter</Text>
+              <Text style={styles.actionText}>{t('common.contact')}</Text>
             </PressableScale>
           )}
           {canRate && (
             <PressableScale style={[styles.action, styles.rateAction]} onPress={onRate}>
               <Ionicons name="star" size={18} color="#fff" />
-              <Text style={styles.actionText}>Donner mon avis</Text>
+              <Text style={styles.actionText}>{t('res.leaveReview')}</Text>
             </PressableScale>
           )}
         </View>
@@ -167,8 +170,8 @@ const ReservationsPage = ({ navigation }) => {
     return (
       <EmptyList
         icon={failed ? 'cloud-offline-outline' : 'calendar-outline'}
-        title={failed ? 'Connexion impossible' : 'Aucune réservation ici'}
-        text={failed ? 'Tirez vers le bas pour réessayer.' : 'Vos réservations apparaîtront ici dès votre première demande.'}
+        title={failed ? t('common.connectionFailed') : t('res.emptyTitle')}
+        text={failed ? t('common.pullToRetry') : t('res.emptyText')}
       />
     );
   };
@@ -177,9 +180,9 @@ const ReservationsPage = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
-        <Text style={styles.title}>Mes réservations</Text>
+        <Text style={styles.title}>{t('res.title')}</Text>
         <Text style={styles.subtitle}>
-          {activeCount > 0 ? `${activeCount} intervention${activeCount > 1 ? 's' : ''} en cours` : 'Suivez vos demandes en direct'}
+          {activeCount > 0 ? t('res.active', { count: activeCount }) : t('res.followLive')}
         </Text>
       </LinearGradient>
 

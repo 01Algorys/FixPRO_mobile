@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from '../ui/PressableScale';
+import { t } from '../../i18n';
 
 // What the client and technician reservation pages share, so they keep looking alike
 export const BLUE = '#1a56db';
@@ -12,13 +13,13 @@ export const MUTED = '#64748b';
 export const PAGE = '#f4f7fd';
 
 export const STATUS = {
-  PENDING: { label: 'En attente', color: '#b45309', bg: '#fef3c7', icon: 'time' },
-  ACCEPTED: { label: 'Acceptée', color: PRIMARY, bg: '#e8f0ff', icon: 'checkmark-circle' },
-  IN_PROGRESS: { label: 'En cours', color: '#7c3aed', bg: '#ede9fe', icon: 'construct' },
-  COMPLETED: { label: 'Terminée', color: '#16a34a', bg: '#dcfce7', icon: 'checkmark-done-circle' },
-  CANCELLED: { label: 'Annulée', color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
-  REJECTED: { label: 'Refusée', color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
-  EXPIRED: { label: 'Expirée', color: '#475569', bg: '#eef1f6', icon: 'hourglass' },
+  PENDING: { label: t('status.pending'), color: '#b45309', bg: '#fef3c7', icon: 'time' },
+  ACCEPTED: { label: t('status.accepted'), color: PRIMARY, bg: '#e8f0ff', icon: 'checkmark-circle' },
+  IN_PROGRESS: { label: t('status.inProgress'), color: '#7c3aed', bg: '#ede9fe', icon: 'construct' },
+  COMPLETED: { label: t('status.completed'), color: '#16a34a', bg: '#dcfce7', icon: 'checkmark-done-circle' },
+  CANCELLED: { label: t('status.cancelled'), color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
+  REJECTED: { label: t('status.rejected'), color: '#dc2626', bg: '#fee2e2', icon: 'close-circle' },
+  EXPIRED: { label: t('status.expired'), color: '#475569', bg: '#eef1f6', icon: 'hourglass' },
 };
 
 export const TRACK_STEP = { PENDING: 0, ACCEPTED: 1, IN_PROGRESS: 2 };

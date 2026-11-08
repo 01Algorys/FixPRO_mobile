@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
 import { getCurrentCoords } from '../utils/location';
 import { hasGoogleMaps, newPlacesSession, searchPlaces, getPlaceLocation } from '../utils/googleMaps';
+import { t } from '../i18n';
 
 const DEFAULT_REGION = {
   // Tunis, Tunisia — reasonable fallback center for this app's market when
@@ -142,7 +143,7 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Choisir un emplacement</Text>
+          <Text style={styles.headerTitle}>{t('location.title')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -151,7 +152,7 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
             <Ionicons name="search" size={18} color={Colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Rechercher une adresse..."
+              placeholder={t('location.search')}
               placeholderTextColor={Colors.textTertiary}
               value={searchQuery}
               onChangeText={handleSearchChange}
@@ -197,12 +198,12 @@ const LocationPickerModal = ({ visible, initialCoords, onConfirm, onClose }) => 
           <View style={styles.addressPreview}>
             <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
             <Text style={styles.addressPreviewText} numberOfLines={2}>
-              {resolvingAddress ? 'Résolution de l\'adresse...' : (address || 'Adresse inconnue')}
+              {resolvingAddress ? t('location.resolving') : (address || t('location.unknown'))}
             </Text>
           </View>
           <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
             <Ionicons name="checkmark-outline" size={20} color={Colors.textLight} />
-            <Text style={styles.confirmButtonText}>Utiliser cet emplacement</Text>
+            <Text style={styles.confirmButtonText}>{t('location.use')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

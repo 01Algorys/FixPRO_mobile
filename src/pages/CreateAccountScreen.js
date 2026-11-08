@@ -12,8 +12,10 @@ import {
   AuthShell, AuthTitle, RoleSwitch, Stepper, TermsCheckbox, SocialButtons, Divider, PrimaryButton,
   Field, PRIMARY, INK,
 } from '../components/auth/AuthUI';
+import { t } from '../i18n';
+import { ltr } from '../i18n/format';
 
-const WORKER_STEPS = ['Informations', 'Services', 'Finalisation'];
+const WORKER_STEPS = [t('auth.stepInfo'), t('auth.stepServices'), t('auth.stepFinish')];
 
 // One screen for clients and technicians (route.params.role picks the first
 // tab). Technicians then choose their services and review their application.
@@ -41,14 +43,14 @@ export default function CreateAccountScreen({ navigation, route }) {
 
   const validateInfo = () => {
     const e = {};
-    if (!name.trim()) e.name = 'Indiquez votre nom';
-    if (!email.trim()) e.email = 'Indiquez votre email';
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Email invalide';
-    if (!phone.trim()) e.phone = 'Indiquez votre numéro';
-    if (!password) e.password = 'Choisissez un mot de passe';
-    else if (!isPasswordValid(password)) e.password = 'Le mot de passe ne respecte pas tous les critères';
-    if (confirm !== password) e.confirm = 'Les mots de passe ne correspondent pas';
-    if (!accepted) e.accepted = 'Acceptez les conditions pour continuer';
+    if (!name.trim()) e.name = t('auth.enterName');
+    if (!email.trim()) e.email = t('auth.enterEmail');
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = t('auth.invalidEmail');
+    if (!phone.trim()) e.phone = t('auth.enterPhone');
+    if (!password) e.password = t('auth.choosePassword');
+    else if (!isPasswordValid(password)) e.password = t('auth.passwordRules');
+    if (confirm !== password) e.confirm = t('auth.passwordsMismatch');
+    if (!accepted) e.accepted = t('auth.acceptTerms');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -68,7 +70,7 @@ export default function CreateAccountScreen({ navigation, route }) {
         navigation.replace('PendingApproval');
         return;
       }
-      if (!result.success) Alert.alert('Inscription impossible', result.error || 'Échec de la création du compte');
+      if (!result.success) Alert.alert(t('auth.signUpFailed'), result.error || t('auth.signUpFailedDefault'));
       // Clients are signed in; the navigator switches to the app
     } finally {
       setLoading(false);
@@ -83,7 +85,7 @@ export default function CreateAccountScreen({ navigation, route }) {
 
   const submitServices = () => {
     if (services.length === 0) {
-      setErrors((prev) => ({ ...prev, services: 'Choisissez au moins un service' }));
+      setErrors((prev) => ({ ...prev, services: t('auth.chooseService') }));
       return;
     }
     setStep(3);
@@ -98,7 +100,7 @@ export default function CreateAccountScreen({ navigation, route }) {
     } else if (result.pendingApproval) {
       navigation.replace('PendingApproval');
     } else if (result.success === false) {
-      Alert.alert('Inscription impossible', result.error);
+      Alert.alert(t('auth.signUpFailed'), result.error);
     }
   };
 
@@ -110,10 +112,10 @@ export default function CreateAccountScreen({ navigation, route }) {
         <FadeIn>
           <AuthTitle
             icon={isWorker ? 'hard-hat' : undefined}
-            title={isWorker ? 'Créer un compte Technicien' : 'Créer un compte'}
+            title={isWorker ? t('auth.createTechnicianTitle') : t('common.createAccount')}
             subtitle={isWorker
-              ? 'Rejoignez FixPro et proposez vos services à des clients près de chez vous.'
-              : 'Rejoignez FixPro et accédez à tous les services.'}
+              ? t('auth.createTechnicianSubtitle')
+              : t('auth.createClientSubtitle')}
           />
           <RoleSwitch role={role} onChange={setRole} />
 
@@ -121,7 +123,7 @@ export default function CreateAccountScreen({ navigation, route }) {
             icon="person-outline"
             value={name}
             onChangeText={(v) => { setName(v); clearError('name'); }}
-            placeholder="Nom complet"
+            placeholder={t('auth.fullName')}
             autoCapitalize="words"
             textContentType="name"
             error={errors.name}
@@ -130,7 +132,7 @@ export default function CreateAccountScreen({ navigation, route }) {
             icon="mail-outline"
             value={email}
             onChangeText={(v) => { setEmail(v); clearError('email'); }}
-            placeholder="Adresse e-mail"
+            placeholder={t('auth.emailAddress')}
             keyboardType="email-address"
             autoCapitalize="none"
             textContentType="emailAddress"
@@ -140,7 +142,7 @@ export default function CreateAccountScreen({ navigation, route }) {
             left={<CountryCodePicker country={country} onChange={setCountry} />}
             value={phone}
             onChangeText={(v) => { setPhone(v); clearError('phone'); }}
-            placeholder="Numéro de téléphone"
+            placeholder={t('auth.phoneNumber')}
             keyboardType="phone-pad"
             textContentType="telephoneNumber"
             error={errors.phone}
@@ -150,7 +152,7 @@ export default function CreateAccountScreen({ navigation, route }) {
             value={password}
             onChangeText={(v) => { setPassword(v); clearError('password'); }}
             onFocus={() => setPasswordFocused(true)}
-            placeholder="Mot de passe"
+            placeholder={t('common.password')}
             secureTextEntry={!showPassword}
             textContentType="newPassword"
             error={errors.password}
@@ -165,7 +167,7 @@ export default function CreateAccountScreen({ navigation, route }) {
             icon="lock-closed-outline"
             value={confirm}
             onChangeText={(v) => { setConfirm(v); clearError('confirm'); }}
-            placeholder="Confirmer le mot de passe"
+            placeholder={t('auth.confirmPassword')}
             secureTextEntry={!showPassword}
             textContentType="newPassword"
             error={errors.confirm}
@@ -179,19 +181,19 @@ export default function CreateAccountScreen({ navigation, route }) {
           />
 
           <PrimaryButton
-            label={isWorker ? 'Créer mon compte Technicien' : 'Créer un compte'}
+            label={isWorker ? t('auth.createTechnicianButton') : t('common.createAccount')}
             onPress={submitInfo}
             loading={loading}
             disabled={!!socialLoading}
           />
 
-          <Divider label="ou s'inscrire avec" />
+          <Divider label={t('auth.orSignUpWith')} />
           <SocialButtons onPress={handleSocial} loading={socialLoading} disabled={loading} />
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Vous avez déjà un compte ?</Text>
+            <Text style={styles.footerText}>{t('auth.haveAccount')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.footerLink}>Se connecter</Text>
+              <Text style={styles.footerLink}>{t('common.login')}</Text>
             </TouchableOpacity>
           </View>
         </FadeIn>
@@ -200,14 +202,14 @@ export default function CreateAccountScreen({ navigation, route }) {
       {step === 2 && (
         <FadeIn>
           <Stepper steps={WORKER_STEPS} current={2} />
-          <AuthTitle title="Sélectionnez vos services" subtitle="Vous pouvez choisir plusieurs services." />
+          <AuthTitle title={t('auth.selectServices')} subtitle={t('auth.selectServicesHint')} />
           <ServicePicker
             selected={services}
             onChange={(next) => { setServices(next); clearError('services'); }}
             error={errors.services}
           />
           <View style={styles.stepAction}>
-            <PrimaryButton label="Continuer" icon="arrow-forward" onPress={submitServices} />
+            <PrimaryButton label={t('common.continue')} icon="arrow-forward" onPress={submitServices} />
           </View>
         </FadeIn>
       )}
@@ -215,15 +217,15 @@ export default function CreateAccountScreen({ navigation, route }) {
       {step === 3 && (
         <FadeIn>
           <Stepper steps={WORKER_STEPS} current={3} />
-          <AuthTitle title="Vérifiez votre candidature" subtitle="Notre équipe valide chaque technicien avant l'activation du compte." />
+          <AuthTitle title={t('auth.reviewApplication')} subtitle={t('auth.reviewApplicationHint')} />
           <View style={styles.summary}>
             <SummaryRow icon="person-outline" text={name.trim()} />
             <SummaryRow icon="mail-outline" text={email.trim().toLowerCase()} />
-            <SummaryRow icon="call-outline" text={fullPhone(country, phone)} />
-            <SummaryRow icon="construct-outline" text={`${services.length} service${services.length > 1 ? 's' : ''} sélectionné${services.length > 1 ? 's' : ''}`} />
+            <SummaryRow icon="call-outline" text={ltr(fullPhone(country, phone))} />
+            <SummaryRow icon="construct-outline" text={t('auth.servicesSelected', { count: services.length })} />
           </View>
           <View style={styles.stepAction}>
-            <PrimaryButton label="Envoyer ma candidature" onPress={handleCreate} loading={loading} />
+            <PrimaryButton label={t('auth.sendApplication')} onPress={handleCreate} loading={loading} />
           </View>
         </FadeIn>
       )}

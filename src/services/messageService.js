@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t } from '../i18n';
 
 const STORAGE_PREFIX = 'fixpro_messages';
 
@@ -26,10 +27,10 @@ const formatReservationConversation = (reservation) => {
       reservation.workerName ||
       reservation.worker?.name ||
       reservation.providerName ||
-      'Professionnel',
+      t('common.professional'),
     participantRole: 'WORKER',
-    serviceName: reservation.service?.name || reservation.service || 'Service',
-    lastMessage: 'Conversation créée. Vous pouvez envoyer votre premier message.',
+    serviceName: reservation.service?.name || reservation.service || t('common.service'),
+    lastMessage: t('chat.created'),
     lastMessageAt: normalizeDate(reservation.createdAt || reservation.date).toISOString(),
     unreadCount: 0,
   };
@@ -70,7 +71,7 @@ class MessageService {
         {
           id: uniqueId('msg'),
           conversationId: seeded.id,
-          text: `Bonjour, votre réservation pour "${seeded.serviceName}" est bien enregistrée.`,
+          text: t('chat.booked', { service: seeded.serviceName }),
           senderRole: 'SYSTEM',
           senderName: 'FixPro',
           createdAt: seeded.lastMessageAt,
@@ -97,7 +98,7 @@ class MessageService {
           ...conversation,
           unreadCount: conversation.unreadCount || 0,
           lastMessage:
-            conversation.lastMessage || 'Conversation créée. Vous pouvez envoyer votre premier message.',
+            conversation.lastMessage || t('chat.created'),
           lastMessageAt: conversation.lastMessageAt || new Date().toISOString(),
         });
         store.messagesByConversation[conversation.id] = safeArray(
@@ -130,7 +131,7 @@ class MessageService {
     );
   }
 
-  async sendMessage(userId, conversationId, text, senderRole = 'USER', senderName = 'Vous') {
+  async sendMessage(userId, conversationId, text, senderRole = 'USER', senderName = t('chat.you')) {
     const trimmed = (text || '').trim();
     if (!trimmed) return null;
 

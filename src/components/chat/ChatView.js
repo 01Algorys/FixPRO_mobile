@@ -11,6 +11,9 @@ import ImageViewer from '../ui/ImageViewer';
 import { pickImage } from '../../utils/pickImage';
 import OnlineBadge from '../OnlineBadge';
 import OnlineStatusText from '../OnlineStatusText';
+import { t } from '../../i18n';
+import { formatDate, formatTime, directional } from '../../i18n/format';
+import { serviceName } from '../../i18n/serverText';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -20,22 +23,21 @@ const SURFACE = '#f4f7fc';
 const GROUP_GAP_MS = 5 * 60 * 1000;
 
 // The backend writes its automatic messages in English
-const SYSTEM_FR = {
-  'Reservation accepted. You can now chat with each other.': 'Réservation acceptée. Vous pouvez maintenant discuter.',
+const SYSTEM_MESSAGES = {
+  'Reservation accepted. You can now chat with each other.': t('chat.systemAccepted'),
 };
-export const localizeMessage = (text) => SYSTEM_FR[String(text || '').trim()] || text;
+export const localizeMessage = (text) => SYSTEM_MESSAGES[String(text || '').trim()] || text;
 
-const formatTime = (d) =>
-  d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+const timeLabel = (d) => (d ? formatTime(d) : '');
 
 const dayLabel = (d) => {
   const date = new Date(d);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === today.toDateString()) return "Aujourd'hui";
-  if (date.toDateString() === yesterday.toDateString()) return 'Hier';
-  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (date.toDateString() === today.toDateString()) return t('common.today');
+  if (date.toDateString() === yesterday.toDateString()) return t('common.yesterday');
+  return formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
 };
 
 const Avatar = ({ name, uri, size }) => (
@@ -69,7 +71,7 @@ const ChatView = ({
   const [viewing, setViewing] = useState(null);
 
   const attach = async () => {
-    const asset = await pickImage({ title: 'Envoyer une photo' });
+    const asset = await pickImage({ title: t('chat.sendPhoto') });
     if (asset) onSendImage(asset);
   };
   // The app's root view already pads the status bar, so this view starts that
@@ -118,7 +120,7 @@ const ChatView = ({
       {/* Header */}
       <View style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={onBack}>
-          <Ionicons name="chevron-back" size={24} color={INK} />
+          <Ionicons name={directional('chevron-back')} size={24} color={INK} />
         </PressableScale>
         <View>
           <Avatar name={participant.name} uri={participant.avatar} size={42} />
@@ -130,15 +132,15 @@ const ChatView = ({
         </View>
         {closed && (
           <View style={styles.closedPill}>
-            <Text style={styles.closedPillText}>Terminé</Text>
+            <Text style={styles.closedPillText}>{t('chat.closed')}</Text>
           </View>
         )}
       </View>
       <TouchableOpacity style={styles.contextBar} onPress={onOpenReservation} activeOpacity={0.7}>
         <Ionicons name="construct-outline" size={14} color={PRIMARY} />
-        <Text style={styles.contextText} numberOfLines={1}>{subtitle || 'Réservation'}</Text>
-        <Text style={styles.contextLink}>Voir la réservation</Text>
-        <Ionicons name="chevron-forward" size={15} color={PRIMARY} />
+        <Text style={styles.contextText} numberOfLines={1}>{serviceName(subtitle) || t('chat.reservation')}</Text>
+        <Text style={styles.contextLink}>{t('chat.viewReservation')}</Text>
+        <Ionicons name={directional('chevron-forward')} size={15} color={PRIMARY} />
       </TouchableOpacity>
 
       {/* Messages */}
@@ -198,7 +200,7 @@ const ChatView = ({
                   <Text style={[styles.msgText, mine && styles.msgTextMine]}>{message.content}</Text>
                 )}
                 <View style={styles.meta}>
-                  <Text style={[styles.metaTime, mine && styles.metaTimeMine]}>{formatTime(message.createdAt)}</Text>
+                  <Text style={[styles.metaTime, mine && styles.metaTimeMine]}>{timeLabel(message.createdAt)}</Text>
                   {mine && (
                     <Ionicons
                       name={pending ? 'time-outline' : 'checkmark-done'}
@@ -214,8 +216,8 @@ const ChatView = ({
 
         {!hasRealMessages && !closed && (
           <View style={styles.emptyChat}>
-            <Text style={styles.emptyTitle}>Dites bonjour 👋</Text>
-            <Text style={styles.emptyText}>Envoyez un premier message à {participant.name.split(' ')[0]}.</Text>
+            <Text style={styles.emptyTitle}>{t('chat.sayHello')}</Text>
+            <Text style={styles.emptyText}>{t('chat.firstMessage', { name: participant.name.split(' ')[0] })}</Text>
           </View>
         )}
       </ScrollView>
@@ -224,7 +226,7 @@ const ChatView = ({
       {closed ? (
         <View style={styles.closedBar}>
           <Ionicons name="lock-closed" size={15} color={MUTED} />
-          <Text style={styles.closedBarText}>Intervention terminée, la conversation est fermée.</Text>
+          <Text style={styles.closedBarText}>{t('chat.closedBar')}</Text>
         </View>
       ) : (
         <View>
@@ -239,13 +241,13 @@ const ChatView = ({
           )}
           <View style={styles.composer}>
             {!!onSendImage && (
-              <PressableScale style={styles.attachBtn} scaleTo={0.88} onPress={attach} disabled={sending} accessibilityLabel="Envoyer une photo">
+              <PressableScale style={styles.attachBtn} scaleTo={0.88} onPress={attach} disabled={sending} accessibilityLabel={t('chat.sendPhoto')}>
                 <Ionicons name="image-outline" size={23} color={PRIMARY} />
               </PressableScale>
             )}
             <TextInput
               style={styles.input}
-              placeholder="Écrire un message…"
+              placeholder={t('chat.placeholder')}
               placeholderTextColor="#94a3b8"
               value={draft}
               onChangeText={onChangeDraft}
@@ -317,8 +319,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15,23,42,0.35)', alignItems: 'center', justifyContent: 'center',
   },
   bubbleTheirs: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e8edf5' },
-  tailMine: { borderBottomRightRadius: 6 },
-  tailTheirs: { borderBottomLeftRadius: 6 },
+  tailMine: { borderBottomEndRadius: 6 },
+  tailTheirs: { borderBottomStartRadius: 6 },
   msgText: { fontSize: 15.5, lineHeight: 21, color: INK },
   msgTextMine: { color: '#fff' },
   meta: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 3, marginTop: 2 },

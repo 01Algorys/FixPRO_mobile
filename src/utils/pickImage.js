@@ -1,5 +1,6 @@
 import { Alert, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { t } from '../i18n';
 
 const PICKER_OPTIONS = {
   mediaTypes: ['images'],
@@ -8,16 +9,16 @@ const PICKER_OPTIONS = {
   preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
 };
 
-const openSettings = (what) =>
-  Alert.alert('Autorisation requise', `Autorisez l'accès ${what} dans les réglages pour continuer.`, [
-    { text: 'Annuler', style: 'cancel' },
-    { text: 'Réglages', onPress: () => Linking.openSettings() },
+const openSettings = (message) =>
+  Alert.alert(t('picker.permissionTitle'), message, [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.settings'), onPress: () => Linking.openSettings() },
   ]);
 
 const fromCamera = async (cameraType) => {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    openSettings('à la caméra');
+    openSettings(t('picker.permissionCamera'));
     return null;
   }
   const result = await ImagePicker.launchCameraAsync({
@@ -30,7 +31,7 @@ const fromCamera = async (cameraType) => {
 const fromLibrary = async () => {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    openSettings('à vos photos');
+    openSettings(t('picker.permissionPhotos'));
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
@@ -38,16 +39,16 @@ const fromLibrary = async () => {
 };
 
 // Asks camera or gallery, then returns the chosen asset, or null if cancelled
-export const pickImage = ({ title = 'Ajouter une photo', cameraType } = {}) =>
+export const pickImage = ({ title = t('picker.addPhoto'), cameraType } = {}) =>
   new Promise((resolve) => {
     const run = (source) => source().then(resolve).catch((error) => {
       console.error('Image picker failed:', error);
-      Alert.alert('Photo indisponible', "Impossible d'accéder à la photo. Réessayez.");
+      Alert.alert(t('picker.photoUnavailable'), t('picker.photoAccessFailed'));
       resolve(null);
     });
     Alert.alert(title, undefined, [
-      { text: 'Prendre une photo', onPress: () => run(() => fromCamera(cameraType)) },
-      { text: 'Choisir dans la galerie', onPress: () => run(fromLibrary) },
-      { text: 'Annuler', style: 'cancel', onPress: () => resolve(null) },
+      { text: t('picker.takePhoto'), onPress: () => run(() => fromCamera(cameraType)) },
+      { text: t('picker.chooseGallery'), onPress: () => run(fromLibrary) },
+      { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(null) },
     ], { cancelable: true, onDismiss: () => resolve(null) });
   });

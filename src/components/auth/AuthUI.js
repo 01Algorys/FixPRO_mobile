@@ -7,8 +7,11 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Poppins_900Black } from '@expo-google-fonts/poppins';
 import PressableScale from '../ui/PressableScale';
+import { LanguageButton } from '../LanguagePicker';
 import { useScreenChrome } from '../../context/ChromeContext';
 import { isAppleSignInAvailable } from '../../services/appleAuth';
+import { t } from '../../i18n';
+import { directional, fixedRow } from '../../i18n/format';
 
 export const PRIMARY = '#1d5ff0';
 export const INK = '#0f172a';
@@ -42,14 +45,15 @@ export const AuthShell = ({ onBack, scrollKey, children }) => {
           <View style={styles.brand}>
             {!!onBack && (
               <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={onBack}>
-                <Ionicons name="arrow-back" size={26} color="#fff" />
+                <Ionicons name={directional('arrow-back')} size={26} color="#fff" />
               </PressableScale>
             )}
-            <View style={styles.logoRow}>
+            <LanguageButton style={styles.languageBtn} />
+            <View style={[styles.logoRow, fixedRow]}>
               <Image source={require('../../assets/tool.png')} style={styles.logo} resizeMode="contain" />
               <Text style={[styles.brandName, fontsLoaded && { fontFamily: 'Poppins_900Black' }]}>FixPro</Text>
             </View>
-            <Text style={styles.tagline}>Simple • Rapide • Fiable</Text>
+            <Text style={styles.tagline}>{t('common.tagline')}</Text>
           </View>
           <View style={styles.card}>{children}</View>
         </ScrollView>
@@ -69,8 +73,8 @@ export const AuthTitle = ({ title, subtitle, icon }) => (
 );
 
 const ROLES = [
-  { role: 'USER', title: 'Client', hint: 'Je cherche un professionnel', icon: 'account-outline' },
-  { role: 'WORKER', title: 'Technicien', hint: 'Je propose mes services', icon: 'hard-hat' },
+  { role: 'USER', title: t('common.client'), hint: t('auth.lookingForPro'), icon: 'account-outline' },
+  { role: 'WORKER', title: t('common.technician'), hint: t('auth.technicianHint'), icon: 'hard-hat' },
 ];
 
 export const RoleSwitch = ({ role, onChange }) => (
@@ -122,7 +126,7 @@ export const Stepper = ({ steps, current }) => (
 
 const openLegalPage = (url) => {
   if (url) Linking.openURL(url).catch(() => {});
-  else Alert.alert('Bientôt disponible', 'Cette page sera publiée prochainement.');
+  else Alert.alert(t('common.comingSoon'), t('auth.legalSoon'));
 };
 
 export const TermsCheckbox = ({ checked, onChange, error }) => (
@@ -136,10 +140,10 @@ export const TermsCheckbox = ({ checked, onChange, error }) => (
         {checked && <Ionicons name="checkmark" size={17} color="#fff" />}
       </TouchableOpacity>
       <Text style={styles.termsText}>
-        J'accepte les{' '}
-        <Text style={styles.termsLink} onPress={() => openLegalPage(TERMS_URL)}>Conditions d'utilisation</Text>
-        {' '}et la{' '}
-        <Text style={styles.termsLink} onPress={() => openLegalPage(PRIVACY_URL)}>Politique de confidentialité</Text>.
+        {t('auth.termsAccept')}{' '}
+        <Text style={styles.termsLink} onPress={() => openLegalPage(TERMS_URL)}>{t('auth.termsLink')}</Text>
+        {' '}{t('auth.termsAnd')}{' '}
+        <Text style={styles.termsLink} onPress={() => openLegalPage(PRIVACY_URL)}>{t('auth.privacyLink')}</Text>.
       </Text>
     </View>
     {!!error && <Text style={styles.error}>{error}</Text>}
@@ -186,7 +190,7 @@ export const SocialButtons = ({ loading, disabled, onPress }) => {
   );
 };
 
-export const Divider = ({ label = 'ou' }) => (
+export const Divider = ({ label = t('auth.divider') }) => (
   <View style={styles.divider}>
     <View style={styles.dividerLine} />
     <Text style={styles.dividerText}>{label}</Text>
@@ -199,7 +203,7 @@ export const PrimaryButton = ({ label, onPress, loading, disabled, icon }) => (
     {loading ? <ActivityIndicator color="#fff" /> : (
       <>
         <Text style={styles.primaryText}>{label}</Text>
-        {icon && <Ionicons name={icon} size={18} color="#fff" />}
+        {icon && <Ionicons name={directional(icon)} size={18} color="#fff" />}
       </>
     )}
   </PressableScale>
@@ -220,6 +224,7 @@ export const Field = ({ label, icon, left, right, error, style, ...inputProps })
 );
 
 const styles = StyleSheet.create({
+  languageBtn: { position: 'absolute', top: 6, right: 0, zIndex: 1 },
   shell: { flex: 1 },
   shellContent: { flexGrow: 1, paddingHorizontal: 10, paddingBottom: 14 },
   brand: { alignItems: 'center', paddingTop: 8, paddingBottom: 18 },

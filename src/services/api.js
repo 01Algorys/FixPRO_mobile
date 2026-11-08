@@ -1,3 +1,6 @@
+import { t } from '../i18n';
+import { serverError } from '../i18n/serverText';
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://fixprobackend-production.up.railway.app/api';
 
 class ApiService {
@@ -31,9 +34,7 @@ class ApiService {
         if (response.status === 401 && token && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/google') && !endpoint.startsWith('/auth/apple')) {
           this.onUnauthorized?.();
         }
-        const failure = new Error(error.message || `HTTP error! status: ${response.status}`);
-        failure.code = error.code;
-        throw failure;
+        throw this.serverFailure(error, response.status);
       }
 
       return await response.json();
@@ -41,6 +42,16 @@ class ApiService {
       console.error('API request failed:', error);
       throw error;
     }
+  }
+
+  // An error to show as it is, in the app's language. `serverMessage` keeps the
+  // server's own text for code that needs to recognise it.
+  serverFailure(error, status) {
+    const message = error.message || `HTTP error! status: ${status}`;
+    const failure = new Error(serverError(message, error.code));
+    failure.code = error.code;
+    failure.serverMessage = message;
+    return failure;
   }
 
   async getToken() {
@@ -179,7 +190,7 @@ class ApiService {
       body: formData,
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || "L'envoi de la photo a échoué");
+    if (!response.ok) throw this.serverFailure({ message: data.message || t('picker.uploadFailed'), code: data.code }, response.status);
     return data;
   }
 
@@ -220,7 +231,7 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `HTTP error! status: ${response.status}`);
+        throw this.serverFailure(error, response.status);
       }
 
       return await response.json();

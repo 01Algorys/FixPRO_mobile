@@ -2,26 +2,27 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './ui/PressableScale';
+import { t } from '../i18n';
 
 const ACTIVE = '#1d5ff0';
 const INACTIVE = '#6b7280';
 
 const TABS = {
-  Home: { label: 'Accueil', icon: 'home', iconOff: 'home-outline' },
-  Messages: { label: 'Messages', icon: 'chatbubble-ellipses', iconOff: 'chatbubble-outline' },
-  Reservations: { label: 'Mes demandes', icon: 'calendar', iconOff: 'calendar-outline' },
-  Profile: { label: 'Profil', icon: 'person', iconOff: 'person-outline' },
+  Home: { label: t('nav.home'), icon: 'home', iconOff: 'home-outline' },
+  Messages: { label: t('common.messages'), icon: 'chatbubble-ellipses', iconOff: 'chatbubble-outline' },
+  Reservations: { label: t('nav.myRequests'), icon: 'calendar', iconOff: 'calendar-outline' },
+  Profile: { label: t('nav.profile'), icon: 'person', iconOff: 'person-outline' },
   // Technician routes
-  Dashboard: { label: 'Accueil', icon: 'home', iconOff: 'home-outline' },
-  Demandes: { label: 'Demandes', icon: 'document-text', iconOff: 'document-text-outline' },
-  Profil: { label: 'Profil', icon: 'person', iconOff: 'person-outline' },
+  Dashboard: { label: t('nav.home'), icon: 'home', iconOff: 'home-outline' },
+  Demandes: { label: t('nav.requests'), icon: 'document-text', iconOff: 'document-text-outline' },
+  Profil: { label: t('nav.profile'), icon: 'person', iconOff: 'person-outline' },
 };
 
 // Bottom bar: four labelled tabs, with a raised "Demande" button in the middle
 // when `onNewRequest` is set. `badges` maps a route name to its unread count;
 // `locked` routes show a padlock (guest mode).
 // The root view already pads the home-indicator area, so the bar adds none.
-const ClientTabBar = ({ state, descriptors, navigation, onNewRequest, fabLabel = 'Demande', badges = {}, locked = [] }) => {
+const ClientTabBar = ({ state, descriptors, navigation, onNewRequest, fabLabel = t('nav.newRequest'), badges = {}, locked = [] }) => {
   // A screen can hide the bar (e.g. a full-screen chat) with tabBarStyle: { display: 'none' }
   const focusedOptions = descriptors?.[state.routes[state.index].key]?.options;
   if (focusedOptions?.tabBarStyle?.display === 'none') return null;
