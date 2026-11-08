@@ -8,12 +8,13 @@ import { pickImage } from '../utils/pickImage';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { AuthShell, AuthTitle, PrimaryButton, PRIMARY, INK, MUTED } from '../components/auth/AuthUI';
+import { t } from '../i18n';
 
 const DOCUMENTS = [
-  { type: 'CIN_FRONT', title: 'CIN, recto', hint: 'Toute la carte, bien lisible, sans reflet.', icon: 'card-outline' },
-  { type: 'CIN_BACK', title: 'CIN, verso', hint: 'Toute la carte, bien lisible, sans reflet.', icon: 'card-outline' },
-  { type: 'SELFIE', title: 'Selfie avec votre CIN', hint: 'Votre visage et la carte visibles sur la même photo.', icon: 'person-circle-outline', cameraType: 'front' },
-  { type: 'PROOF', title: "Preuve d'activité", hint: 'Patente, diplôme, attestation de travail ou facture.', icon: 'document-text-outline' },
+  { type: 'CIN_FRONT', title: t('docs.cinFront'), hint: t('docs.cinHint'), icon: 'card-outline' },
+  { type: 'CIN_BACK', title: t('docs.cinBack'), hint: t('docs.cinHint'), icon: 'card-outline' },
+  { type: 'SELFIE', title: t('docs.selfie'), hint: t('docs.selfieHint'), icon: 'person-circle-outline', cameraType: 'front' },
+  { type: 'PROOF', title: t('docs.proof'), hint: t('docs.proofHint'), icon: 'document-text-outline' },
 ];
 
 // Opened from the technician's profile. Once our team approves the documents,
@@ -45,7 +46,7 @@ export default function VerificationDocumentsScreen({ navigation }) {
       setStatus(res.data);
       setPreviews((prev) => ({ ...prev, [doc.type]: asset.uri }));
     } catch (error) {
-      Alert.alert('Envoi impossible', error.message || 'Réessayez.');
+      Alert.alert(t('docs.uploadFailed'), error.message || t('common.tryAgain'));
     } finally {
       setUploading(null);
     }
@@ -57,14 +58,14 @@ export default function VerificationDocumentsScreen({ navigation }) {
   return (
     <AuthShell onBack={() => navigation.goBack()}>
         <AuthTitle
-          title="Devenez technicien vérifié"
-          subtitle="Badge vérifié et priorité dans les recherches. Vos documents restent privés : seule notre équipe les consulte."
+          title={t('docs.title')}
+          subtitle={t('docs.subtitle')}
         />
 
         {failed ? (
           <PressableScale style={styles.retry} onPress={load}>
             <Ionicons name="refresh" size={18} color={PRIMARY} />
-            <Text style={styles.retryText}>Impossible de charger vos documents. Réessayer</Text>
+            <Text style={styles.retryText}>{t('docs.loadFailed')}</Text>
           </PressableScale>
         ) : !status ? (
           <ActivityIndicator color={PRIMARY} style={{ marginTop: 30 }} />
@@ -91,7 +92,7 @@ export default function VerificationDocumentsScreen({ navigation }) {
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>{doc.title}</Text>
                   <Text style={[styles.cardHint, rejected && styles.cardHintRejected]}>
-                    {rejected ? `Refusé : ${current.rejectionReason}` : doc.hint}
+                    {rejected ? t('docs.rejected', { reason: current.rejectionReason }) : doc.hint}
                   </Text>
                 </View>
                 {busy ? <ActivityIndicator color={PRIMARY} /> : (
@@ -108,11 +109,11 @@ export default function VerificationDocumentsScreen({ navigation }) {
 
         <View style={{ height: 12 }} />
         <PrimaryButton
-          label={status?.complete ? 'Terminé' : `Encore ${remaining} document${remaining > 1 ? 's' : ''}`}
+          label={status?.complete ? t('docs.done') : t('docs.remaining', { count: remaining })}
           onPress={() => navigation.goBack()}
           disabled={!status?.complete || !!uploading}
         />
-        <Text style={styles.note}>Vous pouvez quitter et reprendre plus tard depuis votre profil.</Text>
+        <Text style={styles.note}>{t('docs.note')}</Text>
     </AuthShell>
   );
 }

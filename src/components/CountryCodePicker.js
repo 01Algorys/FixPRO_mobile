@@ -3,6 +3,8 @@ import { Modal, View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COUNTRIES, countryFlag } from '../utils/countries';
+import { t } from '../i18n';
+import { ltr } from '../i18n/format';
 
 const INK = '#0f172a';
 const PRIMARY = '#1d5ff0';
@@ -30,7 +32,7 @@ const CountryCodePicker = ({ country, onChange }) => {
     <>
       <TouchableOpacity style={styles.prefix} onPress={() => setOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 6 }}>
         <Text style={styles.flag}>{countryFlag(country.code)}</Text>
-        <Text style={styles.dial}>+{country.dial}</Text>
+        <Text style={styles.dial}>{ltr(`+${country.dial}`)}</Text>
         <Ionicons name="chevron-down" size={15} color={INK} />
         <View style={styles.divider} />
       </TouchableOpacity>
@@ -38,7 +40,7 @@ const CountryCodePicker = ({ country, onChange }) => {
       <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
         <SafeAreaView style={styles.sheet} edges={['top', 'bottom']}>
           <View style={styles.header}>
-            <Text style={styles.title}>Choisir un pays</Text>
+            <Text style={styles.title}>{t('country.title')}</Text>
             <TouchableOpacity onPress={close} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={26} color={INK} />
             </TouchableOpacity>
@@ -49,7 +51,7 @@ const CountryCodePicker = ({ country, onChange }) => {
               style={styles.searchInput}
               value={query}
               onChangeText={setQuery}
-              placeholder="Rechercher un pays ou un indicatif"
+              placeholder={t('country.search')}
               placeholderTextColor="#64748b"
               autoCorrect={false}
             />
@@ -69,11 +71,11 @@ const CountryCodePicker = ({ country, onChange }) => {
               >
                 <Text style={styles.rowFlag}>{countryFlag(item.code)}</Text>
                 <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.rowDial}>+{item.dial}</Text>
+                <Text style={styles.rowDial}>{ltr(`+${item.dial}`)}</Text>
                 {item.code === country.code && <Ionicons name="checkmark" size={20} color={PRIMARY} />}
               </TouchableOpacity>
             )}
-            ListEmptyComponent={<Text style={styles.empty}>Aucun pays trouvé</Text>}
+            ListEmptyComponent={<Text style={styles.empty}>{t('country.none')}</Text>}
           />
         </SafeAreaView>
       </Modal>

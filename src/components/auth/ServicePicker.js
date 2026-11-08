@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiService from '../../services/api';
-import { categoryMeta } from '../../utils/categoryMeta';
+import { categoryMeta, categoryName } from '../../utils/categoryMeta';
 import PressableScale from '../ui/PressableScale';
 import { PRIMARY, INK, MUTED } from './AuthUI';
+import { t } from '../../i18n';
 
 // Grid of the categories a technician works in, as checkbox tiles. A tile
 // stands for every service of its category; `selected` holds service ids.
@@ -28,7 +29,7 @@ const ServicePicker = ({ selected, onChange, error }) => {
       services.forEach((s) => {
         (byKey[s.category] = byKey[s.category] || []).push(s);
       });
-      const ordered = categories.filter((c) => byKey[c.key]).map((c) => ({ key: c.key, name: c.name, category: c, services: byKey[c.key] }));
+      const ordered = categories.filter((c) => byKey[c.key]).map((c) => ({ key: c.key, name: categoryName(c.key, c.name), category: c, services: byKey[c.key] }));
       Object.keys(byKey)
         .filter((k) => !ordered.some((g) => g.key === k))
         .forEach((k) => ordered.push({ key: k, name: categoryMeta(k).label || k, services: byKey[k] }));
@@ -59,7 +60,7 @@ const ServicePicker = ({ selected, onChange, error }) => {
     return (
       <View style={styles.state}>
         <ActivityIndicator color={PRIMARY} />
-        <Text style={styles.stateText}>Chargement des services…</Text>
+        <Text style={styles.stateText}>{t('auth.servicesLoading')}</Text>
       </View>
     );
   }
@@ -67,7 +68,7 @@ const ServicePicker = ({ selected, onChange, error }) => {
     return (
       <PressableScale style={styles.state} onPress={load}>
         <Ionicons name="refresh" size={18} color={PRIMARY} />
-        <Text style={[styles.stateText, { color: PRIMARY }]}>Impossible de charger les services. Réessayer</Text>
+        <Text style={[styles.stateText, { color: PRIMARY }]}>{t('auth.servicesFailed')}</Text>
       </PressableScale>
     );
   }

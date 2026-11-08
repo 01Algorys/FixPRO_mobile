@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { t } from '../i18n';
 
 const AuthPage = ({ route }) => {
   const { isLogin: isLoginParam, role: roleParam } = route.params || {};
@@ -32,23 +33,23 @@ const AuthPage = ({ route }) => {
     const newErrors = {};
     
     if (!formData.email) {
-      newErrors.email = 'Email est requis';
+      newErrors.email = t('auth.emailRequired');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = t('auth.invalidEmail');
     }
     
     if (!formData.password) {
-      newErrors.password = 'Mot de passe est requis';
+      newErrors.password = t('auth.passwordRequired');
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+      newErrors.password = t('auth.passwordShort');
     }
     
     if (!isLogin) {
       if (!formData.name) {
-        newErrors.name = 'Nom est requis';
+        newErrors.name = t('auth.nameRequired');
       }
       if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+        newErrors.confirmPassword = t('auth.passwordsMismatch');
       }
     }
     
@@ -80,7 +81,7 @@ const AuthPage = ({ route }) => {
         navigation.replace('Main');
       }
     } else {
-      Alert.alert('Erreur', result.error);
+      Alert.alert(t('common.error'), result.error);
     }
   };
 
@@ -102,7 +103,7 @@ const AuthPage = ({ route }) => {
             <Ionicons name="sparkles" size={40} color="#fff" />
           </View>
           <Text style={styles.title}>Fix Pro</Text>
-          <Text style={styles.subtitle}>Trouvez votre professionnel de confiance</Text>
+          <Text style={styles.subtitle}>{t('auth.findTrustedPro')}</Text>
         </View>
         
         <View style={styles.tabContainer}>
@@ -116,7 +117,7 @@ const AuthPage = ({ route }) => {
               color={activeTab === 'user' ? '#fff' : '#666'}
             />
             <Text style={[styles.tabText, activeTab === 'user' && styles.activeTabText]}>
-              Client
+              {t('common.client')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -129,7 +130,7 @@ const AuthPage = ({ route }) => {
               color={activeTab === 'worker' ? '#fff' : '#666'}
             />
             <Text style={[styles.tabText, activeTab === 'worker' && styles.activeTabText]}>
-              technicien
+              {t('auth.technicianLower')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -140,7 +141,7 @@ const AuthPage = ({ route }) => {
             onPress={() => setIsLogin(true)}
           >
             <Text style={[styles.authToggleText, isLogin && styles.activeAuthToggleText]}>
-              Connexion
+              {t('auth.loginTab')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -148,7 +149,7 @@ const AuthPage = ({ route }) => {
             onPress={() => setIsLogin(false)}
           >
             <Text style={[styles.authToggleText, !isLogin && styles.activeAuthToggleText]}>
-              Inscription
+              {t('auth.signUpTab')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -156,10 +157,10 @@ const AuthPage = ({ route }) => {
         <View style={styles.formContainer}>
           {!isLogin && (
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Nom</Text>
+              <Text style={styles.label}>{t('common.name')}</Text>
               <TextInput
                 style={[styles.input, errors.name && styles.inputError]}
-                placeholder="Votre nom"
+                placeholder={t('auth.yourName')}
                 value={formData.name}
                 onChangeText={(value) => handleInputChange('name', value)}
               />
@@ -168,12 +169,12 @@ const AuthPage = ({ route }) => {
           )}
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('common.email')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="mail" size={20} color="#999" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.inputWithIcon, errors.email && styles.inputError]}
-                placeholder="votre@email.com"
+                placeholder={t('auth.emailPlaceholder2')}
                 value={formData.email}
                 onChangeText={(value) => handleInputChange('email', value)}
                 keyboardType="email-address"
@@ -184,7 +185,7 @@ const AuthPage = ({ route }) => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Mot de passe</Text>
+            <Text style={styles.label}>{t('common.password')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed" size={20} color="#999" style={styles.inputIcon} />
               <TextInput
@@ -210,7 +211,7 @@ const AuthPage = ({ route }) => {
 
           {!isLogin && (
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirmer le mot de passe</Text>
+              <Text style={styles.label}>{t('auth.confirmPassword')}</Text>
               <TextInput
                 style={[styles.input, errors.confirmPassword && styles.inputError]}
                 placeholder="••••••••"
@@ -224,7 +225,7 @@ const AuthPage = ({ route }) => {
 
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <Text style={styles.submitButtonText}>
-              {isLogin ? 'Se connecter' : "S'inscrire"}
+              {isLogin ? t('common.login') : t('auth.signUpButton')}
             </Text>
           </TouchableOpacity>
         </View>

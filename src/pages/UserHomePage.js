@@ -20,12 +20,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../styles/theme';
 import { useResponsive, wp, rf, scale } from '../utils/responsive';
 import { getCurrentCoords, reverseGeocodeCity } from '../utils/location';
-import { categoryMeta, shortName, formatDistance } from '../utils/categoryMeta';
+import { categoryMeta, shortName, formatDistance, categoryName } from '../utils/categoryMeta';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SearchResultsOverlay from '../components/SearchResultsOverlay';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
+import { t } from '../i18n';
+import { formatRating, directional, fixedRow } from '../i18n/format';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -147,11 +149,11 @@ const UserHomePage = ({ navigation }) => {
   const guardedNavigate = (screen, params) => {
     if (isGuest) {
       Alert.alert(
-        'Connexion requise',
-        'Connectez-vous ou créez un compte pour accéder à cette fonctionnalité.',
+        t('home.loginRequired'),
+        t('nav.lockedMessage'),
         [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Se connecter', onPress: () => navigation.navigate('Login') },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.login'), onPress: () => navigation.navigate('Login') },
         ]
       );
       return;
@@ -228,7 +230,7 @@ const UserHomePage = ({ navigation }) => {
       const workersData = topWorkersData.data?.workers || topWorkersData.workers || topWorkersData.data || topWorkersData || [];
       setWorkers(workersData.map((worker) => ({
         ...worker,
-        name: worker.user?.name || worker.name || 'Technicien',
+        name: worker.user?.name || worker.name || t('common.technician'),
         averageRating: worker.averageRating || worker.rating || 0,
         totalReviews: worker.totalReviews || worker.reviewCount || 0,
         isActive: worker.isActive !== undefined ? worker.isActive : true,
@@ -237,7 +239,7 @@ const UserHomePage = ({ navigation }) => {
       setUserData(userProfile ? (userProfile.data || userProfile) : user);
     } catch (error) {
       console.error('Failed to load data:', error);
-      if (!silent) Alert.alert('Erreur', 'Impossible de charger les données');
+      if (!silent) Alert.alert(t('common.error'), t('home.loadFailed'));
       setUserData(user);
     } finally {
       if (!silent) setLoading(false);
@@ -269,8 +271,8 @@ const UserHomePage = ({ navigation }) => {
   const displayCityName = cityName
     || userData?.user?.location?.city
     || userData?.location?.city
-    || 'Ma position';
-  const firstName = (userData?.user?.name || user?.name || (isGuest ? 'Invité' : '')).split(' ')[0];
+    || t('common.myPosition');
+  const firstName = (userData?.user?.name || user?.name || (isGuest ? t('home.guest') : '')).split(' ')[0];
 
   if (loading) {
     return (
@@ -296,13 +298,13 @@ const UserHomePage = ({ navigation }) => {
         >
           <View style={styles.headerGlow} />
           <View style={styles.headerTop}>
-            <View style={styles.brand}>
+            <View style={[styles.brand, fixedRow]}>
               <Image source={require('../assets/tool.png')} style={styles.brandLogo} />
               <View>
                 <Text style={styles.brandName}>
                   Fix<Text style={{ color: ACCENT }}>Pro</Text>
                 </Text>
-                <Text style={styles.brandTagline}>Simple • rapide • fiable</Text>
+                <Text style={styles.brandTagline}>{t('common.taglineLower')}</Text>
               </View>
             </View>
             <View style={styles.headerActions}>
@@ -320,16 +322,16 @@ const UserHomePage = ({ navigation }) => {
                 <Text style={styles.locationText} numberOfLines={1}>{displayCityName}</Text>
                 <Ionicons name="chevron-down" size={14} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.bellButton} onPress={() => guardedNavigate('Notifications')}>
+              <TouchableOpacity style={styles.bellButton} onPress={() => guardedNavigate(t('common.notifications'))}>
                 <Ionicons name="notifications" size={24} color="#fff" />
                 {unreadNotifications > 0 && <View style={styles.bellBadge} />}
               </TouchableOpacity>
             </View>
           </View>
 
-          {!!firstName && <Text style={styles.greeting}>Bonjour {firstName} 👋</Text>}
+          {!!firstName && <Text style={styles.greeting}>{t('home.greeting', { name: firstName })}</Text>}
           <Text style={styles.heroTitle}>
-            Quel service{'\n'}avez-vous <Text style={{ color: ACCENT }}>besoin ?</Text>
+            {t('home.heroLead')}<Text style={{ color: ACCENT }}>{t('home.heroAccent')}</Text>
           </Text>
 
           <TouchableOpacity
@@ -341,7 +343,7 @@ const UserHomePage = ({ navigation }) => {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="Rechercher un service..."
+              placeholder={t('home.searchPlaceholder')}
               placeholderTextColor="#6b7280"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -377,7 +379,7 @@ const UserHomePage = ({ navigation }) => {
 
         {/* Categories */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nos services</Text>
+          <Text style={styles.sectionTitle}>{t('home.ourServices')}</Text>
         </View>
         <View style={styles.categoriesGrid}>
           {categories.map((category, i) => {
@@ -400,10 +402,10 @@ const UserHomePage = ({ navigation }) => {
                     <CategoryIcon meta={meta} size={scale(30)} color="#fff" />
                   </LinearGradient>
                   <Text style={styles.categoryTitle} numberOfLines={1} adjustsFontSizeToFit>
-                    {category.name}
+                    {categoryName(category.key, category.name)}
                   </Text>
                   <Text style={[styles.categoryCount, !pros && styles.categorySoon]}>
-                    {pros ? `${pros} pro${pros > 1 ? 's' : ''}` : 'Bientôt'}
+                    {pros ? t('home.pros', { count: pros }) : t('common.soon')}
                   </Text>
                 </PressableScale>
               </FadeIn>
@@ -430,33 +432,33 @@ const UserHomePage = ({ navigation }) => {
             <View style={styles.urgenceContent}>
               <View style={styles.urgenceTag}>
                 <Ionicons name="flash" size={13} color="#fff" />
-                <Text style={styles.urgenceTagText}>URGENCE</Text>
+                <Text style={styles.urgenceTagText}>{t('home.emergencyTag')}</Text>
               </View>
               <Text style={styles.urgenceTitle}>
-                Un problème <Text style={{ color: ACCENT }}>urgent ?</Text>
+                {t('home.urgentLead')}<Text style={{ color: ACCENT }}>{t('home.urgentAccent')}</Text>
               </Text>
               <Text style={styles.urgenceSubtitle}>
-                Des professionnels disponibles près de chez vous.
+                {t('home.urgentSubtitle')}
               </Text>
               <TouchableOpacity style={styles.urgenceButton} onPress={handleSeeAllProfessionals} activeOpacity={0.85}>
-                <Text style={styles.urgenceButtonText}>Demander maintenant</Text>
-                <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+                <Text style={styles.urgenceButtonText}>{t('home.requestNow')}</Text>
+                <Ionicons name={directional('chevron-forward')} size={16} color={Colors.primary} />
               </TouchableOpacity>
             </View>
             <View style={styles.timerBadge}>
               <Ionicons name="stopwatch-outline" size={14} color={Colors.primary} style={styles.timerIcon} />
               <Text style={styles.timerValue}>30</Text>
-              <Text style={styles.timerUnit}>min</Text>
+              <Text style={styles.timerUnit}>{t('common.minutesShort')}</Text>
             </View>
           </LinearGradient>
         </View>
 
         {/* Nearby technicians */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Techniciens proches de vous</Text>
+          <Text style={styles.sectionTitle}>{t('home.nearby')}</Text>
           <TouchableOpacity style={styles.seeAll} onPress={handleSeeAllProfessionals}>
-            <Text style={styles.seeAllText}>Voir tout</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+            <Text style={styles.seeAllText}>{t('common.seeAll')}</Text>
+            <Ionicons name={directional('chevron-forward')} size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -501,13 +503,13 @@ const UserHomePage = ({ navigation }) => {
                     <View style={styles.metaRow}>
                       <Ionicons name="star" size={13} color={Colors.star} />
                       <Text style={styles.metaText}>
-                        {Number(worker.averageRating).toFixed(1)} ({worker.totalReviews})
+                        {formatRating(worker.averageRating)} ({worker.totalReviews})
                       </Text>
                     </View>
                     <View style={styles.metaRow}>
                       <View style={[styles.statusDot, { backgroundColor: worker.isActive ? '#16a34a' : '#9ca3af' }]} />
                       <Text style={[styles.metaText, { color: worker.isActive ? '#16a34a' : '#9ca3af' }]}>
-                        {worker.isActive ? 'Disponible' : 'Indisponible'}
+                        {worker.isActive ? t('common.available') : t('common.unavailable')}
                       </Text>
                     </View>
                     {!!distance && (
@@ -519,13 +521,13 @@ const UserHomePage = ({ navigation }) => {
                   </View>
                 </View>
                 <TouchableOpacity style={styles.reserveButton} onPress={() => handleReservePress(worker)} activeOpacity={0.85}>
-                  <Text style={styles.reserveButtonText}>Réserver</Text>
+                  <Text style={styles.reserveButtonText}>{t('common.reserve')}</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
             );
           })}
           {workers.length === 0 && (
-            <Text style={styles.emptyText}>Aucun technicien disponible pour le moment.</Text>
+            <Text style={styles.emptyText}>{t('home.noTechnician')}</Text>
           )}
         </ScrollView>
       </ScrollView>

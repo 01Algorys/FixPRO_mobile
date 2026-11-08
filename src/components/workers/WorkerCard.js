@@ -4,6 +4,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { categoryMeta, formatDistance, titleCase } from '../../utils/categoryMeta';
 import PressableScale from '../ui/PressableScale';
 import FadeIn from '../ui/FadeIn';
+import { t } from '../../i18n';
+import { formatRating, formatPrice, directional } from '../../i18n/format';
 
 // What the technician list pages share, so they keep looking alike
 export const BLUE = '#1a56db';
@@ -14,11 +16,11 @@ export const MUTED = '#64748b';
 export const PAGE = '#f4f7fd';
 
 export const SORTS = [
-  { key: 'distance', label: 'Les plus proches', needsLocation: true },
-  { key: 'rating', label: 'Mieux notés' },
-  { key: 'experience', label: 'Expérience' },
-  { key: 'jobs', label: 'Missions' },
-  { key: 'price', label: 'Prix' },
+  { key: 'distance', label: t('pros.sortNearest'), needsLocation: true },
+  { key: 'rating', label: t('pros.sortRating') },
+  { key: 'experience', label: t('pros.sortExperience') },
+  { key: 'jobs', label: t('pros.sortJobs') },
+  { key: 'price', label: t('pros.sortPrice') },
 ];
 
 // Verified technicians come first, whatever the sort
@@ -33,9 +35,9 @@ export const SORTERS = {
   price: verifiedFirst((a, b) => (a.hourlyRate || Infinity) - (b.hourlyRate || Infinity)),
 };
 
-export const nameOf = (worker) => titleCase(worker.user?.name || worker.name || 'Technicien');
+export const nameOf = (worker) => titleCase(worker.user?.name || worker.name || t('common.technician'));
 
-export const prosLabel = (count) => `${count} professionnel${count > 1 ? 's' : ''}`;
+export const prosLabel = (count) => t('pros.count', { count });
 
 export const CategoryIcon = ({ meta, size, color }) => {
   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
@@ -56,8 +58,8 @@ export const WorkerCard = ({ worker, categoryNames, onOpen, onBook }) => {
   const name = nameOf(worker);
   const rated = worker.totalReviews > 0;
   const tags = [
-    worker.experience > 0 && `${worker.experience} an${worker.experience > 1 ? 's' : ''} d'exp.`,
-    worker.jobsCompleted > 0 && `${worker.jobsCompleted} mission${worker.jobsCompleted > 1 ? 's' : ''}`,
+    worker.experience > 0 && t('common.yearsExperienceShort', { count: worker.experience }),
+    worker.jobsCompleted > 0 && t('common.missions', { count: worker.jobsCompleted }),
   ].filter(Boolean);
   const trades = categoryNames ? [...new Set((worker.services || []).map((s) => s.category))] : [];
 
@@ -82,8 +84,8 @@ export const WorkerCard = ({ worker, categoryNames, onOpen, onBook }) => {
           </View>
           <View style={styles.metaRow}>
             <Ionicons name="star" size={14} color="#f5b400" />
-            <Text style={styles.metaStrong}>{rated ? Number(worker.averageRating).toFixed(1) : 'Nouveau'}</Text>
-            {rated && <Text style={styles.metaText}>({worker.totalReviews} avis)</Text>}
+            <Text style={styles.metaStrong}>{rated ? formatRating(worker.averageRating) : t('common.new')}</Text>
+            {rated && <Text style={styles.metaText}>{t('common.reviewCountParen', { count: worker.totalReviews })}</Text>}
             {typeof worker.distanceKm === 'number' && (
               <>
                 <Text style={styles.metaText}>·</Text>
@@ -93,10 +95,10 @@ export const WorkerCard = ({ worker, categoryNames, onOpen, onBook }) => {
             )}
           </View>
           <Text style={[styles.availability, !worker.isActive && styles.unavailable]}>
-            {worker.isActive ? 'Disponible' : 'Indisponible'}
+            {worker.isActive ? t('common.available') : t('common.unavailable')}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#b6c2d6" />
+        <Ionicons name={directional('chevron-forward')} size={20} color="#b6c2d6" />
       </View>
 
       {!!worker.bio && <Text style={styles.bio} numberOfLines={2}>{worker.bio}</Text>}
@@ -123,7 +125,7 @@ export const WorkerCard = ({ worker, categoryNames, onOpen, onBook }) => {
       <View style={styles.cardBottom}>
         {worker.hourlyRate > 0 ? (
           <Text style={styles.price}>
-            {worker.hourlyRate} TND<Text style={styles.priceUnit}> /h</Text>
+            {formatPrice(worker.hourlyRate)}<Text style={styles.priceUnit}> {t('common.perHourShort')}</Text>
           </Text>
         ) : <View />}
         <PressableScale
@@ -131,7 +133,7 @@ export const WorkerCard = ({ worker, categoryNames, onOpen, onBook }) => {
           disabled={!worker.isActive}
           onPress={onBook}
         >
-          <Text style={styles.bookText}>Réserver</Text>
+          <Text style={styles.bookText}>{t('common.reserve')}</Text>
         </PressableScale>
       </View>
     </PressableScale>

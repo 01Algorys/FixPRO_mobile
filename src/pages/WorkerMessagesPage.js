@@ -25,8 +25,9 @@ import { usePresence } from '../hooks/usePresence';
 import ChatView from '../components/chat/ChatView';
 import { sendChatImage } from '../utils/chatImages';
 import ConversationList from '../components/chat/ConversationList';
+import { t } from '../i18n';
 
-const QUICK_REPLIES = ['Bonjour, je suis en route 🚗', "J'arrive dans 15 min", "Pouvez-vous m'envoyer une photo du problème ?", "Merci, à bientôt !"];
+const QUICK_REPLIES = [t('chat.quickOnMyWay'), t('chat.quick15'), t('chat.quickPhoto'), t('chat.quickBye')];
 
 const WorkerMessagesPage = ({ route, navigation }) => {
   const { conversationId, reservationId } = route.params || {};
@@ -44,29 +45,6 @@ const WorkerMessagesPage = ({ route, navigation }) => {
   const messagesScrollViewRef = useRef(null);
 
   const userId = user?.id || user?.userId || user?.email || 'worker';
-
-  // Helper functions for time formatting
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Aujourd\'hui';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Hier';
-    } else {
-      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-    }
-  };
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -323,7 +301,7 @@ const WorkerMessagesPage = ({ route, navigation }) => {
         senderId: userId,
         sender: {
           id: userId,
-          name: user?.name || 'You',
+          name: user?.name || t('chat.you'),
           role: user?.role || 'WORKER',
           avatar: user?.avatar
         },
@@ -377,7 +355,7 @@ const WorkerMessagesPage = ({ route, navigation }) => {
     return (
       <ChatView
         participant={{
-          name: activeConversation.user?.name || activeConversation.participantName || 'Client',
+          name: activeConversation.user?.name || activeConversation.participantName || t('common.client'),
           avatar: activeConversation.user?.avatar || activeConversation.participantAvatar,
           userId: activeConversation.user?.id,
         }}
@@ -409,11 +387,11 @@ const WorkerMessagesPage = ({ route, navigation }) => {
       onSearch={setSearch}
       onOpen={openConversation}
       getParticipant={(c) => ({
-        name: c.user?.name || c.participantName || 'Client',
+        name: c.user?.name || c.participantName || t('common.client'),
         avatar: c.user?.avatar || c.participantAvatar,
         userId: c.user?.id,
       })}
-      emptyText="Vos échanges avec les clients apparaîtront ici dès que vous acceptez une demande."
+      emptyText={t('chat.workerEmpty')}
       refreshing={refreshing}
       onRefresh={async () => { setRefreshing(true); await loadConversations({ silent: true }); setRefreshing(false); }}
     />
@@ -740,13 +718,13 @@ const styles = StyleSheet.create({
   },
   workerBubble: {
     backgroundColor: Colors.primary,
-    borderBottomRightRadius: 4,
+    borderBottomEndRadius: 4,
   },
   userBubble: {
     backgroundColor: Colors.card,
     borderColor: Colors.border,
     borderWidth: 1,
-    borderBottomLeftRadius: 4,
+    borderBottomStartRadius: 4,
   },
   messageText: {
     color: Colors.text,

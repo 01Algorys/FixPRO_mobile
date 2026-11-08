@@ -9,6 +9,7 @@ import { DEFAULT_COUNTRY, fullPhone } from '../utils/countries';
 import {
   AuthShell, AuthTitle, SocialButtons, Divider, PrimaryButton, Field, PRIMARY, INK, MUTED,
 } from '../components/auth/AuthUI';
+import { t } from '../i18n';
 
 export default function LoginScreen({ navigation }) {
   const { login, loginWithSocial } = useAuth();
@@ -24,7 +25,7 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = async () => {
     const identifier = tab === 'phone' ? fullPhone(country, phone) : email.trim();
     if (!identifier || !password) {
-      Alert.alert('Champs manquants', 'Renseignez votre identifiant et votre mot de passe.');
+      Alert.alert(t('auth.missingFields'), t('auth.missingFieldsHint'));
       return;
     }
     try {
@@ -34,7 +35,7 @@ export default function LoginScreen({ navigation }) {
         ? { phone: identifier, password }
         : { email: identifier, password };
       const result = await login(credentials);
-      if (!result.success) Alert.alert('Connexion impossible', result.error || 'Identifiants incorrects');
+      if (!result.success) Alert.alert(t('auth.signInFailed'), result.error || t('auth.wrongCredentials'));
       // On success, navigation is driven by isAuthenticated state in AppNavigator
     } finally {
       setLoading(false);
@@ -54,17 +55,17 @@ export default function LoginScreen({ navigation }) {
     } else if (result.pendingApproval) {
       navigation.navigate('PendingApproval');
     } else if (result.success === false) {
-      Alert.alert('Connexion impossible', result.error);
+      Alert.alert(t('auth.signInFailed'), result.error);
     }
   };
 
   return (
     <AuthShell onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}>
-      <AuthTitle title="Bon retour 👋" subtitle="Connectez-vous pour réserver ou gérer vos interventions." />
+      <AuthTitle title={t('auth.welcomeBack')} subtitle={t('auth.loginSubtitle')} />
 
       <FadeIn delay={60}>
         <View style={styles.segment}>
-          {[['phone', 'Téléphone', 'call-outline'], ['email', 'Email', 'mail-outline']].map(([key, label, icon]) => {
+          {[['phone', t('common.phone'), 'call-outline'], ['email', t('common.email'), 'mail-outline']].map(([key, label, icon]) => {
             const active = tab === key;
             return (
               <PressableScale key={key} style={[styles.segmentItem, active && styles.segmentActive]} onPress={() => setTab(key)}>
@@ -89,7 +90,7 @@ export default function LoginScreen({ navigation }) {
             icon="mail-outline"
             value={email}
             onChangeText={setEmail}
-            placeholder="email@exemple.com"
+            placeholder={t('auth.emailPlaceholder')}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
@@ -100,7 +101,7 @@ export default function LoginScreen({ navigation }) {
           icon="lock-closed-outline"
           value={password}
           onChangeText={setPassword}
-          placeholder="Mot de passe"
+          placeholder={t('common.password')}
           secureTextEntry={!showPassword}
           textContentType="password"
           onSubmitEditing={handleLogin}
@@ -115,23 +116,23 @@ export default function LoginScreen({ navigation }) {
         <TouchableOpacity
           style={styles.forgot}
           onPress={() => Alert.alert(
-            'Mot de passe oublié',
-            'Contactez le support à fixproo.support@gmail.com pour réinitialiser votre mot de passe.',
+            t('auth.forgotTitle'),
+            t('auth.forgotHint', { email: 'fixproo.support@gmail.com' }),
           )}
         >
-          <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+          <Text style={styles.forgotText}>{t('auth.forgotLink')}</Text>
         </TouchableOpacity>
 
-        <PrimaryButton label="Se connecter" onPress={handleLogin} loading={loading} disabled={!!socialLoading} />
+        <PrimaryButton label={t('common.login')} onPress={handleLogin} loading={loading} disabled={!!socialLoading} />
       </FadeIn>
 
-      <Divider label="ou continuer avec" />
+      <Divider label={t('auth.orContinueWith')} />
       <SocialButtons onPress={handleSocial} loading={socialLoading} disabled={loading} />
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Pas encore de compte ?</Text>
+        <Text style={styles.footerText}>{t('auth.noAccount')}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('CreateAccount')}>
-          <Text style={styles.footerLink}>Créer un compte</Text>
+          <Text style={styles.footerLink}>{t('common.createAccount')}</Text>
         </TouchableOpacity>
       </View>
     </AuthShell>

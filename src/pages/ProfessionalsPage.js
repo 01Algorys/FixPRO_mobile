@@ -6,13 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiService from '../services/api';
 import { getCurrentCoords } from '../utils/location';
-import { categoryMeta } from '../utils/categoryMeta';
+import { categoryMeta, categoryName } from '../utils/categoryMeta';
 import { useScreenChrome } from '../context/ChromeContext';
 import PressableScale from '../components/ui/PressableScale';
 import {
   BLUE, NAVY, PRIMARY, MUTED, PAGE, SORTS, SORTERS, nameOf, prosLabel,
   CategoryIcon, Chip, WorkerCard, SkeletonCard, EmptyState, styles,
 } from '../components/workers/WorkerCard';
+import { t } from '../i18n';
+import { directional } from '../i18n/format';
 
 // "Électricité" and "electricite" match each other
 const normalize = (text) => String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -80,7 +82,7 @@ const ProfessionalsPage = ({ navigation }) => {
   };
 
   const categoryNames = useMemo(
-    () => Object.fromEntries(categories.map((c) => [c.key, c.name])),
+    () => Object.fromEntries(categories.map((c) => [c.key, categoryName(c.key, c.name)])),
     [categories]
   );
 
@@ -115,9 +117,9 @@ const ProfessionalsPage = ({ navigation }) => {
       return (
         <EmptyState
           icon="cloud-offline-outline"
-          title="Connexion impossible"
-          text="Vérifiez votre connexion et réessayez."
-          action="Réessayer"
+          title={t('common.connectionFailed')}
+          text={t('common.checkConnection')}
+          action={t('common.retry')}
           onAction={() => { setLoading(true); loadWorkers(); }}
         />
       );
@@ -125,9 +127,9 @@ const ProfessionalsPage = ({ navigation }) => {
     return (
       <EmptyState
         icon="search-outline"
-        title="Aucun résultat"
-        text="Essayez un autre nom ou retirez vos filtres."
-        action="Réinitialiser"
+        title={t('common.noResults')}
+        text={t('common.tryOtherFilters')}
+        action={t('common.reset')}
         onAction={resetFilters}
       />
     );
@@ -139,18 +141,18 @@ const ProfessionalsPage = ({ navigation }) => {
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
         <View style={styles.headerRow}>
           <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={23} color="#fff" />
+            <Ionicons name={directional('arrow-back')} size={23} color="#fff" />
           </PressableScale>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1}>Tous les professionnels</Text>
-            <Text style={styles.subtitle}>{loading ? 'Recherche…' : prosLabel(visible.length)}</Text>
+            <Text style={styles.title} numberOfLines={1}>{t('pros.all')}</Text>
+            <Text style={styles.subtitle}>{loading ? t('common.searching') : prosLabel(visible.length)}</Text>
           </View>
         </View>
         <View style={styles.search}>
           <Ionicons name="search" size={19} color={MUTED} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Nom ou métier"
+            placeholder={t('pros.searchPlaceholder')}
             placeholderTextColor={MUTED}
             value={search}
             onChangeText={setSearch}
@@ -172,7 +174,7 @@ const ProfessionalsPage = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.chips, { paddingBottom: 6 }]}
         >
-          <Chip label="Toutes" active={!category} onPress={() => setCategory(null)} />
+          <Chip label={t('pros.allFilter')} active={!category} onPress={() => setCategory(null)} />
           {categoryChips.map((c) => {
             const meta = categoryMeta(c.key, c);
             const active = category === c.key;
@@ -193,7 +195,7 @@ const ProfessionalsPage = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.chips, { paddingTop: 6 }]}
         >
-          <Chip label="Disponibles" icon="ellipse" active={onlyAvailable} onPress={() => setOnlyAvailable(!onlyAvailable)} />
+          <Chip label={t('common.availableFilter')} icon="ellipse" active={onlyAvailable} onPress={() => setOnlyAvailable(!onlyAvailable)} />
           {SORTS.filter((s) => !s.needsLocation || coords).map((s) => (
             <Chip key={s.key} label={s.label} active={sortBy === s.key} onPress={() => setSortBy(s.key)} />
           ))}

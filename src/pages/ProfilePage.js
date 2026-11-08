@@ -17,13 +17,16 @@ import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
 import {
   THEME, INK, MUTED, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, DangerButtons, BottomSheet, PasswordField, styles,
 } from '../components/profile/ProfileParts';
+import { LanguageSheet } from '../components/LanguagePicker';
+import { languageLabel, t } from '../i18n';
+import { formatDate, ltr } from '../i18n/format';
 
 const REVIEWS_PREVIEW = 3;
 
 // Reviews only store ids, so the name comes from the booking they belong to
 const workerNameOf = (review, reservations) => {
   const booking = Array.isArray(reservations) && reservations.find((r) => r.id === review.reservationId);
-  return (booking && booking.workerName) || 'Professionnel';
+  return (booking && booking.workerName) || t('common.professional');
 };
 
 const ProfilePage = ({ navigation }) => {
@@ -35,6 +38,7 @@ const ProfilePage = ({ navigation }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [languageVisible, setLanguageVisible] = useState(false);
 
   // Edit profile modal
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -113,11 +117,11 @@ const ProfilePage = ({ navigation }) => {
       setProfileData(combinedProfileData);
     } catch (error) {
       console.error('Failed to load profile:', error);
-      setError('Impossible de charger le profil. Veuillez réessayer.');
+      setError(t('profile.loadFailed'));
 
       if (user) {
         setProfileData({
-          name: user.name || 'Utilisateur',
+          name: user.name || t('common.user'),
           email: user.email || '',
           memberSince: null,
           totalReservations: 0,
@@ -158,12 +162,12 @@ const ProfilePage = ({ navigation }) => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('common.logout'),
+      t('profile.logoutConfirm'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: t('common.logout'),
           style: 'destructive',
           onPress: () => {
             logout();
@@ -176,19 +180,19 @@ const ProfilePage = ({ navigation }) => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Supprimer le compte',
-      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et toutes vos données seront perdues.',
+      t('profile.deleteAccount'),
+      t('profile.deleteConfirm'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await apiService.deleteAccount();
               await logout();
             } catch (err) {
-              Alert.alert('Erreur', 'La suppression du compte a échoué. Veuillez réessayer.');
+              Alert.alert(t('common.error'), t('profile.deleteFailed'));
             }
           },
         },
@@ -207,7 +211,7 @@ const ProfilePage = ({ navigation }) => {
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
-      Alert.alert('Erreur', 'Le nom est requis');
+      Alert.alert(t('common.error'), t('profile.nameRequired'));
       return;
     }
     try {
@@ -225,10 +229,10 @@ const ProfilePage = ({ navigation }) => {
       }
       await loadProfile();
       setEditModalVisible(false);
-      Alert.alert('Succès', 'Profil mis à jour avec succès');
+      Alert.alert(t('common.success'), t('profile.updated'));
     } catch (err) {
       console.error('Update profile error:', err);
-      Alert.alert('Erreur', 'Échec de la mise à jour. Réessayez.');
+      Alert.alert(t('common.error'), t('profile.updateFailed'));
     } finally {
       setSavingProfile(false);
     }
@@ -243,25 +247,25 @@ const ProfilePage = ({ navigation }) => {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      Alert.alert(t('common.error'), t('profile.fillAll'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      Alert.alert(t('common.error'), t('auth.passwordsMismatch'));
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+      Alert.alert(t('common.error'), t('auth.passwordShort'));
       return;
     }
     try {
       setSavingPassword(true);
       await apiService.changePassword({ currentPassword, newPassword });
       setSecurityModalVisible(false);
-      Alert.alert('Succès', 'Mot de passe mis à jour avec succès');
+      Alert.alert(t('common.success'), t('profile.passwordUpdated'));
     } catch (err) {
       console.error('Change password error:', err);
-      Alert.alert('Erreur', err?.message || 'Mot de passe actuel incorrect');
+      Alert.alert(t('common.error'), err?.message || t('profile.wrongPassword'));
     } finally {
       setSavingPassword(false);
     }
@@ -285,13 +289,13 @@ const ProfilePage = ({ navigation }) => {
 
       if (response.success && response.avatarUrl) {
         setAvatarUrl(response.avatarUrl);
-        Alert.alert('Succès', 'Photo de profil mise à jour avec succès');
+        Alert.alert(t('common.success'), t('profile.photoUpdated'));
       } else {
         throw new Error('Upload failed');
       }
     } catch (error) {
       console.error('Avatar upload error:', error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour la photo de profil');
+      Alert.alert(t('common.error'), t('profile.photoFailed'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -311,7 +315,7 @@ const ProfilePage = ({ navigation }) => {
         <Ionicons name="cloud-offline-outline" size={52} color="#cbd5e1" />
         <Text style={styles.errorText}>{error}</Text>
         <PressableScale style={styles.retryBtn} onPress={loadProfile}>
-          <Text style={styles.retryText}>Réessayer</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </PressableScale>
       </View>
     );
@@ -322,7 +326,7 @@ const ProfilePage = ({ navigation }) => {
   const phone = profileData?.user?.phone;
   const city = profileData?.location?.city || profileData?.location?.address;
   const memberSince = profileData?.memberSince
-    ? new Date(profileData.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    ? formatDate(profileData.memberSince, { month: 'long', year: 'numeric' })
     : null;
   const reviews = profileData?.reviews || [];
   const shownReviews = showAllReviews ? reviews : reviews.slice(0, REVIEWS_PREVIEW);
@@ -336,7 +340,7 @@ const ProfilePage = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME} />}
       >
-        <ProfileHeader title="Mon profil" onBell={() => navigation.navigate('Notifications')} />
+        <ProfileHeader title={t('profile.myProfile')} onBell={() => navigation.navigate('Notifications')} />
 
         <View style={styles.body}>
           {/* Identity */}
@@ -353,21 +357,21 @@ const ProfilePage = ({ navigation }) => {
             <View style={styles.identityInfo}>
               <View style={styles.identityTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.profileName} numberOfLines={1}>{titleCase(name) || 'Utilisateur'}</Text>
+                  <Text style={styles.profileName} numberOfLines={1}>{titleCase(name) || t('common.user')}</Text>
                   <View style={styles.rolePill}>
                     <Ionicons name="person" size={13} color={THEME} />
-                    <Text style={styles.roleText}>Client</Text>
+                    <Text style={styles.roleText}>{t('common.client')}</Text>
                   </View>
                 </View>
                 <PressableScale style={styles.editBtn} onPress={handleOpenEditProfile}>
                   <Ionicons name="pencil" size={15} color={INK} />
-                  <Text style={styles.editBtnText}>Modifier{'\n'}le profil</Text>
+                  <Text style={styles.editBtnText}>{t('profile.edit')}</Text>
                 </PressableScale>
               </View>
               {!!memberSince && (
                 <View style={styles.metaRow}>
                   <Ionicons name="calendar-outline" size={15} color={INK} />
-                  <Text style={styles.metaText} numberOfLines={1}>Membre depuis {memberSince}</Text>
+                  <Text style={styles.metaText} numberOfLines={1}>{t('profile.memberSince', { date: memberSince })}</Text>
                 </View>
               )}
             </View>
@@ -376,19 +380,19 @@ const ProfilePage = ({ navigation }) => {
           <StatsRow
             delay={40}
             items={[
-              { icon: 'calendar-outline', value: profileData?.totalReservations ?? 0, label: 'Réservations' },
-              { icon: 'checkmark-done-outline', color: '#16a34a', value: profileData?.completedReservations ?? 0, label: 'Terminées' },
-              { icon: 'star-outline', color: '#f59e0b', value: profileData?.totalReviewsGiven ?? 0, label: 'Avis donnés' },
+              { icon: 'calendar-outline', value: profileData?.totalReservations ?? 0, label: t('profile.reservations') },
+              { icon: 'checkmark-done-outline', color: '#16a34a', value: profileData?.completedReservations ?? 0, label: t('profile.completed') },
+              { icon: 'star-outline', color: '#f59e0b', value: profileData?.totalReviewsGiven ?? 0, label: t('profile.reviewsGiven') },
             ]}
           />
 
           {/* Information */}
           <FadeIn delay={80}>
-            <SectionHead icon="person-outline" title="Mes informations" />
+            <SectionHead icon="person-outline" title={t('profile.myInfo')} />
             <View style={styles.card}>
-              <InfoRow icon="call-outline" value={phone || 'Ajouter un téléphone'} onPress={handleOpenEditProfile} />
+              <InfoRow icon="call-outline" value={ltr(phone) || t('profile.addPhone')} onPress={handleOpenEditProfile} />
               <InfoRow icon="mail-outline" value={email || '—'} />
-              <InfoRow icon="location-outline" label="Ville" value={city || '—'} onPress={handleOpenEditProfile} last />
+              <InfoRow icon="location-outline" label={t('common.city')} value={city || '—'} onPress={handleOpenEditProfile} last />
             </View>
           </FadeIn>
 
@@ -396,10 +400,10 @@ const ProfilePage = ({ navigation }) => {
           <FadeIn delay={120}>
             <SectionHead
               icon="star-outline"
-              title="Mes avis"
+              title={t('profile.myReviews')}
               right={reviews.length > REVIEWS_PREVIEW && (
                 <PressableScale onPress={() => setShowAllReviews(!showAllReviews)}>
-                  <Text style={styles.linkText}>{showAllReviews ? 'Voir moins' : 'Voir tout'}</Text>
+                  <Text style={styles.linkText}>{showAllReviews ? t('common.seeLess') : t('common.seeAll')}</Text>
                 </PressableScale>
               )}
             />
@@ -408,7 +412,7 @@ const ProfilePage = ({ navigation }) => {
                 <View key={review.id} style={[styles.card, styles.cardPad, local.review]}>
                   <View style={local.reviewTop}>
                     <Text style={local.reviewName} numberOfLines={1}>{titleCase(review.workerName)}</Text>
-                    <Text style={local.reviewDate}>{new Date(review.date).toLocaleDateString('fr-FR')}</Text>
+                    <Text style={local.reviewDate}>{formatDate(review.date)}</Text>
                   </View>
                   <Stars rating={review.rating} />
                   {!!review.comment && <Text style={local.reviewComment}>{review.comment}</Text>}
@@ -417,7 +421,7 @@ const ProfilePage = ({ navigation }) => {
             ) : (
               <View style={[styles.card, styles.cardPad]}>
                 <Text style={[styles.bioText, { color: '#94a3b8' }]}>
-                  Vous n'avez pas encore donné d'avis. Notez vos professionnels après chaque intervention.
+                  {t('profile.noReviews')}
                 </Text>
               </View>
             )}
@@ -425,50 +429,55 @@ const ProfilePage = ({ navigation }) => {
 
           {/* Account */}
           <FadeIn delay={160}>
-            <SectionHead icon="shield-checkmark-outline" title="Sécurité & Compte" />
+            <SectionHead icon="shield-checkmark-outline" title={t('profile.security')} />
             <View style={styles.accountRow}>
-              <AccountTile icon="calendar-outline" label={'Mes\nréservations'} onPress={() => navigation.navigate('Reservations')} />
-              <AccountTile icon="lock-closed-outline" label={'Changer le\nmot de passe'} onPress={handleOpenSecurity} />
-              <AccountTile icon="notifications-outline" label={'Mes\nnotifications'} onPress={() => navigation.navigate('Notifications')} />
+              <AccountTile icon="calendar-outline" label={t('profile.tileReservations')} onPress={() => navigation.navigate('Reservations')} />
+              <AccountTile icon="lock-closed-outline" label={t('profile.tilePassword')} onPress={handleOpenSecurity} />
+              <AccountTile icon="notifications-outline" label={t('profile.tileNotifications')} onPress={() => navigation.navigate('Notifications')} />
+            </View>
+            <View style={[styles.card, { marginTop: 10 }]}>
+              <InfoRow icon="language-outline" label={t('common.language')} value={languageLabel()} onPress={() => setLanguageVisible(true)} last />
             </View>
             <DangerButtons onLogout={handleLogout} onDelete={handleDeleteAccount} />
           </FadeIn>
         </View>
       </ScrollView>
 
-      <BottomSheet visible={editModalVisible} title="Modifier le profil" onClose={() => setEditModalVisible(false)}>
+      <LanguageSheet visible={languageVisible} onClose={() => setLanguageVisible(false)} />
+
+      <BottomSheet visible={editModalVisible} title={t('profile.editTitle')} onClose={() => setEditModalVisible(false)}>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Nom</Text>
+          <Text style={styles.fieldLabel}>{t('common.name')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="person-outline" size={18} color="#94a3b8" />
-            <TextInput style={styles.input} value={editName} onChangeText={setEditName} placeholder="Votre nom" placeholderTextColor="#94a3b8" />
+            <TextInput style={styles.input} value={editName} onChangeText={setEditName} placeholder={t('auth.yourName')} placeholderTextColor="#94a3b8" />
           </View>
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Téléphone</Text>
+          <Text style={styles.fieldLabel}>{t('common.phone')}</Text>
           <View style={styles.inputWrapper}>
             <CountryCodePicker country={editCountry} onChange={setEditCountry} />
-            <TextInput style={styles.input} value={editPhone} onChangeText={setEditPhone} placeholder="Votre numéro de téléphone" placeholderTextColor="#94a3b8" keyboardType="phone-pad" />
+            <TextInput style={styles.input} value={editPhone} onChangeText={setEditPhone} placeholder={t('profile.yourPhone')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" />
           </View>
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Ville</Text>
+          <Text style={styles.fieldLabel}>{t('common.city')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="location-outline" size={18} color="#94a3b8" />
-            <TextInput style={styles.input} value={editCity} onChangeText={setEditCity} placeholder="Votre ville" placeholderTextColor="#94a3b8" />
+            <TextInput style={styles.input} value={editCity} onChangeText={setEditCity} placeholder={t('profile.yourCity')} placeholderTextColor="#94a3b8" />
           </View>
         </View>
         <PressableScale style={[styles.primaryBtn, savingProfile && styles.btnDisabled]} onPress={handleSaveProfile} disabled={savingProfile}>
-          {savingProfile ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Enregistrer</Text>}
+          {savingProfile ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('common.save')}</Text>}
         </PressableScale>
       </BottomSheet>
 
-      <BottomSheet visible={securityModalVisible} title="Changer le mot de passe" onClose={() => setSecurityModalVisible(false)}>
-        <PasswordField label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} shown={showCurrentPw} onToggle={() => setShowCurrentPw(!showCurrentPw)} icon="lock-closed-outline" />
-        <PasswordField label="Nouveau mot de passe" value={newPassword} onChangeText={setNewPassword} shown={showNewPw} onToggle={() => setShowNewPw(!showNewPw)} icon="key-outline" />
-        <PasswordField label="Confirmer le mot de passe" value={confirmPassword} onChangeText={setConfirmPassword} shown={showConfirmPw} onToggle={() => setShowConfirmPw(!showConfirmPw)} icon="key-outline" />
+      <BottomSheet visible={securityModalVisible} title={t('profile.changePassword')} onClose={() => setSecurityModalVisible(false)}>
+        <PasswordField label={t('profile.currentPassword')} value={currentPassword} onChangeText={setCurrentPassword} shown={showCurrentPw} onToggle={() => setShowCurrentPw(!showCurrentPw)} icon="lock-closed-outline" />
+        <PasswordField label={t('profile.newPassword')} value={newPassword} onChangeText={setNewPassword} shown={showNewPw} onToggle={() => setShowNewPw(!showNewPw)} icon="key-outline" />
+        <PasswordField label={t('profile.confirmPassword')} value={confirmPassword} onChangeText={setConfirmPassword} shown={showConfirmPw} onToggle={() => setShowConfirmPw(!showConfirmPw)} icon="key-outline" />
         <PressableScale style={[styles.primaryBtn, savingPassword && styles.btnDisabled]} onPress={handleChangePassword} disabled={savingPassword}>
-          {savingPassword ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>Mettre à jour</Text>}
+          {savingPassword ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryBtnText}>{t('common.update')}</Text>}
         </PressableScale>
       </BottomSheet>
     </>

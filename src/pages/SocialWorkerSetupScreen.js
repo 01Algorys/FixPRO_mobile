@@ -6,6 +6,7 @@ import FadeIn from '../components/ui/FadeIn';
 import { AuthShell, AuthTitle, PrimaryButton, Field, INK, MUTED } from '../components/auth/AuthUI';
 import CountryCodePicker from '../components/CountryCodePicker';
 import { DEFAULT_COUNTRY, fullPhone } from '../utils/countries';
+import { t } from '../i18n';
 
 // Last step of a technician's Google / Apple sign-up: the provider gives us
 // their name and email; we still need a phone number and the services they offer before the
@@ -21,8 +22,8 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
 
   const submit = async () => {
     const e = {};
-    if (!phone.trim()) e.phone = 'Indiquez votre numéro';
-    if (services.length === 0) e.services = 'Choisissez au moins un service';
+    if (!phone.trim()) e.phone = t('auth.enterPhone');
+    if (services.length === 0) e.services = t('auth.chooseService');
     setErrors(e);
     if (Object.keys(e).length) return;
 
@@ -33,7 +34,7 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
     if (result.pendingApproval) {
       navigation.reset({ index: 0, routes: [{ name: 'PendingApproval' }] });
     } else if (result.success === false) {
-      Alert.alert('Inscription impossible', result.error);
+      Alert.alert(t('auth.signUpFailed'), result.error);
     }
     // An existing account (same email) is simply signed in
   };
@@ -41,8 +42,8 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
   return (
     <AuthShell onBack={() => navigation.goBack()}>
       <AuthTitle
-        title="Votre expertise"
-        subtitle="Dernière étape : vos clients doivent pouvoir vous joindre et savoir ce que vous proposez."
+        title={t('auth.yourExpertise')}
+        subtitle={t('auth.yourExpertiseHint')}
       />
 
       {!!profile && (
@@ -63,7 +64,7 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
 
       <FadeIn delay={60}>
         <Field
-          label="Téléphone"
+          label={t('common.phone')}
           left={<CountryCodePicker country={country} onChange={setCountry} />}
           value={phone}
           onChangeText={(v) => { setPhone(v); setErrors((p) => ({ ...p, phone: '' })); }}
@@ -73,8 +74,8 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
           error={errors.phone}
         />
 
-        <Text style={styles.servicesTitle}>Vos services</Text>
-        <Text style={styles.servicesHint}>Sélectionnez tout ce que vous proposez.</Text>
+        <Text style={styles.servicesTitle}>{t('auth.yourServices')}</Text>
+        <Text style={styles.servicesHint}>{t('auth.yourServicesHint')}</Text>
         <ServicePicker
           selected={services}
           onChange={(next) => { setServices(next); setErrors((p) => ({ ...p, services: '' })); }}
@@ -82,8 +83,8 @@ export default function SocialWorkerSetupScreen({ navigation, route }) {
         />
 
         <View style={{ height: 10 }} />
-        <PrimaryButton label="Envoyer ma candidature" onPress={submit} loading={loading} />
-        <Text style={styles.note}>Notre équipe valide chaque technicien avant l'activation du compte.</Text>
+        <PrimaryButton label={t('auth.sendApplication')} onPress={submit} loading={loading} />
+        <Text style={styles.note}>{t('auth.reviewApplicationHint')}</Text>
       </FadeIn>
     </AuthShell>
   );

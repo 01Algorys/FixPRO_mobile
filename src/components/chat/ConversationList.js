@@ -5,6 +5,9 @@ import PressableScale from '../ui/PressableScale';
 import OnlineBadge from '../OnlineBadge';
 import FadeIn from '../ui/FadeIn';
 import { localizeMessage } from './ChatView';
+import { t } from '../../i18n';
+import { formatDate, formatTime } from '../../i18n/format';
+import { serviceName } from '../../i18n/serverText';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -18,18 +21,18 @@ const when = (d) => {
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
   if (date.toDateString() === today.toDateString()) {
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return formatTime(date);
   }
-  if (date.toDateString() === yesterday.toDateString()) return 'Hier';
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  if (date.toDateString() === yesterday.toDateString()) return t('common.yesterday');
+  return formatDate(date, { day: 'numeric', month: 'short' });
 };
 
 const STATUS = {
-  ACCEPTED: { label: 'Confirmée', color: '#16a34a', bg: '#e7f7ec' },
-  IN_PROGRESS: { label: 'En cours', color: PRIMARY, bg: '#e3edff' },
-  COMPLETED: { label: 'Terminée', color: '#7c3aed', bg: '#f1eafe' },
-  CANCELLED: { label: 'Annulée', color: '#dc2626', bg: '#fef2f2' },
-  REJECTED: { label: 'Refusée', color: '#dc2626', bg: '#fef2f2' },
+  ACCEPTED: { label: t('status.confirmed'), color: '#16a34a', bg: '#e7f7ec' },
+  IN_PROGRESS: { label: t('status.inProgress'), color: PRIMARY, bg: '#e3edff' },
+  COMPLETED: { label: t('status.completed'), color: '#7c3aed', bg: '#f1eafe' },
+  CANCELLED: { label: t('status.cancelled'), color: '#dc2626', bg: '#fef2f2' },
+  REJECTED: { label: t('status.rejected'), color: '#dc2626', bg: '#fef2f2' },
 };
 
 // Inbox shared by the client and technician message pages.
@@ -40,15 +43,15 @@ const ConversationList = ({
   <View style={styles.container}>
     <StatusBar barStyle="light-content" />
     <View style={styles.header}>
-      <Text style={styles.title}>Messages</Text>
+      <Text style={styles.title}>{t('common.messages')}</Text>
       <Text style={styles.subtitle}>
-        {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+        {t('chat.conversations', { count: conversations.length })}
       </Text>
       <View style={styles.search}>
         <Ionicons name="search" size={18} color="#94a3b8" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Rechercher un nom ou un service"
+          placeholder={t('chat.search')}
           placeholderTextColor="#94a3b8"
           value={search}
           onChangeText={onSearch}
@@ -72,8 +75,8 @@ const ConversationList = ({
           <View style={styles.emptyIcon}>
             <Ionicons name="chatbubbles-outline" size={30} color={PRIMARY} />
           </View>
-          <Text style={styles.emptyTitle}>{search ? 'Aucun résultat' : 'Aucune conversation'}</Text>
-          <Text style={styles.emptyText}>{search ? 'Essayez un autre nom.' : emptyText}</Text>
+          <Text style={styles.emptyTitle}>{search ? t('common.noResults') : t('chat.noConversation')}</Text>
+          <Text style={styles.emptyText}>{search ? t('chat.tryOtherName') : emptyText}</Text>
         </View>
       ) : (
         conversations.map((c, i) => {
@@ -102,7 +105,7 @@ const ConversationList = ({
                   </View>
                   <View style={styles.rowBottom}>
                     <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
-                      {localizeMessage(c.lastMessage?.content) || 'Aucun message pour le moment'}
+                      {localizeMessage(c.lastMessage?.content) || t('chat.noMessage')}
                     </Text>
                     {unread && (
                       <View style={styles.badge}>
@@ -112,7 +115,7 @@ const ConversationList = ({
                   </View>
                   <View style={styles.tags}>
                     {!!(c.service?.name || c.serviceName) && (
-                      <Text style={styles.service} numberOfLines={1}>{c.service?.name || c.serviceName}</Text>
+                      <Text style={styles.service} numberOfLines={1}>{serviceName(c.service?.name || c.serviceName)}</Text>
                     )}
                     {status && (
                       <View style={[styles.status, { backgroundColor: status.bg }]}>

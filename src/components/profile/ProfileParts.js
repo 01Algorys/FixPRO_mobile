@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
 import PressableScale from '../ui/PressableScale';
 import FadeIn from '../ui/FadeIn';
+import { t } from '../../i18n';
+import { directional, fixedRow } from '../../i18n/format';
 
 // What the client and technician profiles share, so they keep looking alike
 export const THEME = '#1d5ff0';
@@ -24,15 +26,15 @@ export const ProfileHeader = ({ title, onBell, onBack, onShare }) => (
       <View style={styles.headerSide}>
         {!!onBack && (
           <PressableScale scaleTo={0.9} onPress={onBack}>
-            <Ionicons name="arrow-back" size={25} color="#fff" />
+            <Ionicons name={directional('arrow-back')} size={25} color="#fff" />
           </PressableScale>
         )}
       </View>
-      <View style={styles.brand}>
+      <View style={[styles.brand, fixedRow]}>
         <Image source={require('../../assets/tool.png')} style={styles.brandLogo} />
         <View>
           <Text style={styles.brandName}>FixPro</Text>
-          <Text style={styles.brandTagline}>Simple • Rapide • Fiable</Text>
+          <Text style={styles.brandTagline}>{t('common.tagline')}</Text>
         </View>
       </View>
       <View style={[styles.headerSide, { alignItems: 'flex-end' }]}>
@@ -82,16 +84,16 @@ export const InfoRow = ({ icon, label, value, onPress, last }) => {
       <Ionicons name={icon} size={20} color={THEME} />
       <Text style={styles.infoText} numberOfLines={1}>{label || value}</Text>
       {!!label && <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>}
-      {!!onPress && <Ionicons name="chevron-forward" size={17} color="#94a3b8" />}
+      {!!onPress && <Ionicons name={directional('chevron-forward')} size={17} color="#94a3b8" />}
     </Row>
   );
 };
 
 const verificationLook = (verified, { rejected, complete }) => {
-  if (verified) return { icon: 'shield-checkmark', color: '#16a34a', title: 'Technicien vérifié', text: 'Vous passez en priorité dans les recherches.' };
-  if (rejected) return { icon: 'alert-circle', color: '#dc2626', title: 'Document refusé', text: 'Renvoyez-le pour obtenir le badge vérifié.' };
-  if (complete) return { icon: 'time', color: '#d97706', title: 'Vérification en cours', text: 'Notre équipe examine vos documents.' };
-  return { icon: 'shield-outline', color: THEME, title: 'Devenez technicien vérifié', text: 'Envoyez vos documents : badge vérifié et priorité dans les recherches.' };
+  if (verified) return { icon: 'shield-checkmark', color: '#16a34a', title: t('profile.badgeVerified'), text: t('profile.badgeVerifiedHint') };
+  if (rejected) return { icon: 'alert-circle', color: '#dc2626', title: t('profile.badgeRejected'), text: t('profile.badgeRejectedHint') };
+  if (complete) return { icon: 'time', color: '#d97706', title: t('profile.badgePending'), text: t('profile.badgePendingHint') };
+  return { icon: 'shield-outline', color: THEME, title: t('profile.badgeNone'), text: t('profile.badgeNoneHint') };
 };
 
 // `verification`: { complete, missing, rejected } from the technician's profile
@@ -107,7 +109,7 @@ export const VerificationCard = ({ verified, verification, onPress }) => {
         <Text style={styles.locationTitle}>{look.title}</Text>
         <Text style={styles.locationText}>{look.text}</Text>
       </View>
-      {!verified && <Ionicons name="chevron-forward" size={17} color="#94a3b8" />}
+      {!verified && <Ionicons name={directional('chevron-forward')} size={17} color="#94a3b8" />}
     </Card>
   );
 };
@@ -123,11 +125,11 @@ export const DangerButtons = ({ onLogout, onDelete }) => (
   <View style={styles.dangerRow}>
     <PressableScale style={styles.dangerBtn} onPress={onLogout}>
       <Ionicons name="log-out-outline" size={20} color="#dc2626" />
-      <Text style={styles.dangerText} numberOfLines={1} adjustsFontSizeToFit>Déconnexion</Text>
+      <Text style={styles.dangerText} numberOfLines={1} adjustsFontSizeToFit>{t('common.logout')}</Text>
     </PressableScale>
     <PressableScale style={styles.dangerBtn} onPress={onDelete}>
       <Ionicons name="trash-outline" size={20} color="#dc2626" />
-      <Text style={styles.dangerText} numberOfLines={1} adjustsFontSizeToFit>Supprimer le compte</Text>
+      <Text style={styles.dangerText} numberOfLines={1} adjustsFontSizeToFit>{t('profile.deleteAccount')}</Text>
     </PressableScale>
   </View>
 );

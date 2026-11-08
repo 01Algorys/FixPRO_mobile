@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { t } from '../i18n';
 
 const THEME = '#1A3A6B';
 const BLUE = '#1A6BFF';
@@ -29,8 +30,8 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permission refusée',
-          'FixPro a besoin d\'accéder à votre appareil photo pour prendre des photos de profil. Veuillez activer cette permission dans les paramètres de votre appareil.',
+          t('picker.deniedTitle'),
+          t('picker.deniedCamera'),
           [{ text: 'OK' }]
         );
         return;
@@ -50,7 +51,7 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
       }
     } catch (error) {
       console.error('Camera error:', error);
-      Alert.alert('Erreur', 'Impossible d\'accéder à l\'appareil photo');
+      Alert.alert(t('common.error'), t('picker.cameraFailed'));
     }
   };
 
@@ -61,8 +62,8 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permission refusée',
-          'FixPro a besoin d\'accéder à votre galerie pour sélectionner des photos de profil. Veuillez activer cette permission dans les paramètres de votre appareil.',
+          t('picker.deniedTitle'),
+          t('picker.deniedGallery'),
           [{ text: 'OK' }]
         );
         return;
@@ -82,7 +83,7 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
       }
     } catch (error) {
       console.error('Gallery error:', error);
-      Alert.alert('Erreur', 'Impossible d\'accéder à la galerie');
+      Alert.alert(t('common.error'), t('picker.galleryFailed'));
     }
   };
 
@@ -90,7 +91,7 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
     try {
       // Guard against undefined asset
       if (!asset || !asset.uri) {
-        Alert.alert('Erreur', 'Image invalide. Veuillez réessayer.');
+        Alert.alert(t('common.error'), t('picker.invalidImage'));
         return;
       }
 
@@ -102,7 +103,7 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
 
     } catch (error) {
       console.error('Image processing error:', error);
-      Alert.alert('Erreur', 'Impossible de traiter l\'image. Veuillez réessayer.');
+      Alert.alert(t('common.error'), t('picker.processFailed'));
     } finally {
       setLoading(false);
     }
@@ -154,21 +155,21 @@ export default function ProfileImagePicker({ imageUri, name, onImageSelected }) 
           <View style={styles.actionSheet}>
             <TouchableOpacity style={styles.actionButton} onPress={handleCameraPress}>
               <Ionicons name="camera" size={20} color={THEME} />
-              <Text style={styles.actionText}>Prendre une photo</Text>
+              <Text style={styles.actionText}>{t('picker.takePhoto')}</Text>
             </TouchableOpacity>
             
             <View style={styles.divider} />
             
             <TouchableOpacity style={styles.actionButton} onPress={handleGalleryPress}>
               <Ionicons name="images" size={20} color={THEME} />
-              <Text style={styles.actionText}>Choisir depuis la galerie</Text>
+              <Text style={styles.actionText}>{t('picker.chooseGalleryAlt')}</Text>
             </TouchableOpacity>
             
             <View style={styles.divider} />
             
             <TouchableOpacity style={styles.actionButton} onPress={() => setShowActionSheet(false)}>
               <Ionicons name="close" size={20} color="#ef4444" />
-              <Text style={[styles.actionText, { color: '#ef4444' }]}>Annuler</Text>
+              <Text style={[styles.actionText, { color: '#ef4444' }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

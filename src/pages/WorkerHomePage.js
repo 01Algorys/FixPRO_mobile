@@ -11,10 +11,13 @@ import apiService from '../services/api';
 import socketService from '../services/socketService';
 import AcceptedModal from '../components/worker/AcceptedModal';
 import { useNotifications } from '../context/NotificationContext';
-import { categoryMeta } from '../utils/categoryMeta';
+import { categoryMeta, formatDistance } from '../utils/categoryMeta';
 import { reverseGeocodeCity } from '../utils/location';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
+import { t } from '../i18n';
+import { formatDate, formatRating, formatPrice, directional, fixedRow } from '../i18n/format';
+import { serviceName } from '../i18n/serverText';
 
 const PRIMARY = '#1d5ff0';
 const NAVY = '#0b3fb3';
@@ -47,12 +50,12 @@ const coordsOf = (loc) => {
 
 const timeAgo = (date) => {
   const minutes = Math.max(0, Math.round((Date.now() - new Date(date).getTime()) / 60000));
-  if (minutes < 1) return "À l'instant";
-  if (minutes < 60) return `Il y a ${minutes} min`;
+  if (minutes < 1) return t('common.justNow');
+  if (minutes < 60) return t('common.minutesAgo', { count: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `Il y a ${hours} h`;
+  if (hours < 24) return t('common.hoursAgo', { count: hours });
   const days = Math.round(hours / 24);
-  return `Il y a ${days} j`;
+  return t('common.daysAgoShort', { count: days });
 };
 
 const whenLabel = (date, time) => {
@@ -61,9 +64,9 @@ const whenLabel = (date, time) => {
   const today = new Date();
   const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((startOf(d) - startOf(today)) / 86400000);
-  const day = diff === 0 ? "Aujourd'hui"
-    : diff === 1 ? 'Demain'
-    : d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const day = diff === 0 ? t('common.today')
+    : diff === 1 ? t('common.tomorrow')
+    : formatDate(d, { weekday: 'short', day: 'numeric', month: 'short' });
   return time ? `${day}, ${time}` : day;
 };
 
@@ -93,9 +96,9 @@ const Stars = ({ rating }) => (
 );
 
 const TABS = [
-  { key: 'upcoming', label: 'À venir', icon: 'time', statuses: ['accepted'] },
-  { key: 'progress', label: 'En cours', icon: 'construct', statuses: ['in_progress'] },
-  { key: 'done', label: 'Terminées', icon: 'checkmark-circle', statuses: ['completed'] },
+  { key: 'upcoming', label: t('status.upcoming'), icon: 'time', statuses: ['accepted'] },
+  { key: 'progress', label: t('status.inProgress'), icon: 'construct', statuses: ['in_progress'] },
+  { key: 'done', label: t('status.completedPlural'), icon: 'checkmark-circle', statuses: ['completed'] },
 ];
 
 export default function WorkerHomePage({ navigation }) {
@@ -129,7 +132,7 @@ export default function WorkerHomePage({ navigation }) {
       if (here) reverseGeocodeCity(here.lat, here.lng).then((c) => c && setCity(c)).catch(() => {});
     } catch (err) {
       console.error('[Dashboard] fetchAll error:', err);
-      setError('Impossible de charger les données');
+      setError(t('whome.loadFailed'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -160,16 +163,16 @@ export default function WorkerHomePage({ navigation }) {
       await fetchAll();
     } catch (err) {
       console.error('Failed to update reservation status:', err);
-      Alert.alert('Erreur', 'Impossible de mettre à jour la demande.');
+      Alert.alert(t('common.error'), t('whome.updateFailed'));
     } finally {
       setBusyId(null);
     }
   };
 
   const confirmReject = (reservation) => {
-    Alert.alert('Refuser la demande', 'Le client sera informé que vous ne pouvez pas intervenir.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Refuser', style: 'destructive', onPress: () => respond(reservation, 'rejected') },
+    Alert.alert(t('whome.refuseTitle'), t('whome.refuseHint'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.refuse'), style: 'destructive', onPress: () => respond(reservation, 'rejected') },
     ]);
   };
 
@@ -190,13 +193,13 @@ export default function WorkerHomePage({ navigation }) {
         <Ionicons name="cloud-offline-outline" size={52} color="#cbd5e1" />
         <Text style={styles.errorText}>{error}</Text>
         <PressableScale style={styles.retryBtn} onPress={() => { setLoading(true); fetchAll(); }}>
-          <Text style={styles.retryText}>Réessayer</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </PressableScale>
       </View>
     );
   }
 
-  const name = profile?.user?.name || user?.name || 'Technicien';
+  const name = profile?.user?.name || user?.name || t('common.technician');
   const rawFirst = name.split(' ')[0];
   const firstName = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1);
   const avatar = profile?.user?.avatar || user?.avatar;
@@ -226,16 +229,16 @@ export default function WorkerHomePage({ navigation }) {
     .slice(0, 4);
 
   const placeLine = (r) => {
-    const place = r.location?.city || r.location?.address || 'Adresse non précisée';
+    const place = r.location?.city || r.location?.address || t('whome.noAddress');
     const km = distanceKm(here, coordsOf(r.location));
-    return { place, km: km === null ? null : km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km` };
+    return { place, km: formatDistance(km) };
   };
 
   const shortcuts = [
-    { label: 'Disponibilité', icon: 'calendar-clock', color: PRIMARY, bg: '#e8effd', onPress: () => navigation.navigate('Profil') },
-    { label: 'Mes services', icon: 'briefcase-variant', color: '#f97316', bg: '#fff1e6', onPress: () => navigation.navigate('Profil') },
-    { label: 'Statistiques', icon: 'chart-bar', color: '#16a34a', bg: '#e7f7ec', onPress: () => navigation.navigate('WorkerStats') },
-    { label: 'Paramètres', icon: 'cog', color: '#7c3aed', bg: '#f1eafe', onPress: () => navigation.navigate('Profil') },
+    { label: t('whome.availability'), icon: 'calendar-clock', color: PRIMARY, bg: '#e8effd', onPress: () => navigation.navigate('Profil') },
+    { label: t('whome.myServices'), icon: 'briefcase-variant', color: '#f97316', bg: '#fff1e6', onPress: () => navigation.navigate('Profil') },
+    { label: t('whome.stats'), icon: 'chart-bar', color: '#16a34a', bg: '#e7f7ec', onPress: () => navigation.navigate('WorkerStats') },
+    { label: t('whome.settings'), icon: 'cog', color: '#7c3aed', bg: '#f1eafe', onPress: () => navigation.navigate('Profil') },
   ];
 
   return (
@@ -249,16 +252,16 @@ export default function WorkerHomePage({ navigation }) {
         {/* Header */}
         <LinearGradient colors={['#1a56db', NAVY]} style={styles.header}>
           <View style={styles.headerGlow} />
-          <View style={styles.brandRow}>
+          <View style={[styles.brandRow, fixedRow]}>
             <Image source={require('../assets/tool.png')} style={styles.brandLogo} />
             <View style={{ flexShrink: 1 }}>
               <Text style={styles.brandName}>Fix<Text style={{ color: ACCENT }}>Pro</Text></Text>
-              <Text style={styles.brandTagline}>Simple • rapide • fiable</Text>
+              <Text style={styles.brandTagline}>{t('common.taglineLower')}</Text>
             </View>
             <View style={styles.brandDivider} />
             <PressableScale style={styles.locationPill} onPress={() => navigation.navigate('Profil')}>
               <Ionicons name="location" size={15} color="#fff" />
-              <Text style={styles.locationText} numberOfLines={1}>{city || 'Ma position'}</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{city || t('common.myPosition')}</Text>
               <Ionicons name="chevron-down" size={14} color="#fff" />
             </PressableScale>
             <PressableScale style={styles.bell} scaleTo={0.9} onPress={() => navigation.navigate('Notifications')}>
@@ -279,21 +282,21 @@ export default function WorkerHomePage({ navigation }) {
               <View style={[styles.presenceDot, { backgroundColor: online ? '#22c55e' : '#94a3b8' }]} />
             </View>
             <View style={styles.identityText}>
-              <Text style={styles.hello} numberOfLines={1}>Bonjour, {firstName} 👋</Text>
+              <Text style={styles.hello} numberOfLines={1}>{t('whome.hello', { name: firstName })}</Text>
               <View style={styles.roleRow}>
-                <Text style={styles.role}>Technicien</Text>
+                <Text style={styles.role}>{t('common.technician')}</Text>
                 <Stars rating={rating} />
-                <Text style={styles.role}>{rating.toFixed(1)} ({reviews})</Text>
+                <Text style={styles.role}>{formatRating(rating)} ({reviews})</Text>
               </View>
               <View style={[styles.presencePill, !online && styles.presencePillOff]}>
                 <Text style={[styles.presenceText, !online && { color: '#e2e8f0' }]}>
-                  {online ? 'En ligne · Disponible' : 'Hors ligne'}
+                  {online ? t('whome.onlineAvailable') : t('whome.offline')}
                 </Text>
               </View>
             </View>
             <PressableScale style={styles.editProfile} onPress={() => navigation.navigate('Profil')}>
-              <Text style={styles.editProfileText}>Modifier{'\n'}mon profil</Text>
-              <Ionicons name="chevron-forward" size={16} color="#fff" />
+              <Text style={styles.editProfileText}>{t('whome.editProfile')}</Text>
+              <Ionicons name={directional('chevron-forward')} size={16} color="#fff" />
             </PressableScale>
           </View>
         </LinearGradient>
@@ -306,20 +309,20 @@ export default function WorkerHomePage({ navigation }) {
                 <Ionicons name="wallet-outline" size={22} color="#fff" />
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>Solde / Crédits</Text>
-                <Text style={styles.kpiValue}>{amountDue} TND</Text>
+                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>{t('whome.balance')}</Text>
+                <Text style={styles.kpiValue}>{formatPrice(amountDue)}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              <Ionicons name={directional('chevron-forward')} size={18} color="#94a3b8" />
             </PressableScale>
             <PressableScale style={[styles.card, styles.kpiCard]} onPress={() => navigation.navigate('Demandes')}>
               <LinearGradient colors={['#3b82f6', PRIMARY]} style={styles.kpiIcon}>
                 <Ionicons name="calendar-outline" size={22} color="#fff" />
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>Missions ce mois</Text>
+                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>{t('whome.missionsMonth')}</Text>
                 <Text style={styles.kpiValue}>{missionsThisMonth}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              <Ionicons name={directional('chevron-forward')} size={18} color="#94a3b8" />
             </PressableScale>
           </FadeIn>
 
@@ -332,7 +335,7 @@ export default function WorkerHomePage({ navigation }) {
                 </View>
                 <View style={styles.shortcutLabelRow}>
                   <Text style={styles.shortcutLabel} numberOfLines={1} adjustsFontSizeToFit>{s.label}</Text>
-                  <Ionicons name="chevron-forward" size={12} color={INK} />
+                  <Ionicons name={directional('chevron-forward')} size={12} color={INK} />
                 </View>
               </PressableScale>
             ))}
@@ -345,24 +348,24 @@ export default function WorkerHomePage({ navigation }) {
                 <Ionicons name="star" size={20} color="#f5a524" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>Note moyenne</Text>
+                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>{t('whome.averageRating')}</Text>
                 <Text style={styles.kpiValue}>
-                  {rating.toFixed(1)} <Text style={styles.kpiSub}>({reviews} avis)</Text>
+                  {formatRating(rating)} <Text style={styles.kpiSub}>{t('common.reviewCountParen', { count: reviews })}</Text>
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              <Ionicons name={directional('chevron-forward')} size={18} color="#94a3b8" />
             </PressableScale>
             <PressableScale style={[styles.card, styles.kpiCard]} onPress={() => navigation.navigate('Profil')}>
               <View style={[styles.kpiIconSoft, { backgroundColor: '#fff1e6' }]}>
                 <Ionicons name="pricetag-outline" size={20} color="#f97316" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>Prix moyen</Text>
+                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>{t('whome.averagePrice')}</Text>
                 <Text style={[styles.kpiValue, { color: NAVY }]}>
-                  {profile?.hourlyRate ? `${profile.hourlyRate} TND` : '-- TND'}
+                  {profile?.hourlyRate ? formatPrice(profile.hourlyRate) : t('common.noPrice')}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              <Ionicons name={directional('chevron-forward')} size={18} color="#94a3b8" />
             </PressableScale>
           </FadeIn>
 
@@ -370,7 +373,7 @@ export default function WorkerHomePage({ navigation }) {
           <FadeIn delay={180}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>Nouvelles demandes</Text>
+                <Text style={styles.sectionTitle}>{t('whome.newRequests')}</Text>
                 {pending.length > 0 && (
                   <View style={styles.countBadge}>
                     <Text style={styles.countBadgeText}>{pending.length}</Text>
@@ -378,16 +381,16 @@ export default function WorkerHomePage({ navigation }) {
                 )}
               </View>
               <PressableScale style={styles.seeAll} onPress={() => navigation.navigate('Demandes')}>
-                <Text style={styles.seeAllText}>Voir tout</Text>
-                <Ionicons name="chevron-forward" size={16} color={PRIMARY} />
+                <Text style={styles.seeAllText}>{t('common.seeAll')}</Text>
+                <Ionicons name={directional('chevron-forward')} size={16} color={PRIMARY} />
               </PressableScale>
             </View>
 
             {pending.length === 0 ? (
               <View style={[styles.card, styles.empty]}>
                 <Ionicons name="notifications-off-outline" size={28} color="#cbd5e1" />
-                <Text style={styles.emptyTitle}>Aucune nouvelle demande</Text>
-                <Text style={styles.emptyText}>Les demandes des clients apparaîtront ici.</Text>
+                <Text style={styles.emptyTitle}>{t('whome.noNewRequests')}</Text>
+                <Text style={styles.emptyText}>{t('whome.requestsHint')}</Text>
               </View>
             ) : (
               pending.slice(0, 2).map((r) => {
@@ -398,7 +401,7 @@ export default function WorkerHomePage({ navigation }) {
                   <PressableScale key={r.id} scaleTo={0.985} style={[styles.card, styles.requestCard]} onPress={() => openReservation(r)}>
                     <View style={styles.requestTop}>
                       <View style={styles.newPill}>
-                        <Text style={styles.newPillText}>{r.emergency ? 'Urgent' : 'Nouvelle demande'}</Text>
+                        <Text style={styles.newPillText}>{r.emergency ? t('common.urgent') : t('status.new')}</Text>
                       </View>
                       <Text style={styles.ago}>{timeAgo(r.createdAt)}</Text>
                     </View>
@@ -406,7 +409,7 @@ export default function WorkerHomePage({ navigation }) {
                       <CategoryTile category={r.service?.category} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.jobTitle} numberOfLines={1}>{categoryMeta(r.service?.category, { name: r.service?.name }).label}</Text>
-                        <Text style={styles.jobDesc} numberOfLines={1}>{r.description || r.service?.name || 'Service'}</Text>
+                        <Text style={styles.jobDesc} numberOfLines={1}>{r.description || serviceName(r.service?.name) || t('common.service')}</Text>
                         <View style={styles.metaRow}>
                           <Ionicons name="location" size={14} color={PRIMARY} />
                           <Text style={styles.metaText} numberOfLines={1}>{place}</Text>
@@ -414,21 +417,21 @@ export default function WorkerHomePage({ navigation }) {
                         {km && (
                           <View style={styles.metaRow}>
                             <Ionicons name="navigate" size={12} color={PRIMARY} />
-                            <Text style={styles.metaSub}>À {km} de votre position</Text>
+                            <Text style={styles.metaSub}>{t('whome.distance', { distance: km })}</Text>
                           </View>
                         )}
                       </View>
                       {price !== null && (
                         <View style={styles.pricePill}>
-                          <Text style={styles.priceText}>{price} TND</Text>
+                          <Text style={styles.priceText}>{formatPrice(price)}</Text>
                         </View>
                       )}
-                      <Ionicons name="chevron-forward" size={18} color={INK} />
+                      <Ionicons name={directional('chevron-forward')} size={18} color={INK} />
                     </View>
                     <View style={styles.actionsRow}>
                       <PressableScale style={[styles.actionBtn, styles.rejectBtn]} disabled={busy} onPress={() => confirmReject(r)}>
                         <Ionicons name="close" size={20} color="#dc2626" />
-                        <Text style={styles.rejectText}>Refuser</Text>
+                        <Text style={styles.rejectText}>{t('common.refuse')}</Text>
                       </PressableScale>
                       <PressableScale style={[styles.actionBtn, styles.acceptBtn]} disabled={busy} onPress={() => respond(r, 'accepted')}>
                         {busy ? (
@@ -436,7 +439,7 @@ export default function WorkerHomePage({ navigation }) {
                         ) : (
                           <>
                             <Ionicons name="checkmark" size={20} color="#fff" />
-                            <Text style={styles.acceptText}>Accepter</Text>
+                            <Text style={styles.acceptText}>{t('common.accept')}</Text>
                           </>
                         )}
                       </PressableScale>
@@ -450,10 +453,10 @@ export default function WorkerHomePage({ navigation }) {
           {/* Interventions */}
           <FadeIn delay={240}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Mes interventions</Text>
+              <Text style={styles.sectionTitle}>{t('whome.myJobs')}</Text>
               <PressableScale style={styles.seeAll} onPress={() => navigation.navigate('Demandes')}>
-                <Text style={styles.seeAllText}>Voir tout</Text>
-                <Ionicons name="chevron-forward" size={16} color={PRIMARY} />
+                <Text style={styles.seeAllText}>{t('common.seeAll')}</Text>
+                <Ionicons name={directional('chevron-forward')} size={16} color={PRIMARY} />
               </PressableScale>
             </View>
 
@@ -478,11 +481,11 @@ export default function WorkerHomePage({ navigation }) {
             {interventions.length === 0 ? (
               <View style={[styles.card, styles.empty]}>
                 <Ionicons name="briefcase-outline" size={28} color="#cbd5e1" />
-                <Text style={styles.emptyTitle}>Rien pour le moment</Text>
+                <Text style={styles.emptyTitle}>{t('whome.nothing')}</Text>
                 <Text style={styles.emptyText}>
-                  {tab === 'upcoming' ? 'Vos prochaines interventions apparaîtront ici.'
-                    : tab === 'progress' ? 'Aucune intervention en cours.'
-                    : 'Vos interventions terminées apparaîtront ici.'}
+                  {tab === 'upcoming' ? t('whome.upcomingHint')
+                    : tab === 'progress' ? t('whome.activeHint')
+                    : t('whome.doneHint')}
                 </Text>
               </View>
             ) : (
@@ -494,7 +497,7 @@ export default function WorkerHomePage({ navigation }) {
                     <CategoryTile category={r.service?.category} size={50} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.jobTitle} numberOfLines={1}>{categoryMeta(r.service?.category, { name: r.service?.name }).label}</Text>
-                      <Text style={styles.jobDesc} numberOfLines={1}>{r.description || r.service?.name || 'Service'}</Text>
+                      <Text style={styles.jobDesc} numberOfLines={1}>{r.description || serviceName(r.service?.name) || t('common.service')}</Text>
                       <View style={styles.metaRow}>
                         <Ionicons name="calendar-outline" size={13} color={MUTED} />
                         <Text style={styles.metaText}>{whenLabel(r.date, r.time)}</Text>
@@ -506,10 +509,10 @@ export default function WorkerHomePage({ navigation }) {
                     </View>
                     {price !== null && (
                       <View style={styles.pricePill}>
-                        <Text style={styles.priceText}>{price} TND</Text>
+                        <Text style={styles.priceText}>{formatPrice(price)}</Text>
                       </View>
                     )}
-                    <Ionicons name="chevron-forward" size={18} color={INK} />
+                    <Ionicons name={directional('chevron-forward')} size={18} color={INK} />
                   </PressableScale>
                 );
               })

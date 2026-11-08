@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../styles/theme';
+import { t } from '../i18n';
 
 // Bolds the substring of `label` that matches `query` (case-insensitive).
 const HighlightedText = ({ label, query, style }) => {
@@ -49,20 +50,20 @@ const SearchResultsOverlay = ({
         {loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={styles.loadingText}>Recherche en cours...</Text>
+            <Text style={styles.loadingText}>{t('search.searching')}</Text>
           </View>
         )}
 
         {!loading && hasQuery && !hasResults && (
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
-            <Text style={styles.emptyText}>Aucun résultat pour "{query}"</Text>
+            <Text style={styles.emptyText}>{t('search.noResult', { query })}</Text>
           </View>
         )}
 
         {!loading && hasQuery && results?.categories?.length > 0 && (
           <View>
-            <SectionHeader title="Catégories" />
+            <SectionHeader title={t('search.categories')} />
             {results.categories.map((item) => (
               <TouchableOpacity
                 key={`cat-${item.id}`}
@@ -78,7 +79,7 @@ const SearchResultsOverlay = ({
 
         {!loading && hasQuery && results?.services?.length > 0 && (
           <View>
-            <SectionHeader title="Services" />
+            <SectionHeader title={t('search.services')} />
             {results.services.map((item) => (
               <TouchableOpacity
                 key={`svc-${item.id}`}
@@ -97,7 +98,7 @@ const SearchResultsOverlay = ({
 
         {!loading && hasQuery && results?.workers?.length > 0 && (
           <View>
-            <SectionHeader title="Professionnels" />
+            <SectionHeader title={t('pros.title')} />
             {results.workers.map((item) => (
               <TouchableOpacity
                 key={`wrk-${item.id}`}
@@ -123,9 +124,9 @@ const SearchResultsOverlay = ({
         {!hasQuery && recentSearches?.length > 0 && (
           <View>
             <View style={styles.sectionHeaderRow}>
-              <SectionHeader title="Recherches récentes" />
+              <SectionHeader title={t('search.recent')} />
               <TouchableOpacity onPress={onClearRecent}>
-                <Text style={styles.clearText}>Effacer</Text>
+                <Text style={styles.clearText}>{t('search.clear')}</Text>
               </TouchableOpacity>
             </View>
             {recentSearches.map((term, index) => (
@@ -143,7 +144,7 @@ const SearchResultsOverlay = ({
 
         {!hasQuery && results?.popular?.length > 0 && (
           <View>
-            <SectionHeader title="Recherches populaires" />
+            <SectionHeader title={t('search.popular')} />
             {results.popular.map((item) => (
               <TouchableOpacity
                 key={`pop-${item.id}`}

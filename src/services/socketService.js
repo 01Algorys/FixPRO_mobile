@@ -1,6 +1,8 @@
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { t } from '../i18n';
+import { serverError } from '../i18n/serverText';
 
 class SocketService {
   constructor() {
@@ -154,7 +156,7 @@ class SocketService {
       // Listen for errors
       this.socket.on('error', (error) => {
         console.error('Socket error:', error);
-        Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        Alert.alert(t('common.error'), error.message ? serverError(error.message) : t('common.serverError'));
       });
 
     } catch (error) {

@@ -24,6 +24,8 @@ import LocationPickerModal from '../components/LocationPickerModal';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { SectionHead, BottomSheet } from '../components/profile/ProfileParts';
+import { t } from '../i18n';
+import { formatDate, formatRating, formatPrice, locale, directional } from '../i18n/format';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -31,7 +33,7 @@ const MUTED = '#64748b';
 const SURFACE = '#f4f7fc';
 
 const MIN_DESCRIPTION = 10;
-const DEFAULT_MESSAGE = "Bonjour, j'ai besoin d'une intervention à mon domicile. Merci de me confirmer votre disponibilité.";
+const DEFAULT_MESSAGE = t('form.defaultDescription');
 
 const pad = (n) => String(n).padStart(2, '0');
 const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -86,7 +88,7 @@ const ReservationDetails = ({ route, navigation }) => {
       const response = await apiService.getWorkerById(workerId);
       const payload = response.data || response;
       const data = payload.worker || payload;
-      setWorker({ ...data, name: data.user?.name || data.name || 'Technicien' });
+      setWorker({ ...data, name: data.user?.name || data.name || t('common.technician') });
     } catch (error) {
       console.error('Failed to load worker:', error);
     } finally {
@@ -160,16 +162,16 @@ const ReservationDetails = ({ route, navigation }) => {
   const scheduled = new Date(date);
   if (time) scheduled.setHours(time.getHours(), time.getMinutes(), 0, 0);
   const whenError = asap ? null
-    : !time ? 'Choisissez une heure'
-    : scheduled <= new Date() ? 'Choisissez une date et une heure à venir'
+    : !time ? t('form.chooseTime')
+    : scheduled <= new Date() ? t('form.chooseFuture')
     : null;
 
   const errors = {
     time: whenError,
-    address: !address.trim() ? "Indiquez l'adresse d'intervention" : null,
-    city: !city.trim() ? 'Indiquez la ville' : null,
+    address: !address.trim() ? t('form.enterAddress') : null,
+    city: !city.trim() ? t('form.enterCity') : null,
     description: description.trim().length < MIN_DESCRIPTION
-      ? `Décrivez le problème (${MIN_DESCRIPTION} caractères minimum)` : null,
+      ? t('form.describe', { min: MIN_DESCRIPTION }) : null,
   };
   const valid = !Object.values(errors).some(Boolean);
   const showError = (key) => triedSubmit && errors[key];
@@ -182,7 +184,7 @@ const ReservationDetails = ({ route, navigation }) => {
     const firstService = Array.isArray(worker?.services) ? worker.services[0] : null;
     const serviceIdValue = service || (typeof firstService === 'object' ? firstService?.id : firstService);
     if (!workerIdValue || !serviceIdValue) {
-      Alert.alert('Erreur', 'Informations du technicien ou du service manquantes.');
+      Alert.alert(t('common.error'), t('form.missingInfo'));
       return;
     }
 
@@ -205,12 +207,12 @@ const ReservationDetails = ({ route, navigation }) => {
         description: description.trim(),
         emergency: urgent,
       });
-      Alert.alert('Demande envoyée', `${firstName} va recevoir votre demande et vous répondra rapidement.`, [
-        { text: 'Voir mes demandes', onPress: () => navigation.navigate('Main', { screen: 'Reservations' }) },
+      Alert.alert(t('form.sent'), `${firstName} va recevoir votre demande et vous répondra rapidement.`, [
+        { text: t('form.seeRequests'), onPress: () => navigation.navigate('Main', { screen: 'Reservations' }) },
       ]);
     } catch (error) {
       console.error('Failed to create reservation:', error);
-      Alert.alert('Erreur', "La demande n'a pas pu être envoyée. Réessayez.");
+      Alert.alert(t('common.error'), t('form.sendFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -228,27 +230,27 @@ const ReservationDetails = ({ route, navigation }) => {
     return (
       <View style={styles.centered}>
         <Ionicons name="person-outline" size={52} color="#cbd5e1" />
-        <Text style={styles.errorText}>Technicien introuvable</Text>
+        <Text style={styles.errorText}>{t('form.notFound')}</Text>
         <PressableScale style={styles.retryBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.retryText}>Retour</Text>
+          <Text style={styles.retryText}>{t('common.back')}</Text>
         </PressableScale>
       </View>
     );
   }
 
-  const name = titleCase(worker.name) || 'Technicien';
+  const name = titleCase(worker.name) || t('common.technician');
   const firstName = name.split(' ')[0];
   const avatar = worker.user?.avatar || worker.avatar;
   const firstService = Array.isArray(worker.services) ? worker.services[0] : null;
   const profession = professionTitle(firstService?.category, firstService?.name);
   const rating = Number(worker.averageRating || worker.rating || 0);
   const price = worker.hourlyRate || firstService?.basePrice;
-  const dateLabel = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const dateLabel = formatDate(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const whenText = asap
-    ? "Aujourd'hui · Dès que possible"
+    ? t('form.todayAsap')
     : time
-      ? `${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${hhmm(time)}`
-      : 'Choisissez une date et une heure';
+      ? `${formatDate(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${hhmm(time)}`
+      : t('form.chooseDateTime');
 
   return (
     // The root view already pads the status bar, so this view starts that far down.
@@ -257,11 +259,11 @@ const ReservationDetails = ({ route, navigation }) => {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#1a56db', '#0b3fb3']} style={styles.header}>
         <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={23} color="#fff" />
+          <Ionicons name={directional('arrow-back')} size={23} color="#fff" />
         </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Nouvelle demande</Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>Pour {firstName}</Text>
+          <Text style={styles.headerTitle}>{t('form.title')}</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>{t('form.for', { name: firstName })}</Text>
         </View>
       </LinearGradient>
 
@@ -284,42 +286,42 @@ const ReservationDetails = ({ route, navigation }) => {
               <Text style={styles.techSub} numberOfLines={1}>{profession}</Text>
               <View style={styles.techMeta}>
                 <Ionicons name="star" size={13} color="#f5a524" />
-                <Text style={styles.techMetaText}>{rating.toFixed(1)}</Text>
-                {!!worker.experience && <Text style={styles.techMetaText}>· {worker.experience} ans d'exp.</Text>}
+                <Text style={styles.techMetaText}>{formatRating(rating)}</Text>
+                {!!worker.experience && <Text style={styles.techMetaText}>· {t('common.yearsExperienceShort', { count: worker.experience })}</Text>}
               </View>
             </View>
             {!!price && (
               <View style={styles.pricePill}>
-                <Text style={styles.priceSmall}>dès</Text>
-                <Text style={styles.priceText}>{price} TND</Text>
+                <Text style={styles.priceSmall}>{t('form.from')}</Text>
+                <Text style={styles.priceText}>{formatPrice(price)}</Text>
               </View>
             )}
           </FadeIn>
 
           {/* When */}
           <FadeIn delay={50}>
-            <SectionHead icon="calendar-outline" title="Quand ?" />
+            <SectionHead icon="calendar-outline" title={t('form.when')} />
             <View style={styles.whenRow}>
               <PressableScale style={[styles.whenField, { flex: 1.5 }, !asap && styles.whenFieldSet]} scaleTo={0.98} onPress={() => openPicker('date')}>
                 <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.whenLabel}>Date</Text>
-                  <Text style={styles.whenValue} numberOfLines={1} adjustsFontSizeToFit>{asap ? "Aujourd'hui" : dateLabel}</Text>
+                  <Text style={styles.whenLabel}>{t('common.date')}</Text>
+                  <Text style={styles.whenValue} numberOfLines={1} adjustsFontSizeToFit>{asap ? t('common.today') : dateLabel}</Text>
                 </View>
               </PressableScale>
               <PressableScale style={[styles.whenField, { flex: 1 }, !!time && !asap && styles.whenFieldSet, showError('time') && styles.inputError]} scaleTo={0.98} onPress={() => openPicker('time')}>
                 <Ionicons name="time-outline" size={20} color={PRIMARY} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.whenLabel}>Heure</Text>
+                  <Text style={styles.whenLabel}>{t('common.time')}</Text>
                   <Text style={[styles.whenValue, !time && !asap && styles.whenEmpty]} numberOfLines={1}>
-                    {asap ? 'Au plus vite' : time ? hhmm(time) : 'Choisir'}
+                    {asap ? t('form.asap') : time ? hhmm(time) : t('form.choose')}
                   </Text>
                 </View>
               </PressableScale>
             </View>
             <PressableScale style={[styles.nowBtn, asap && styles.nowBtnActive]} scaleTo={0.98} onPress={chooseNow}>
               <Ionicons name="flash" size={16} color={asap ? '#fff' : '#ea580c'} />
-              <Text style={[styles.nowText, asap && styles.chipTextActive]}>Maintenant</Text>
+              <Text style={[styles.nowText, asap && styles.chipTextActive]}>{t('form.now')}</Text>
             </PressableScale>
             {showError('time') && <Text style={styles.fieldError}>{errors.time}</Text>}
           </FadeIn>
@@ -328,11 +330,11 @@ const ReservationDetails = ({ route, navigation }) => {
           <FadeIn delay={100}>
             <SectionHead
               icon="location-outline"
-              title="Où ?"
+              title={t('form.where')}
               right={(
                 <PressableScale style={styles.linkBtn} onPress={locate} disabled={locating}>
                   {locating ? <ActivityIndicator size="small" color={PRIMARY} /> : <Ionicons name="locate" size={15} color={PRIMARY} />}
-                  <Text style={styles.linkText}>Ma position</Text>
+                  <Text style={styles.linkText}>{t('common.myPosition')}</Text>
                 </PressableScale>
               )}
             />
@@ -342,18 +344,18 @@ const ReservationDetails = ({ route, navigation }) => {
                   <Ionicons name="map" size={21} color="#fff" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.mapTitle}>{coords ? 'Modifier le point sur la carte' : 'Choisir sur la carte'}</Text>
+                  <Text style={styles.mapTitle}>{coords ? t('form.editOnMap') : t('form.chooseOnMap')}</Text>
                   <Text style={styles.mapSub} numberOfLines={1}>
-                    {locating ? "Recherche de l'adresse…" : [address, city].filter(Boolean).join(', ') || "Placez le repère à l'endroit de l'intervention"}
+                    {locating ? t('form.findingAddress') : [address, city].filter(Boolean).join(', ') || t('form.placePin')}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={PRIMARY} />
+                <Ionicons name={directional('chevron-forward')} size={18} color={PRIMARY} />
               </PressableScale>
               <View style={[styles.inputWrap, { marginTop: 12 }, showError('address') && styles.inputError]}>
                 <Ionicons name="location-outline" size={18} color="#94a3b8" />
                 <TextInput
                   style={styles.input}
-                  placeholder="Rue et numéro"
+                  placeholder={t('form.street')}
                   placeholderTextColor="#94a3b8"
                   value={address}
                   onChangeText={setAddress}
@@ -362,12 +364,12 @@ const ReservationDetails = ({ route, navigation }) => {
               {showError('address') && <Text style={styles.fieldError}>{errors.address}</Text>}
               <View style={styles.inputRow}>
                 <View style={[styles.inputWrap, { flex: 1.6 }, showError('city') && styles.inputError]}>
-                  <TextInput style={styles.input} placeholder="Ville" placeholderTextColor="#94a3b8" value={city} onChangeText={setCity} />
+                  <TextInput style={styles.input} placeholder={t('common.city')} placeholderTextColor="#94a3b8" value={city} onChangeText={setCity} />
                 </View>
                 <View style={[styles.inputWrap, { flex: 1 }]}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Code postal"
+                    placeholder={t('form.postalCode')}
                     placeholderTextColor="#94a3b8"
                     value={postalCode}
                     onChangeText={setPostalCode}
@@ -381,11 +383,11 @@ const ReservationDetails = ({ route, navigation }) => {
 
           {/* What */}
           <FadeIn delay={150}>
-            <SectionHead icon="create-outline" title="Quel est le problème ?" />
+            <SectionHead icon="create-outline" title={t('form.problem')} />
             <View style={[styles.card, styles.pad]}>
               <TextInput
                 style={[styles.textArea, showError('description') && styles.inputError]}
-                placeholder="Ex : fuite sous l'évier de la cuisine depuis ce matin…"
+                placeholder={t('form.problemPlaceholder')}
                 placeholderTextColor="#94a3b8"
                 value={description}
                 onChangeText={setDescription}
@@ -404,11 +406,11 @@ const ReservationDetails = ({ route, navigation }) => {
               <View style={styles.urgencyRow}>
                 <PressableScale style={[styles.urgency, !urgent && styles.urgencyActive]} onPress={() => setUrgent(false)}>
                   <Ionicons name="calendar-outline" size={16} color={!urgent ? '#fff' : MUTED} />
-                  <Text style={[styles.urgencyText, !urgent && styles.chipTextActive]}>Normal</Text>
+                  <Text style={[styles.urgencyText, !urgent && styles.chipTextActive]}>{t('form.normal')}</Text>
                 </PressableScale>
                 <PressableScale style={[styles.urgency, urgent && styles.urgencyUrgent]} onPress={() => setUrgent(true)}>
                   <Ionicons name="flash" size={16} color={urgent ? '#fff' : '#ea580c'} />
-                  <Text style={[styles.urgencyText, { color: '#ea580c' }, urgent && styles.chipTextActive]}>Urgent</Text>
+                  <Text style={[styles.urgencyText, { color: '#ea580c' }, urgent && styles.chipTextActive]}>{t('common.urgent')}</Text>
                 </PressableScale>
               </View>
             </View>
@@ -424,8 +426,8 @@ const ReservationDetails = ({ route, navigation }) => {
           <PressableScale style={[styles.confirmBtn, submitting && { opacity: 0.7 }]} onPress={handleSubmit} disabled={submitting}>
             {submitting ? <ActivityIndicator color="#fff" /> : (
               <>
-                <Text style={styles.confirmText}>Envoyer la demande</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
+                <Text style={styles.confirmText}>{t('form.send')}</Text>
+                <Ionicons name={directional('arrow-forward')} size={18} color="#fff" />
               </>
             )}
           </PressableScale>
@@ -434,7 +436,7 @@ const ReservationDetails = ({ route, navigation }) => {
 
       <BottomSheet
         visible={!!picker}
-        title={picker === 'time' ? "Choisir l'heure" : 'Choisir la date'}
+        title={picker === 'time' ? t('form.pickTime') : t('form.pickDate')}
         onClose={() => setPicker(null)}
       >
         {!!picker && (
@@ -442,7 +444,7 @@ const ReservationDetails = ({ route, navigation }) => {
             value={pickerValue}
             mode={picker}
             display="spinner"
-            locale="fr-FR"
+            locale={locale()}
             themeVariant="light"
             minimumDate={picker === 'date' ? startOfToday() : undefined}
             onChange={(event, picked) => picked && setPickerValue(picked)}
@@ -455,7 +457,7 @@ const ReservationDetails = ({ route, navigation }) => {
             setPicker(null);
           }}
         >
-          <Text style={styles.confirmText}>Valider</Text>
+          <Text style={styles.confirmText}>{t('form.validate')}</Text>
         </PressableScale>
       </BottomSheet>
 

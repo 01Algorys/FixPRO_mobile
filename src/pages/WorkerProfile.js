@@ -5,7 +5,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiService from '../services/api';
 import { useScreenChrome } from '../context/ChromeContext';
-import { categoryMeta, professionTitle, titleCase } from '../utils/categoryMeta';
+import { categoryMeta, categoryName, professionTitle, titleCase } from '../utils/categoryMeta';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { Stars } from '../components/reservations/ReservationParts';
@@ -13,19 +13,21 @@ import PortfolioGrid from '../components/profile/PortfolioGrid';
 import {
   THEME, INK, MUTED, SURFACE, ProfileHeader, SectionHead, StatsRow, styles,
 } from '../components/profile/ProfileParts';
+import { t } from '../i18n';
+import { formatRating, formatPrice } from '../i18n/format';
 
 const REVIEWS_PREVIEW = 3;
 
 const timeAgo = (date) => {
   if (!date) return '';
   const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
-  if (days <= 0) return "Aujourd'hui";
-  if (days === 1) return 'Hier';
-  if (days < 30) return `Il y a ${days} jours`;
+  if (days <= 0) return t('common.today');
+  if (days === 1) return t('common.yesterday');
+  if (days < 30) return t('common.daysAgo', { count: days });
   const months = Math.floor(days / 30);
-  if (months < 12) return `Il y a ${months} mois`;
+  if (months < 12) return t('common.monthsAgo', { count: months });
   const years = Math.floor(months / 12);
-  return `Il y a ${years} an${years > 1 ? 's' : ''}`;
+  return t('common.yearsAgo', { count: years });
 };
 
 // The technician's public profile, as a client sees it
@@ -49,7 +51,7 @@ const WorkerProfile = ({ route, navigation }) => {
 
   const handleShare = () => {
     Share.share({
-      message: `Découvrez ${worker?.user?.name || 'ce technicien'} sur FixPro, ${worker?.profession?.toLowerCase()}.`,
+      message: t('public.share', { name: worker?.user?.name || t('public.shareName'), job: worker?.profession?.toLowerCase() }),
     }).catch(() => {});
   };
 
@@ -80,7 +82,7 @@ const WorkerProfile = ({ route, navigation }) => {
       const categoriesResponse = await apiService.getPublicCategories().catch(() => null);
       const categoryList = categoriesResponse?.data || categoriesResponse;
       const categoryNames = Array.isArray(categoryList)
-        ? Object.fromEntries(categoryList.map((c) => [c.key, c.name]))
+        ? Object.fromEntries(categoryList.map((c) => [c.key, categoryName(c.key, c.name)]))
         : {};
 
       let reviews = [];
@@ -118,7 +120,7 @@ const WorkerProfile = ({ route, navigation }) => {
         totalReviews: workerData.totalReviews || reviewList.length || 0,
         reviews: reviewList.map((review) => ({
           id: review.id,
-          name: review.user?.name || review.reviewerName || review.name || 'Client',
+          name: review.user?.name || review.reviewerName || review.name || t('common.client'),
           avatar: review.user?.avatar || review.avatar || null,
           rating: review.rating || 0,
           comment: review.comment || review.text || '',
@@ -130,7 +132,7 @@ const WorkerProfile = ({ route, navigation }) => {
     } catch (error) {
       console.error('Failed to load worker profile:', error);
       if (!workerData) {
-        setError('Impossible de charger le profil du technicien. Veuillez réessayer.');
+        setError(t('public.loadFailed'));
       } else {
         setWorker(combinedWorkerData || workerData);
       }
@@ -153,7 +155,7 @@ const WorkerProfile = ({ route, navigation }) => {
         <Ionicons name="cloud-offline-outline" size={52} color="#cbd5e1" />
         <Text style={styles.errorText}>{error}</Text>
         <PressableScale style={styles.retryBtn} onPress={loadWorkerProfile}>
-          <Text style={styles.retryText}>Réessayer</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </PressableScale>
       </View>
     );
@@ -163,13 +165,13 @@ const WorkerProfile = ({ route, navigation }) => {
     return (
       <View style={styles.centered}>
         <Ionicons name="person-remove-outline" size={52} color="#cbd5e1" />
-        <Text style={styles.errorText}>Technicien non trouvé</Text>
+        <Text style={styles.errorText}>{t('public.notFound')}</Text>
       </View>
     );
   }
 
   const avatar = worker.user?.avatar || worker.avatar;
-  const name = titleCase(worker.user?.name || worker.name || 'Technicien');
+  const name = titleCase(worker.user?.name || worker.name || t('common.technician'));
   const rating = Number(worker.rating || 0);
   const years = worker.experience;
   const reviews = worker.reviews || [];
@@ -180,7 +182,7 @@ const WorkerProfile = ({ route, navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-        <ProfileHeader title="Profil du technicien" onBack={() => navigation.goBack()} onShare={handleShare} />
+        <ProfileHeader title={t('public.title')} onBack={() => navigation.goBack()} onShare={handleShare} />
 
         <View style={styles.body}>
           {/* Identity */}
@@ -204,31 +206,30 @@ const WorkerProfile = ({ route, navigation }) => {
                   </View>
                   <View style={styles.rolePill}>
                     <MaterialCommunityIcons name="hard-hat" size={14} color={THEME} />
-                    <Text style={styles.roleText}>Technicien</Text>
+                    <Text style={styles.roleText}>{t('common.technician')}</Text>
                   </View>
                 </View>
                 {worker.hourlyRate > 0 && (
                   <View style={local.priceBox}>
-                    <Text style={local.priceValue}>{worker.hourlyRate} TND</Text>
-                    <Text style={local.priceUnit}>de l'heure</Text>
+                    <Text style={local.priceValue}>{formatPrice(worker.hourlyRate)}</Text>
+                    <Text style={local.priceUnit}>{t('public.perHour')}</Text>
                   </View>
                 )}
               </View>
               <View style={styles.metaRow}>
                 <Ionicons name="star" size={15} color="#fbbf24" />
-                <Text style={styles.metaStrong}>{worker.totalReviews > 0 ? rating.toFixed(1) : 'Nouveau'}</Text>
-                {worker.totalReviews > 0 && <Text style={styles.metaText}>({worker.totalReviews} avis)</Text>}
+                <Text style={styles.metaStrong}>{worker.totalReviews > 0 ? formatRating(rating) : t('common.new')}</Text>
+                {worker.totalReviews > 0 && <Text style={styles.metaText}>{t('common.reviewCountParen', { count: worker.totalReviews })}</Text>}
                 {years > 0 && (
                   <>
                     <View style={styles.metaDivider} />
                     <Ionicons name="briefcase-outline" size={15} color={INK} />
-                    <Text style={styles.metaStrong}>{years}</Text>
-                    <Text style={styles.metaText} numberOfLines={1}>ans d'expérience</Text>
+                    <Text style={styles.metaText} numberOfLines={1}>{t('common.yearsExperience', { count: years })}</Text>
                   </>
                 )}
               </View>
               <Text style={[local.availability, !worker.isActive && local.unavailable]}>
-                {worker.isActive ? 'Disponible' : 'Indisponible'}
+                {worker.isActive ? t('common.available') : t('common.unavailable')}
               </Text>
             </View>
           </FadeIn>
@@ -236,18 +237,18 @@ const WorkerProfile = ({ route, navigation }) => {
           <StatsRow
             delay={40}
             items={[
-              { icon: 'briefcase-outline', value: worker.interventions ?? 0, label: 'Interventions' },
-              { icon: 'star-outline', color: '#f59e0b', value: rating.toFixed(1), label: 'Note moyenne' },
-              { icon: 'people-outline', value: worker.satisfactionRate == null ? '—' : `${worker.satisfactionRate}%`, label: 'Clients satisfaits' },
+              { icon: 'briefcase-outline', value: worker.interventions ?? 0, label: t('wprofile.interventions') },
+              { icon: 'star-outline', color: '#f59e0b', value: formatRating(rating), label: t('wprofile.averageRating') },
+              { icon: 'people-outline', value: worker.satisfactionRate == null ? '—' : `${worker.satisfactionRate}%`, label: t('wprofile.satisfied') },
             ]}
           />
 
           {/* About */}
           <FadeIn delay={80}>
-            <SectionHead icon="information-circle-outline" title="À propos" />
+            <SectionHead icon="information-circle-outline" title={t('wprofile.about')} />
             <View style={[styles.card, styles.cardPad]}>
               <Text style={[styles.bioText, !worker.bio?.trim() && { color: '#94a3b8' }]}>
-                {worker.bio?.trim() || "Ce technicien n'a pas encore ajouté de description."}
+                {worker.bio?.trim() || t('public.noBio')}
               </Text>
             </View>
           </FadeIn>
@@ -255,7 +256,7 @@ const WorkerProfile = ({ route, navigation }) => {
           {/* Past work */}
           {worker.portfolio?.length > 0 && (
             <FadeIn delay={100}>
-              <SectionHead icon="images-outline" title="Réalisations" />
+              <SectionHead icon="images-outline" title={t('public.work')} />
               <PortfolioGrid images={worker.portfolio} />
             </FadeIn>
           )}
@@ -263,7 +264,7 @@ const WorkerProfile = ({ route, navigation }) => {
           {/* Services */}
           {trades.length > 0 && (
             <FadeIn delay={120}>
-              <SectionHead icon="layers-outline" title="Ses services" />
+              <SectionHead icon="layers-outline" title={t('public.services')} />
               <View style={styles.servicesGrid}>
                 {trades.map((key) => {
                   const meta = categoryMeta(key, { name: worker.categoryNames?.[key] });
@@ -285,10 +286,10 @@ const WorkerProfile = ({ route, navigation }) => {
           <FadeIn delay={160}>
             <SectionHead
               icon="star-outline"
-              title="Avis clients"
+              title={t('public.reviews')}
               right={reviews.length > REVIEWS_PREVIEW && (
                 <PressableScale onPress={() => setShowAllReviews(!showAllReviews)}>
-                  <Text style={styles.linkText}>{showAllReviews ? 'Voir moins' : 'Voir tout'}</Text>
+                  <Text style={styles.linkText}>{showAllReviews ? t('common.seeLess') : t('common.seeAll')}</Text>
                 </PressableScale>
               )}
             />
@@ -317,7 +318,7 @@ const WorkerProfile = ({ route, navigation }) => {
               })
             ) : (
               <View style={[styles.card, styles.cardPad]}>
-                <Text style={[styles.bioText, { color: '#94a3b8' }]}>Aucun avis pour le moment.</Text>
+                <Text style={[styles.bioText, { color: '#94a3b8' }]}>{t('public.noReviews')}</Text>
               </View>
             )}
           </FadeIn>
@@ -328,11 +329,11 @@ const WorkerProfile = ({ route, navigation }) => {
       <View style={local.actions}>
         <PressableScale style={local.action} onPress={handleReservePress}>
           <Ionicons name="calendar-outline" size={19} color="#fff" />
-          <Text style={local.actionText}>Réserver</Text>
+          <Text style={local.actionText}>{t('common.reserve')}</Text>
         </PressableScale>
         <PressableScale style={[local.action, local.nowAction]} onPress={handleImmediateReserve}>
           <Ionicons name="flash" size={19} color="#fff" />
-          <Text style={local.actionText}>Maintenant</Text>
+          <Text style={local.actionText}>{t('public.now')}</Text>
         </PressableScale>
       </View>
     </View>

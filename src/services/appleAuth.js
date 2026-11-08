@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { t } from '../i18n';
 
 // The native module only exists in iOS builds made after it was added; older
 // installs (or Expo Go / Android) simply don't show the Apple button.
@@ -28,7 +29,7 @@ export const isAppleSignInAvailable = async () => {
 // Throws AppleSignInCancelled if the user backs out.
 export const getAppleCredentials = async () => {
   if (!AppleAuthentication) {
-    throw new Error("La connexion Apple nécessite la dernière version de l'application.");
+    throw new Error(t('auth.appleUpdate'));
   }
   try {
     const credential = await AppleAuthentication.signInAsync({
@@ -47,6 +48,6 @@ export const getAppleCredentials = async () => {
       throw new AppleSignInCancelled();
     }
     console.warn('Apple sign-in error', error?.code, error?.message);
-    throw new Error('Connexion Apple impossible. Réessayez.');
+    throw new Error(t('auth.appleFailed'));
   }
 };

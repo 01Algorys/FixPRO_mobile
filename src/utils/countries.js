@@ -1,5 +1,10 @@
+import names from '../i18n/countries.json';
+import { getLanguage } from '../i18n';
+import { locale } from '../i18n/format';
+
 // Every country with its French name and calling code, generated from
-// libphonenumber-js and sorted by name.
+// libphonenumber-js and sorted by name. The other languages' names are in
+// i18n/countries.json (from Unicode CLDR).
 const ROWS = [
   ['AF', "Afghanistan", '93'],
   ['ZA', "Afrique du Sud", '27'],
@@ -248,7 +253,9 @@ const ROWS = [
   ['ZW', "Zimbabwe", '263'],
 ];
 
-export const COUNTRIES = ROWS.map(([code, name, dial]) => ({ code, name, dial }));
+export const COUNTRIES = ROWS
+  .map(([code, name, dial]) => ({ code, name: names[getLanguage()]?.[code] || name, dial }))
+  .sort((a, b) => a.name.localeCompare(b.name, locale()));
 
 export const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.code === 'TN');
 

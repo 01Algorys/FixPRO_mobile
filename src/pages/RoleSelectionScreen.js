@@ -5,19 +5,21 @@ import { useAuth } from '../context/AuthContext';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { AuthShell, AuthTitle, PRIMARY, INK, MUTED } from '../components/auth/AuthUI';
+import { t } from '../i18n';
+import { directional } from '../i18n/format';
 
 const ROLES = [
   {
     role: 'USER',
-    title: 'Je cherche un professionnel',
-    desc: 'Réservez un plombier, un électricien… près de chez vous.',
+    title: t('auth.lookingForPro'),
+    desc: t('auth.lookingForProDesc'),
     icon: 'home-outline',
     image: require('../assets/user.png'),
   },
   {
     role: 'WORKER',
-    title: 'Je suis technicien',
-    desc: 'Recevez des demandes de clients et développez votre activité.',
+    title: t('auth.imTechnician'),
+    desc: t('auth.imTechnicianDesc'),
     icon: 'construct-outline',
     image: require('../assets/worker.png'),
   },
@@ -38,7 +40,7 @@ export default function RoleSelectionScreen({ navigation, route }) {
     setBusyRole(role);
     const result = await loginWithSocial(social.provider, { credentials: social.credentials, role });
     setBusyRole(null);
-    if (result.success === false) Alert.alert('Connexion impossible', result.error);
+    if (result.success === false) Alert.alert(t('auth.signInFailed'), result.error);
     // On success the navigator switches to the signed-in app
   };
 
@@ -47,8 +49,8 @@ export default function RoleSelectionScreen({ navigation, route }) {
   return (
     <AuthShell onBack={() => navigation.goBack()}>
       <AuthTitle
-        title={firstName ? `Bienvenue ${firstName} !` : 'Bienvenue !'}
-        subtitle="Comment souhaitez-vous utiliser FixPro ?"
+        title={firstName ? t('auth.welcomeName', { name: firstName }) : t('auth.welcome')}
+        subtitle={t('auth.howToUse')}
       />
 
       {ROLES.map((r, i) => (
@@ -63,8 +65,8 @@ export default function RoleSelectionScreen({ navigation, route }) {
               <View style={styles.cardCta}>
                 {busyRole === r.role ? <ActivityIndicator size="small" color={PRIMARY} /> : (
                   <>
-                    <Text style={styles.cardCtaText}>Continuer</Text>
-                    <Ionicons name="arrow-forward" size={16} color={PRIMARY} />
+                    <Text style={styles.cardCtaText}>{t('common.continue')}</Text>
+                    <Ionicons name={directional('arrow-forward')} size={16} color={PRIMARY} />
                   </>
                 )}
               </View>

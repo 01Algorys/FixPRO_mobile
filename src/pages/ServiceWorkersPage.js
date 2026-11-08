@@ -6,20 +6,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiService from '../services/api';
 import { getCurrentCoords } from '../utils/location';
-import { categoryMeta } from '../utils/categoryMeta';
+import { categoryMeta, categoryName } from '../utils/categoryMeta';
 import { useScreenChrome } from '../context/ChromeContext';
 import PressableScale from '../components/ui/PressableScale';
 import {
   BLUE, NAVY, PRIMARY, MUTED, PAGE, SORTS, SORTERS, nameOf, prosLabel,
   CategoryIcon, Chip, WorkerCard, SkeletonCard, EmptyState, styles,
 } from '../components/workers/WorkerCard';
+import { t } from '../i18n';
+import { directional } from '../i18n/format';
 
 // Technicians of one category. route.params: { category (key), categoryData }.
 const ServiceWorkersPage = ({ route, navigation }) => {
   useScreenChrome(BLUE, PAGE);
   const { category, categoryData } = route.params || {};
   const meta = categoryMeta(category, categoryData);
-  const title = categoryData?.name || meta.label || 'Professionnels';
+  const title = categoryName(category, categoryData?.name) || t('pros.title');
 
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,9 +91,9 @@ const ServiceWorkersPage = ({ route, navigation }) => {
       return (
         <EmptyState
           icon="cloud-offline-outline"
-          title="Connexion impossible"
-          text="Vérifiez votre connexion et réessayez."
-          action="Réessayer"
+          title={t('common.connectionFailed')}
+          text={t('common.checkConnection')}
+          action={t('common.retry')}
           onAction={() => { setLoading(true); loadWorkers(); }}
         />
       );
@@ -100,9 +102,9 @@ const ServiceWorkersPage = ({ route, navigation }) => {
       return (
         <EmptyState
           icon="time-outline"
-          title="Bientôt disponible"
-          text={`Aucun professionnel en ${title} pour le moment. Nos équipes y travaillent.`}
-          action="Voir tous les professionnels"
+          title={t('common.comingSoon')}
+          text={t('pros.noneInCategory', { category: title })}
+          action={t('pros.seeAll')}
           onAction={() => navigation.navigate('Professionals')}
         />
       );
@@ -110,9 +112,9 @@ const ServiceWorkersPage = ({ route, navigation }) => {
     return (
       <EmptyState
         icon="search-outline"
-        title="Aucun résultat"
-        text="Essayez un autre nom ou retirez vos filtres."
-        action="Réinitialiser"
+        title={t('common.noResults')}
+        text={t('common.tryOtherFilters')}
+        action={t('common.reset')}
         onAction={resetFilters}
       />
     );
@@ -124,21 +126,21 @@ const ServiceWorkersPage = ({ route, navigation }) => {
       <LinearGradient colors={[BLUE, NAVY]} style={styles.header}>
         <View style={styles.headerRow}>
           <PressableScale style={styles.backBtn} scaleTo={0.9} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={23} color="#fff" />
+            <Ionicons name={directional('arrow-back')} size={23} color="#fff" />
           </PressableScale>
           <LinearGradient colors={meta.gradient || [PRIMARY, NAVY]} style={styles.headerIcon}>
             <CategoryIcon meta={meta} size={24} color="#fff" />
           </LinearGradient>
           <View style={{ flex: 1 }}>
             <Text style={styles.title} numberOfLines={1}>{title}</Text>
-            <Text style={styles.subtitle}>{loading ? 'Recherche…' : prosLabel(visible.length)}</Text>
+            <Text style={styles.subtitle}>{loading ? t('common.searching') : prosLabel(visible.length)}</Text>
           </View>
         </View>
         <View style={styles.search}>
           <Ionicons name="search" size={19} color={MUTED} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un professionnel"
+            placeholder={t('pros.searchPro')}
             placeholderTextColor={MUTED}
             value={search}
             onChangeText={setSearch}
@@ -160,7 +162,7 @@ const ServiceWorkersPage = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.chips}
         >
-          <Chip label="Disponibles" icon="ellipse" active={onlyAvailable} onPress={() => setOnlyAvailable(!onlyAvailable)} />
+          <Chip label={t('common.availableFilter')} icon="ellipse" active={onlyAvailable} onPress={() => setOnlyAvailable(!onlyAvailable)} />
           {SORTS.filter((s) => !s.needsLocation || coords).map((s) => (
             <Chip key={s.key} label={s.label} active={sortBy === s.key} onPress={() => setSortBy(s.key)} />
           ))}

@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import apiService from '../services/api';
+import { t } from '../i18n';
 
 // Shows the photo in the conversation straight away, then swaps it for the
 // saved message. The socket may deliver that message first, so both are handled.
@@ -25,6 +26,6 @@ export const sendChatImage = async ({ asset, reservationId, sender, setMessages 
   } catch (error) {
     console.error('Failed to send photo:', error);
     setMessages((prev) => prev.filter((m) => m._localId !== localId));
-    Alert.alert('Photo non envoyée', error.message || 'Réessayez.');
+    Alert.alert(t('picker.notSent'), error.message || t('common.tryAgain'));
   }
 };

@@ -4,6 +4,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { t } from '../i18n';
+import { directional } from '../i18n/format';
 
 const BLUE = '#1a56db';
 
@@ -19,18 +21,17 @@ export default function PendingApprovalScreen({ navigation }) {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Compte créé avec succès !</Text>
+        <Text style={styles.title}>{t('pending.title')}</Text>
 
         {/* Body */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="shield-checkmark-outline" size={28} color={BLUE} />
-            <Text style={styles.cardTitle}>Validation en cours</Text>
+            <Text style={styles.cardTitle}>{t('pending.cardTitle')}</Text>
           </View>
 
           <Text style={styles.cardBody}>
-            Votre compte professionnel a été créé et est actuellement en attente de
-            validation par un administrateur.
+            {t('pending.body')}
           </Text>
 
           <View style={styles.divider} />
@@ -38,20 +39,20 @@ export default function PendingApprovalScreen({ navigation }) {
           <View style={styles.infoRow}>
             <Ionicons name="mail-outline" size={20} color="#6b7280" />
             <Text style={styles.infoText}>
-              Nous vérifions chaque compte. Reconnectez-vous une fois votre compte approuvé.
+              {t('pending.info1')}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Ionicons name="lock-closed-outline" size={20} color="#6b7280" />
             <Text style={styles.infoText}>
-              L'accès à l'application vous sera accordé uniquement après validation.
+              {t('pending.info2')}
             </Text>
           </View>
 
           <View style={styles.notice}>
             <Text style={styles.noticeText}>
-              Si vous n'avez pas reçu de réponse sous 48 h, contactez notre support.
+              {t('pending.notice')}
             </Text>
           </View>
         </View>
@@ -61,8 +62,8 @@ export default function PendingApprovalScreen({ navigation }) {
           style={styles.btn}
           onPress={() => navigation.navigate('Login')}
         >
-          <Ionicons name="arrow-back-outline" size={18} color={BLUE} style={{ marginRight: 6 }} />
-          <Text style={styles.btnText}>Retour à la connexion</Text>
+          <Ionicons name={directional('arrow-back-outline')} size={18} color={BLUE} style={{ marginRight: 6 }} />
+          <Text style={styles.btnText}>{t('pending.backToLogin')}</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>

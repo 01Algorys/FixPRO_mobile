@@ -4,14 +4,19 @@ import {
   StatusBar, Dimensions, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFonts, Poppins_900Black } from '@expo-google-fonts/poppins';
 import { useAuth } from '../context/AuthContext';
+import { LanguageButton } from '../components/LanguagePicker';
+import { t } from '../i18n';
+import { fixedRow } from '../i18n/format';
 const { width, height } = Dimensions.get('window');
 const BLUE = '#1a56db';
 
 export default function WelcomeScreen({ navigation }) {
   const [fontsLoaded] = useFonts({ Poppins_900Black });
   const { continueAsGuest } = useAuth();
+  const insets = useSafeAreaInsets();
 
   if (!fontsLoaded) {
     return null;
@@ -20,11 +25,12 @@ export default function WelcomeScreen({ navigation }) {
   return (
     <LinearGradient colors={['#1a56db', '#1565c0']} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <LanguageButton style={[styles.language, { top: insets.top + 12 }]} />
 
       {/* Section 1 - TOP */}
       <View style={styles.topSection}>
         {/* Logo row */}
-        <View style={styles.logoRow}>
+        <View style={[styles.logoRow, fixedRow]}>
           <Image
             source={require('../assets/tool.png')}
             style={styles.logoImg}
@@ -34,11 +40,11 @@ export default function WelcomeScreen({ navigation }) {
         </View>
 
         {/* Tagline */}
-        <Text style={styles.tagline} numberOfLines={0}>Simple • Rapide • Fiable</Text>
+        <Text style={styles.tagline} numberOfLines={0}>{t('common.tagline')}</Text>
 
         {/* Subtitle */}
         <Text style={styles.subtitle} numberOfLines={0}>
-          Trouvez le bon professionnel{'\n'}près de chez vous.
+          {t('auth.welcomeSubtitle')}
         </Text>
       </View>
 
@@ -59,7 +65,7 @@ export default function WelcomeScreen({ navigation }) {
           onPress={() => navigation.navigate('Login')}
           activeOpacity={0.85}
         >
-          <Text style={styles.loginBtnText} numberOfLines={0}>Se connecter</Text>
+          <Text style={styles.loginBtnText} numberOfLines={0}>{t('common.login')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -67,7 +73,7 @@ export default function WelcomeScreen({ navigation }) {
           onPress={() => navigation.navigate('CreateAccount')}
           activeOpacity={0.85}
         >
-          <Text style={styles.registerBtnText} numberOfLines={0}>Créer un compte</Text>
+          <Text style={styles.registerBtnText} numberOfLines={0}>{t('common.createAccount')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -75,7 +81,7 @@ export default function WelcomeScreen({ navigation }) {
           onPress={continueAsGuest}
           activeOpacity={0.7}
         >
-          <Text style={styles.guestBtnText} numberOfLines={0}>Continuer en tant qu'invité</Text>
+          <Text style={styles.guestBtnText} numberOfLines={0}>{t('auth.continueAsGuest')}</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -83,6 +89,7 @@ export default function WelcomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  language: { position: 'absolute', right: 16, zIndex: 1 },
   container: {
     flex: 1,
     justifyContent: 'space-between',
