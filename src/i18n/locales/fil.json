@@ -749,5 +749,24 @@
     "jardinier": "Paghahalaman",
     "netoyage": "Paglilinis",
     "peinture": "Pagpipintura"
+  },
+  "price": {
+    "title": "Presyo",
+    "from": "Mula {{price}}",
+    "fromShort": "Mula",
+    "onRequest": "Presyong pag-uusapan",
+    "techStarting": "Presyo ng technician",
+    "yourStarting": "Iyong panimulang presyo",
+    "startingPrice": "Panimulang presyo",
+    "startingPriceField": "Panimulang presyo (TND)",
+    "startingPriceHint": "Ipinapakita sa mga kliyente bilang \"Mula …\". Iwanang 0 para sa \"Presyong pag-uusapan\"."
+  },
+  "geo": {
+    "enable": "I-on ang lokasyon",
+    "locating": "Hinahanap ang lokasyon…",
+    "unavailable": "Hindi available ang lokasyon",
+    "deniedTitle": "Naka-off ang lokasyon",
+    "deniedHint": "Payagan ang FixPro na gamitin ang iyong lokasyon sa Settings para makita ang mga kalapit na technician at, para sa mga technician, makita ng mga kalapit na kliyente.",
+    "openSettings": "Buksan ang Settings"
   }
 }

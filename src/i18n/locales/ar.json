@@ -825,5 +825,24 @@
     "jardinier": "البستنة",
     "netoyage": "التنظيف",
     "peinture": "الدهان"
+  },
+  "price": {
+    "title": "السعر",
+    "from": "ابتداءً من {{price}}",
+    "fromShort": "ابتداءً من",
+    "onRequest": "السعر بالاتفاق",
+    "techStarting": "سعر الفني",
+    "yourStarting": "سعرك الابتدائي",
+    "startingPrice": "السعر الابتدائي",
+    "startingPriceField": "السعر الابتدائي (TND)",
+    "startingPriceHint": "يظهر للعملاء بصيغة «ابتداءً من …». اترك 0 لـ «السعر بالاتفاق»."
+  },
+  "geo": {
+    "enable": "تفعيل الموقع",
+    "locating": "جارٍ تحديد الموقع…",
+    "unavailable": "الموقع غير متاح",
+    "deniedTitle": "الموقع معطّل",
+    "deniedHint": "اسمح لـ FixPro باستخدام موقعك من الإعدادات لرؤية الفنيين القريبين، وللفنيين ليظهروا للعملاء القريبين.",
+    "openSettings": "فتح الإعدادات"
   }
 }

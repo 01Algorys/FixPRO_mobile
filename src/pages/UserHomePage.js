@@ -19,7 +19,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../styles/theme';
 import { useResponsive, wp, rf, scale } from '../utils/responsive';
-import { getCurrentCoords, reverseGeocodeCity } from '../utils/location';
+import { useLocation } from '../context/LocationContext';
 import { categoryMeta, shortName, formatDistance, categoryName } from '../utils/categoryMeta';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,6 +28,7 @@ import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { t } from '../i18n';
 import { formatRating, directional, fixedRow } from '../i18n/format';
+import { startingPrice, fromLabel } from '../utils/price';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -64,10 +65,11 @@ const UserHomePage = ({ navigation }) => {
   const searchInputRef = useRef(null);
   const [coords, setCoords] = useState(null);
   const [cityName, setCityName] = useState(null);
-  const [locatingUser, setLocatingUser] = useState(false);
+  // Asked when the app starts and read again on each return to the app
+  const { coords: liveCoords, city: liveCity, status: geoStatus, retry: retryLocation } = useLocation();
+  const locatingUser = geoStatus === 'locating';
 
   useEffect(() => {
-    loadUserLocation();
     loadData();
     loadRecentSearches();
     loadFavorites();
@@ -186,26 +188,17 @@ const UserHomePage = ({ navigation }) => {
     setSearchQuery(term);
   };
 
-  const loadUserLocation = async () => {
-    try {
-      setLocatingUser(true);
-      const currentCoords = await getCurrentCoords();
-      if (!currentCoords) return;
+  // Re-fetch workers once the position is known (or has moved) to sort them
+  // by distance, without flashing the full-screen loader again
+  useEffect(() => {
+    if (!liveCoords) return;
+    setCoords(liveCoords);
+    loadData(liveCoords, { silent: true });
+  }, [liveCoords?.latitude, liveCoords?.longitude]);
 
-      setCoords(currentCoords);
-
-      const city = await reverseGeocodeCity(currentCoords.latitude, currentCoords.longitude);
-      if (city) setCityName(city);
-
-      // Re-fetch workers now that we can sort them by distance, without
-      // flashing the full-screen loader again.
-      loadData(currentCoords, { silent: true });
-    } catch (error) {
-      console.error('Failed to get user location:', error);
-    } finally {
-      setLocatingUser(false);
-    }
-  };
+  useEffect(() => {
+    if (liveCity) setCityName(liveCity);
+  }, [liveCity]);
 
   const loadData = async (currentCoords = coords, { silent = false } = {}) => {
     try {
@@ -271,7 +264,7 @@ const UserHomePage = ({ navigation }) => {
   const displayCityName = cityName
     || userData?.user?.location?.city
     || userData?.location?.city
-    || t('common.myPosition');
+    || (geoStatus === 'denied' ? t('geo.enable') : t('common.myPosition'));
   const firstName = (userData?.user?.name || user?.name || (isGuest ? t('home.guest') : '')).split(' ')[0];
 
   if (loading) {
@@ -310,7 +303,7 @@ const UserHomePage = ({ navigation }) => {
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={styles.locationPill}
-                onPress={loadUserLocation}
+                onPress={retryLocation}
                 disabled={locatingUser}
                 activeOpacity={0.8}
               >
@@ -520,6 +513,10 @@ const UserHomePage = ({ navigation }) => {
                     )}
                   </View>
                 </View>
+                {/* The technician's own price, never the service's */}
+                <Text style={[styles.cardPrice, !startingPrice(worker) && styles.cardPriceNone]} numberOfLines={1}>
+                  {fromLabel(startingPrice(worker))}
+                </Text>
                 <TouchableOpacity style={styles.reserveButton} onPress={() => handleReservePress(worker)} activeOpacity={0.85}>
                   <Text style={styles.reserveButtonText}>{t('common.reserve')}</Text>
                 </TouchableOpacity>
@@ -971,6 +968,16 @@ const createStyles = (width, insets) => {
       width: scale(10),
       height: scale(10),
       borderRadius: scale(5),
+    },
+    cardPrice: {
+      fontSize: scale(14),
+      fontWeight: '800',
+      color: '#0f172a',
+      marginBottom: scale(8),
+    },
+    cardPriceNone: {
+      fontWeight: '600',
+      color: '#64748b',
     },
     reserveButton: {
       backgroundColor: '#1d5ff0',

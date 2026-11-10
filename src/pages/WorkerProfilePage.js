@@ -10,6 +10,7 @@ import ProfileImagePicker from '../components/ProfileImagePicker';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { getCurrentCoords, reverseGeocodeCity } from '../utils/location';
+import { parsePriceInput } from '../utils/price';
 import { categoryMeta, titleCase, categoryName } from '../utils/categoryMeta';
 import CountryCodePicker from '../components/CountryCodePicker';
 import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
@@ -157,7 +158,8 @@ export default function WorkerProfile({ navigation }) {
         phone: fullPhone(country, phone),
         bio: bio.trim(),
         experience: parseInt(experience) || 0,
-        hourlyRate: parseFloat(priceMin) || 0,
+        // Shown to clients as "À partir de …"; 0 means no price ("Prix à convenir")
+        hourlyRate: parsePriceInput(priceMin) || 0,
       };
       
       await api.updateWorkerProfile(updateData);
@@ -523,7 +525,7 @@ export default function WorkerProfile({ navigation }) {
             <View style={styles.card}>
               <InfoRow icon="call-outline" value={ltr(profile?.user?.phone) || '—'} onPress={openEdit} />
               <InfoRow icon="mail-outline" value={profile?.user?.email || '—'} />
-              <InfoRow icon="pricetag-outline" label={t('wprofile.hourlyRate')} value={rate ? formatPrice(rate) : '—'} onPress={openEdit} />
+              <InfoRow icon="pricetag-outline" label={t('price.startingPrice')} value={rate ? t('price.from', { price: formatPrice(rate) }) : t('price.onRequest')} onPress={openEdit} />
               <InfoRow icon="calendar-outline" label={t('wprofile.yearsExperience')} value={years ? t('wprofile.years', { count: years }) : '—'} onPress={openEdit} last />
             </View>
           </FadeIn>
@@ -561,12 +563,13 @@ export default function WorkerProfile({ navigation }) {
               </View>
             </View>
             <View style={[styles.fieldGroup, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>{t('wprofile.hourlyRateField')}</Text>
+              <Text style={styles.fieldLabel}>{t('price.startingPriceField')}</Text>
               <View style={styles.inputWrapper}>
-                <TextInput style={styles.input} value={priceMin} onChangeText={setPriceMin} placeholder="0" placeholderTextColor="#94a3b8" keyboardType="numeric" />
+                <TextInput style={styles.input} value={priceMin} onChangeText={setPriceMin} placeholder="0" placeholderTextColor="#94a3b8" keyboardType="decimal-pad" />
               </View>
             </View>
           </View>
+          <Text style={{ fontSize: 12.5, color: '#64748b', marginTop: -6, marginBottom: 14, marginLeft: 2 }}>{t('price.startingPriceHint')}</Text>
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>{t('wprofile.about')}</Text>
             <View style={[styles.inputWrapper, styles.textAreaWrapper]}>

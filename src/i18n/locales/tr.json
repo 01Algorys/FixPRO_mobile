@@ -749,5 +749,24 @@
     "jardinier": "Bahçıvanlık",
     "netoyage": "Temizlik",
     "peinture": "Boya"
+  },
+  "price": {
+    "title": "Fiyat",
+    "from": "{{price}} başlayan fiyatlarla",
+    "fromShort": "Başlangıç",
+    "onRequest": "Anlaşmalı fiyat",
+    "techStarting": "Teknisyenin fiyatı",
+    "yourStarting": "Başlangıç fiyatınız",
+    "startingPrice": "Başlangıç fiyatı",
+    "startingPriceField": "Başlangıç fiyatı (TND)",
+    "startingPriceHint": "Müşterilere \"… başlayan fiyatlarla\" olarak gösterilir. \"Anlaşmalı fiyat\" için 0 bırakın."
+  },
+  "geo": {
+    "enable": "Konumu aç",
+    "locating": "Konum bulunuyor…",
+    "unavailable": "Konum kullanılamıyor",
+    "deniedTitle": "Konum kapalı",
+    "deniedHint": "Yakındaki teknisyenleri görmek ve teknisyenseniz yakındaki müşterilere görünmek için Ayarlar'dan FixPro'nun konumunuzu kullanmasına izin verin.",
+    "openSettings": "Ayarları aç"
   }
 }

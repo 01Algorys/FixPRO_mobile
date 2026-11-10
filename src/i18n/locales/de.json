@@ -749,5 +749,24 @@
     "jardinier": "Gartenarbeit",
     "netoyage": "Reinigung",
     "peinture": "Malerarbeiten"
+  },
+  "price": {
+    "title": "Preis",
+    "from": "Ab {{price}}",
+    "fromShort": "Ab",
+    "onRequest": "Preis nach Vereinbarung",
+    "techStarting": "Preis des Technikers",
+    "yourStarting": "Dein Startpreis",
+    "startingPrice": "Startpreis",
+    "startingPriceField": "Startpreis (TND)",
+    "startingPriceHint": "Wird Kunden als „Ab …“ angezeigt. Lass 0 für „Preis nach Vereinbarung“."
+  },
+  "geo": {
+    "enable": "Standort aktivieren",
+    "locating": "Standort wird ermittelt…",
+    "unavailable": "Standort nicht verfügbar",
+    "deniedTitle": "Standort deaktiviert",
+    "deniedHint": "Erlaube FixPro in den Einstellungen, deinen Standort zu nutzen, um Techniker in der Nähe zu sehen und als Techniker für Kunden in der Nähe sichtbar zu sein.",
+    "openSettings": "Einstellungen öffnen"
   }
 }

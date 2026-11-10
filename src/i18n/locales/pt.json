@@ -768,5 +768,24 @@
     "jardinier": "Jardinagem",
     "netoyage": "Limpeza",
     "peinture": "Pintura"
+  },
+  "price": {
+    "title": "Preço",
+    "from": "A partir de {{price}}",
+    "fromShort": "A partir de",
+    "onRequest": "Preço a combinar",
+    "techStarting": "Preço do técnico",
+    "yourStarting": "Seu preço inicial",
+    "startingPrice": "Preço inicial",
+    "startingPriceField": "Preço inicial (TND)",
+    "startingPriceHint": "Mostrado aos clientes como \"A partir de …\". Deixe 0 para \"Preço a combinar\"."
+  },
+  "geo": {
+    "enable": "Ativar localização",
+    "locating": "Localizando…",
+    "unavailable": "Localização indisponível",
+    "deniedTitle": "Localização desativada",
+    "deniedHint": "Permita que o FixPro use sua localização nos Ajustes para ver técnicos próximos e, para técnicos, ficar visível para clientes próximos.",
+    "openSettings": "Abrir Ajustes"
   }
 }

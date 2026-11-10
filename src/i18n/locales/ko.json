@@ -730,5 +730,24 @@
     "jardinier": "정원 관리",
     "netoyage": "청소",
     "peinture": "도장"
+  },
+  "price": {
+    "title": "가격",
+    "from": "{{price}}부터",
+    "fromShort": "부터",
+    "onRequest": "가격 협의",
+    "techStarting": "기술자 가격",
+    "yourStarting": "나의 시작 가격",
+    "startingPrice": "시작 가격",
+    "startingPriceField": "시작 가격(TND)",
+    "startingPriceHint": "고객에게 \"…부터\"로 표시됩니다. \"가격 협의\"로 하려면 0으로 두세요."
+  },
+  "geo": {
+    "enable": "위치 켜기",
+    "locating": "위치 확인 중…",
+    "unavailable": "위치를 사용할 수 없음",
+    "deniedTitle": "위치가 꺼져 있음",
+    "deniedHint": "설정에서 FixPro가 위치를 사용하도록 허용하면 가까운 기술자를 볼 수 있고, 기술자는 가까운 고객에게 표시됩니다.",
+    "openSettings": "설정 열기"
   }
 }

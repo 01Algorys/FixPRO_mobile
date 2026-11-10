@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { LocationProvider } from './context/LocationContext';
 import { ChromeProvider, useChromeColors } from './context/ChromeContext';
 import AppNavigator from './navigation/AppNavigator';
 import { navigationRef, navigate } from './navigation/RootNavigation';
@@ -300,7 +301,9 @@ export default function App() {
     <AuthProvider>
       <ChromeProvider>
       <NotificationProvider>
-        <AppContent />
+        <LocationProvider>
+          <AppContent />
+        </LocationProvider>
       </NotificationProvider>
       </ChromeProvider>
     </AuthProvider>

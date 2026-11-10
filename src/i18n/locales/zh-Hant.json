@@ -730,5 +730,24 @@
     "jardinier": "園藝",
     "netoyage": "清潔",
     "peinture": "油漆粉刷"
+  },
+  "price": {
+    "title": "價格",
+    "from": "{{price}} 起",
+    "fromShort": "起價",
+    "onRequest": "價格面議",
+    "techStarting": "技師價格",
+    "yourStarting": "您的起價",
+    "startingPrice": "起價",
+    "startingPriceField": "起價（TND）",
+    "startingPriceHint": "向客戶顯示為「… 起」。填 0 表示「價格面議」。"
+  },
+  "geo": {
+    "enable": "開啟定位",
+    "locating": "正在定位…",
+    "unavailable": "無法取得位置",
+    "deniedTitle": "定位已關閉",
+    "deniedHint": "請在設定中允許 FixPro 使用您的位置，以查看附近的技師；技師也可藉此讓附近的客戶看到。",
+    "openSettings": "開啟設定"
   }
 }
