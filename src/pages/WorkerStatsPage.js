@@ -35,7 +35,8 @@ const BREAKDOWN = [
   { label: t('status.cancelledPlural'), look: 'CANCELLED', statuses: ['CANCELLED'] },
 ];
 
-const priceOf = (r) => r.actualPrice ?? r.estimatedPrice ?? r.service?.basePrice ?? 0;
+// The agreed price, else the technician's starting price at booking (never the admin's)
+const priceOf = (r) => r.actualPrice ?? r.estimatedPrice ?? 0;
 const isDone = (r) => statusOf(r) === 'COMPLETED';
 const sumRevenue = (list) => list.filter(isDone).reduce((total, r) => total + (Number(priceOf(r)) || 0), 0);
 

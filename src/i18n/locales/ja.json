@@ -730,5 +730,24 @@
     "jardinier": "庭仕事",
     "netoyage": "清掃",
     "peinture": "塗装"
+  },
+  "price": {
+    "title": "料金",
+    "from": "{{price}}〜",
+    "fromShort": "〜から",
+    "onRequest": "料金は相談",
+    "techStarting": "技術者の料金",
+    "yourStarting": "あなたの基本料金",
+    "startingPrice": "基本料金",
+    "startingPriceField": "基本料金（TND）",
+    "startingPriceHint": "お客様には「…〜」と表示されます。「料金は相談」にするには0のままにしてください。"
+  },
+  "geo": {
+    "enable": "位置情報をオン",
+    "locating": "位置を取得中…",
+    "unavailable": "位置情報を利用できません",
+    "deniedTitle": "位置情報がオフです",
+    "deniedHint": "近くの技術者を表示し、技術者の場合は近くのお客様に表示されるように、設定でFixProに位置情報の使用を許可してください。",
+    "openSettings": "設定を開く"
   }
 }

@@ -26,6 +26,7 @@ import FadeIn from '../components/ui/FadeIn';
 import { SectionHead, BottomSheet } from '../components/profile/ProfileParts';
 import { t } from '../i18n';
 import { formatDate, formatRating, formatPrice, locale, directional } from '../i18n/format';
+import { startingPrice } from '../utils/price';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -244,7 +245,8 @@ const ReservationDetails = ({ route, navigation }) => {
   const firstService = Array.isArray(worker.services) ? worker.services[0] : null;
   const profession = professionTitle(firstService?.category, firstService?.name);
   const rating = Number(worker.averageRating || worker.rating || 0);
-  const price = worker.hourlyRate || firstService?.basePrice;
+  // Only the technician's own price, never the service price from the dashboard
+  const price = startingPrice(worker);
   const dateLabel = formatDate(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const whenText = asap
     ? t('form.todayAsap')
@@ -290,12 +292,16 @@ const ReservationDetails = ({ route, navigation }) => {
                 {!!worker.experience && <Text style={styles.techMetaText}>· {t('common.yearsExperienceShort', { count: worker.experience })}</Text>}
               </View>
             </View>
-            {!!price && (
-              <View style={styles.pricePill}>
-                <Text style={styles.priceSmall}>{t('form.from')}</Text>
-                <Text style={styles.priceText}>{formatPrice(price)}</Text>
-              </View>
-            )}
+            <View style={styles.pricePill}>
+              {price ? (
+                <>
+                  <Text style={styles.priceSmall}>{t('price.fromShort')}</Text>
+                  <Text style={styles.priceText}>{formatPrice(price)}</Text>
+                </>
+              ) : (
+                <Text style={styles.priceSmall}>{t('price.onRequest')}</Text>
+              )}
+            </View>
           </FadeIn>
 
           {/* When */}

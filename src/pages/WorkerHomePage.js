@@ -11,6 +11,7 @@ import apiService from '../services/api';
 import socketService from '../services/socketService';
 import AcceptedModal from '../components/worker/AcceptedModal';
 import { useNotifications } from '../context/NotificationContext';
+import { useLocation } from '../context/LocationContext';
 import { categoryMeta, formatDistance } from '../utils/categoryMeta';
 import { reverseGeocodeCity } from '../utils/location';
 import PressableScale from '../components/ui/PressableScale';
@@ -18,6 +19,8 @@ import FadeIn from '../components/ui/FadeIn';
 import { t } from '../i18n';
 import { formatDate, formatRating, formatPrice, directional, fixedRow } from '../i18n/format';
 import { serviceName } from '../i18n/serverText';
+import { PriceTag } from '../components/reservations/PriceParts';
+import { startingPrice } from '../utils/price';
 
 const PRIMARY = '#1d5ff0';
 const NAVY = '#0b3fb3';
@@ -70,8 +73,6 @@ const whenLabel = (date, time) => {
   return time ? `${day}, ${time}` : day;
 };
 
-const priceOf = (r) => r.actualPrice ?? r.estimatedPrice ?? r.service?.basePrice ?? null;
-
 const CategoryTile = ({ category, size = 54 }) => {
   const meta = categoryMeta(category);
   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
@@ -110,6 +111,8 @@ export default function WorkerHomePage({ navigation }) {
   const [busyId, setBusyId] = useState(null);
   const [acceptedId, setAcceptedId] = useState(null);
   const { unreadNotifications } = useNotifications();
+  // Live position, saved to the profile by the provider on start and on each return
+  const { coords: liveCoords, city: liveCity, status: geoStatus, retry: retryLocation } = useLocation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -206,7 +209,13 @@ export default function WorkerHomePage({ navigation }) {
   const rating = Number(profile?.averageRating || 0);
   const reviews = profile?.totalReviews || 0;
   const online = profile?.isActive !== false;
-  const here = coordsOf(profile);
+  const here = liveCoords ? coordsOf(liveCoords) : coordsOf(profile);
+  const geoOff = geoStatus === 'denied' || (geoStatus === 'unavailable' && !here);
+  const placeLabel = liveCity || city
+    || (geoStatus === 'denied' ? t('geo.enable')
+      : geoStatus === 'unavailable' ? t('geo.unavailable')
+      : geoStatus === 'locating' ? t('geo.locating')
+      : t('common.myPosition'));
 
   const billable = reservations.filter((r) => BILLABLE.includes(lower(r.status)));
   const amountDue = billable.length * MISSION_FEE + (profile?.feeAdjustment || 0);
@@ -259,10 +268,12 @@ export default function WorkerHomePage({ navigation }) {
               <Text style={styles.brandTagline}>{t('common.taglineLower')}</Text>
             </View>
             <View style={styles.brandDivider} />
-            <PressableScale style={styles.locationPill} onPress={() => navigation.navigate('Profil')}>
-              <Ionicons name="location" size={15} color="#fff" />
-              <Text style={styles.locationText} numberOfLines={1}>{city || t('common.myPosition')}</Text>
-              <Ionicons name="chevron-down" size={14} color="#fff" />
+            <PressableScale style={[styles.locationPill, geoOff && styles.locationPillOff]} onPress={retryLocation}>
+              {geoStatus === 'locating' && !liveCity && !city
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Ionicons name={geoOff ? 'location-outline' : 'location'} size={15} color="#fff" />}
+              <Text style={styles.locationText} numberOfLines={1}>{placeLabel}</Text>
+              <Ionicons name={geoOff ? 'refresh' : 'chevron-down'} size={14} color="#fff" />
             </PressableScale>
             <PressableScale style={styles.bell} scaleTo={0.9} onPress={() => navigation.navigate('Notifications')}>
               <Ionicons name="notifications" size={23} color="#fff" />
@@ -360,9 +371,9 @@ export default function WorkerHomePage({ navigation }) {
                 <Ionicons name="pricetag-outline" size={20} color="#f97316" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>{t('whome.averagePrice')}</Text>
-                <Text style={[styles.kpiValue, { color: NAVY }]}>
-                  {profile?.hourlyRate ? formatPrice(profile.hourlyRate) : t('common.noPrice')}
+                <Text style={styles.kpiLabel} numberOfLines={1} adjustsFontSizeToFit>{t('price.startingPrice')}</Text>
+                <Text style={[styles.kpiValue, { color: NAVY }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {startingPrice(profile) ? formatPrice(startingPrice(profile)) : t('price.onRequest')}
                 </Text>
               </View>
               <Ionicons name={directional('chevron-forward')} size={18} color="#94a3b8" />
@@ -395,7 +406,6 @@ export default function WorkerHomePage({ navigation }) {
             ) : (
               pending.slice(0, 2).map((r) => {
                 const { place, km } = placeLine(r);
-                const price = priceOf(r);
                 const busy = busyId === r.id;
                 return (
                   <PressableScale key={r.id} scaleTo={0.985} style={[styles.card, styles.requestCard]} onPress={() => openReservation(r)}>
@@ -421,11 +431,7 @@ export default function WorkerHomePage({ navigation }) {
                           </View>
                         )}
                       </View>
-                      {price !== null && (
-                        <View style={styles.pricePill}>
-                          <Text style={styles.priceText}>{formatPrice(price)}</Text>
-                        </View>
-                      )}
+                      <PriceTag reservation={r} technician={profile} />
                       <Ionicons name={directional('chevron-forward')} size={18} color={INK} />
                     </View>
                     <View style={styles.actionsRow}>
@@ -491,7 +497,6 @@ export default function WorkerHomePage({ navigation }) {
             ) : (
               interventions.map((r) => {
                 const { place, km } = placeLine(r);
-                const price = priceOf(r);
                 return (
                   <PressableScale key={r.id} scaleTo={0.985} style={[styles.card, styles.jobCard]} onPress={() => openReservation(r)}>
                     <CategoryTile category={r.service?.category} size={50} />
@@ -507,11 +512,7 @@ export default function WorkerHomePage({ navigation }) {
                         <Text style={styles.metaText} numberOfLines={1}>{km ? `${place} – ${km}` : place}</Text>
                       </View>
                     </View>
-                    {price !== null && (
-                      <View style={styles.pricePill}>
-                        <Text style={styles.priceText}>{formatPrice(price)}</Text>
-                      </View>
-                    )}
+                    <PriceTag reservation={r} technician={profile} />
                     <Ionicons name={directional('chevron-forward')} size={18} color={INK} />
                   </PressableScale>
                 );
@@ -574,6 +575,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11, paddingVertical: 9, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
+  locationPillOff: { backgroundColor: 'rgba(239,68,68,0.28)', borderColor: 'rgba(255,255,255,0.45)' },
   locationText: { flex: 1, color: '#fff', fontSize: 13, fontWeight: '600' },
   bell: { padding: 4 },
   bellDot: {

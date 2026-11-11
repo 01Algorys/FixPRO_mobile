@@ -15,6 +15,7 @@ import {
 } from '../components/profile/ProfileParts';
 import { t } from '../i18n';
 import { formatRating, formatPrice } from '../i18n/format';
+import { startingPrice } from '../utils/price';
 
 const REVIEWS_PREVIEW = 3;
 
@@ -209,12 +210,16 @@ const WorkerProfile = ({ route, navigation }) => {
                     <Text style={styles.roleText}>{t('common.technician')}</Text>
                   </View>
                 </View>
-                {worker.hourlyRate > 0 && (
-                  <View style={local.priceBox}>
-                    <Text style={local.priceValue}>{formatPrice(worker.hourlyRate)}</Text>
-                    <Text style={local.priceUnit}>{t('public.perHour')}</Text>
-                  </View>
-                )}
+                <View style={local.priceBox}>
+                  {startingPrice(worker) ? (
+                    <>
+                      <Text style={local.priceUnit}>{t('price.fromShort')}</Text>
+                      <Text style={local.priceValue}>{formatPrice(startingPrice(worker))}</Text>
+                    </>
+                  ) : (
+                    <Text style={local.priceUnit}>{t('price.onRequest')}</Text>
+                  )}
+                </View>
               </View>
               <View style={styles.metaRow}>
                 <Ionicons name="star" size={15} color="#fbbf24" />

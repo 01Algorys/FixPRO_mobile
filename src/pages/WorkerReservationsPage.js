@@ -14,8 +14,9 @@ import {
   BLUE, NAVY, PRIMARY, MUTED, STATUS, TRACK_STEP, statusOf, Progress, Stars, SkeletonCard, FilterChips, EmptyList, styles,
 } from '../components/reservations/ReservationParts';
 import { t } from '../i18n';
-import { formatDate, formatPrice } from '../i18n/format';
+import { formatDate } from '../i18n/format';
 import { serviceName } from '../i18n/serverText';
+import { PriceTag } from '../components/reservations/PriceParts';
 
 const FILTERS = [
   { key: 'all', label: t('status.allPlural') },
@@ -27,7 +28,7 @@ const FILTERS = [
 
 const TRACK = [t('status.received'), t('status.accepted'), t('status.inProgress'), t('status.completed')];
 
-const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, onFinish }) => {
+const ReservationCard = ({ reservation, technician, onOpen, onAccept, onReject, onContact, onFinish }) => {
   const status = statusOf(reservation);
   const look = STATUS[status] || STATUS.PENDING;
   const meta = categoryMeta(reservation.service?.category);
@@ -36,7 +37,6 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
   const clientName = titleCase(reservation.clientName || reservation.user?.name || t('common.client'));
   const clientAvatar = reservation.user?.avatar || reservation.userAvatar;
   const address = [reservation.location?.address, reservation.location?.city].filter(Boolean).join(', ') || reservation.address;
-  const price = reservation.actualPrice ?? reservation.estimatedPrice ?? reservation.service?.basePrice;
   const date = reservation.date
     ? formatDate(reservation.date, { weekday: 'short', day: 'numeric', month: 'short' })
     : t('wres.noDate');
@@ -70,7 +70,7 @@ const ReservationCard = ({ reservation, onOpen, onAccept, onReject, onContact, o
           </View>
         )}
         <Text style={styles.workerName} numberOfLines={1}>{clientName}</Text>
-        {price > 0 && <Text style={styles.price}>{formatPrice(price)}</Text>}
+        <PriceTag reservation={reservation} technician={technician} />
       </View>
 
       {!!address && (
@@ -136,6 +136,8 @@ const WorkerReservationsPage = ({ navigation }) => {
   const [reservations, setReservations] = useState([]);
   const [acceptedId, setAcceptedId] = useState(null);
   const [failed, setFailed] = useState(false);
+  // The technician's own profile, for their price on each request
+  const [profile, setProfile] = useState(null);
   const [filter, setFilter] = useState('all');
 
   // `silent` refreshes in the background (new request, back on the tab)
@@ -145,6 +147,7 @@ const WorkerReservationsPage = ({ navigation }) => {
       if (!silent) setLoading(true);
       // Get worker profile first to obtain worker ID
       const workerProfile = await apiService.getWorkerProfile();
+      setProfile(workerProfile.data || workerProfile);
       const workerId = workerProfile.data?.userId || workerProfile.id;
       console.log('Worker ID:', workerId);
       
@@ -274,6 +277,7 @@ const WorkerReservationsPage = ({ navigation }) => {
         renderItem={({ item }) => (
           <ReservationCard
             reservation={item}
+            technician={profile}
             onOpen={() => navigation.navigate('WorkerReservationDetails', { reservation: item })}
             onAccept={() => onUpdateStatus(item.id, 'accepted')}
             onReject={() => onUpdateStatus(item.id, 'rejected')}

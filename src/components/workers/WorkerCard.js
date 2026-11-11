@@ -6,6 +6,7 @@ import PressableScale from '../ui/PressableScale';
 import FadeIn from '../ui/FadeIn';
 import { t } from '../../i18n';
 import { formatRating, formatPrice, directional } from '../../i18n/format';
+import { startingPrice } from '../../utils/price';
 
 // What the technician list pages share, so they keep looking alike
 export const BLUE = '#1a56db';
@@ -123,11 +124,14 @@ export const WorkerCard = ({ worker, categoryNames, onOpen, onBook }) => {
       )}
 
       <View style={styles.cardBottom}>
-        {worker.hourlyRate > 0 ? (
-          <Text style={styles.price}>
-            {formatPrice(worker.hourlyRate)}<Text style={styles.priceUnit}> {t('common.perHourShort')}</Text>
-          </Text>
-        ) : <View />}
+        {startingPrice(worker) ? (
+          <View>
+            <Text style={styles.priceUnit}>{t('price.fromShort')}</Text>
+            <Text style={styles.price}>{formatPrice(startingPrice(worker))}</Text>
+          </View>
+        ) : (
+          <Text style={styles.priceUnit}>{t('price.onRequest')}</Text>
+        )}
         <PressableScale
           style={[styles.bookBtn, !worker.isActive && styles.bookBtnOff]}
           disabled={!worker.isActive}

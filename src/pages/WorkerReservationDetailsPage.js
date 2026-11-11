@@ -10,8 +10,9 @@ import { categoryMeta } from '../utils/categoryMeta';
 import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { t } from '../i18n';
-import { formatDate, formatPrice, directional } from '../i18n/format';
+import { formatDate, directional } from '../i18n/format';
 import { serviceName } from '../i18n/serverText';
+import { PriceTag, PriceCard } from '../components/reservations/PriceParts';
 
 const PRIMARY = '#1d5ff0';
 const INK = '#0f172a';
@@ -49,6 +50,14 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
   const [reservation, setReservation] = useState(route.params?.reservation || null);
   const [showAccepted, setShowAccepted] = useState(false);
   const [busy, setBusy] = useState(null);
+  // The technician's own profile, for their price
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    apiService.getWorkerProfile()
+      .then((res) => setProfile(res?.data || res))
+      .catch(() => {});
+  }, []);
 
   // Refresh from the API so the screen has the latest status and client details
   useEffect(() => {
@@ -96,7 +105,6 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
   const clientName = reservation.clientName || client.name || t('common.client');
   const loc = reservation.location || {};
   const address = [loc.address || reservation.address, loc.city].filter(Boolean).join(', ') || t('wdetails.noAddress');
-  const price = reservation.actualPrice ?? reservation.estimatedPrice ?? reservation.service?.basePrice;
   const images = Array.isArray(reservation.images) ? reservation.images : [];
 
   const updateStatus = async (next) => {
@@ -171,12 +179,14 @@ const WorkerReservationDetailsPage = ({ route, navigation }) => {
                 <Text style={styles.heroSub} numberOfLines={2}>{serviceName(reservation.service.name)}</Text>
               )}
             </View>
-            {price != null && (
-              <View style={styles.pricePill}>
-                <Text style={styles.priceText}>{formatPrice(price)}</Text>
-              </View>
-            )}
+            <PriceTag reservation={reservation} technician={profile} />
           </View>
+        </FadeIn>
+
+        {/* Price */}
+        <FadeIn delay={30}>
+          <Text style={styles.sectionLabel}>{t('price.title')}</Text>
+          <PriceCard reservation={reservation} technician={profile} role="worker" />
         </FadeIn>
 
         {/* Client */}

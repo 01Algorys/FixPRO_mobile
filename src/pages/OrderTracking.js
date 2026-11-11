@@ -17,6 +17,7 @@ import { Colors } from '../styles/theme';
 import { t } from '../i18n';
 import { formatDate, directional } from '../i18n/format';
 import { serviceName } from '../i18n/serverText';
+import { PriceCard } from '../components/reservations/PriceParts';
 
 const OrderTracking = ({ route, navigation }) => {
   const { reservationId } = route.params || {};
@@ -244,6 +245,11 @@ const OrderTracking = ({ route, navigation }) => {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('price.title')}</Text>
+            <PriceCard reservation={reservation} role="client" style={styles.priceCard} />
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('common.service')}</Text>
             <Text style={styles.serviceName}>
               {serviceName(reservation.service?.name || reservation.service) || t('common.service')}
@@ -449,6 +455,12 @@ const styles = StyleSheet.create({
   timelineTime: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  priceCard: {
+    shadowOpacity: 0,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#eef2f7',
   },
   serviceName: {
     fontSize: 16,

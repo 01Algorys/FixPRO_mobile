@@ -15,8 +15,9 @@ import {
   BLUE, NAVY, PRIMARY, MUTED, STATUS, TRACK_STEP, statusOf, Progress, Stars, SkeletonCard, FilterChips, EmptyList, styles,
 } from '../components/reservations/ReservationParts';
 import { t } from '../i18n';
-import { formatDate, formatPrice } from '../i18n/format';
+import { formatDate } from '../i18n/format';
 import { serviceName } from '../i18n/serverText';
+import { PriceTag } from '../components/reservations/PriceParts';
 
 const FILTERS = [
   { key: 'all', label: t('status.allPlural') },
@@ -34,7 +35,6 @@ const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
   const Icon = meta.lib === 'mci' ? MaterialCommunityIcons : Ionicons;
   const workerName = titleCase(reservation.workerName || t('common.technician'));
   const address = [reservation.location?.address, reservation.location?.city].filter(Boolean).join(', ');
-  const price = reservation.actualPrice ?? reservation.estimatedPrice;
   const date = formatDate(reservation.date, { weekday: 'short', day: 'numeric', month: 'short' });
   const canContact = status === 'ACCEPTED' || status === 'IN_PROGRESS';
   const canRate = status === 'COMPLETED' && !reservation.review;
@@ -66,7 +66,7 @@ const ReservationCard = ({ reservation, onOpen, onContact, onRate }) => {
           </View>
         )}
         <Text style={styles.workerName} numberOfLines={1}>{workerName}</Text>
-        {price > 0 && <Text style={styles.price}>{formatPrice(price)}</Text>}
+        <PriceTag reservation={reservation} />
       </View>
 
       {!!address && (
