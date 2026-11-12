@@ -511,7 +511,9 @@
     "acceptedShort": "{{name}} ha aceptado tu solicitud.",
     "rejectedShort": "{{name}} no puede atender tu solicitud.",
     "cancelledNamed": "{{name}} ha cancelado su solicitud.",
-    "newMessageFrom": "{{name}} te ha enviado un mensaje"
+    "newMessageFrom": "{{name}} te ha enviado un mensaje",
+    "accountApproved": "Cuenta aprobada",
+    "accountApprovedBody": "Tu cuenta está aprobada: los clientes ya pueden encontrarte y enviarte solicitudes."
   },
   "profile": {
     "loadFailed": "No se pudo cargar el perfil. Inténtalo de nuevo.",
@@ -635,7 +637,12 @@
     "nothing": "Nada por ahora",
     "upcomingHint": "Tus próximos trabajos aparecerán aquí.",
     "activeHint": "No hay trabajos en curso.",
-    "doneHint": "Tus trabajos terminados aparecerán aquí."
+    "doneHint": "Tus trabajos terminados aparecerán aquí.",
+    "pendingStatus": "Pendiente de aprobación",
+    "pendingTitle": "Cuenta pendiente de aprobación",
+    "pendingText": "Los clientes aún no te ven. Completa tu perfil y envía tus documentos: un administrador aprobará tu cuenta.",
+    "completeProfile": "Completar mi perfil",
+    "sendDocuments": "Enviar mis documentos"
   },
   "wres": {
     "noDate": "Fecha no indicada",

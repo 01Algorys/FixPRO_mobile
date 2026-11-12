@@ -511,7 +511,9 @@
     "acceptedShort": "{{name}} ha accettato la tua richiesta.",
     "rejectedShort": "{{name}} non può occuparsi della tua richiesta.",
     "cancelledNamed": "{{name}} ha annullato la sua richiesta.",
-    "newMessageFrom": "{{name}} ti ha inviato un messaggio"
+    "newMessageFrom": "{{name}} ti ha inviato un messaggio",
+    "accountApproved": "Account approvato",
+    "accountApprovedBody": "Il tuo account è approvato: ora i clienti possono trovarti e inviarti richieste."
   },
   "profile": {
     "loadFailed": "Impossibile caricare il profilo. Riprova.",
@@ -635,7 +637,12 @@
     "nothing": "Niente per ora",
     "upcomingHint": "I tuoi prossimi interventi appariranno qui.",
     "activeHint": "Nessun intervento in corso.",
-    "doneHint": "I tuoi interventi terminati appariranno qui."
+    "doneHint": "I tuoi interventi terminati appariranno qui.",
+    "pendingStatus": "In attesa di approvazione",
+    "pendingTitle": "Account in attesa di approvazione",
+    "pendingText": "I clienti non ti vedono ancora. Completa il profilo e invia i tuoi documenti: un amministratore approverà il tuo account.",
+    "completeProfile": "Completa il profilo",
+    "sendDocuments": "Invia i documenti"
   },
   "wres": {
     "noDate": "Data non indicata",

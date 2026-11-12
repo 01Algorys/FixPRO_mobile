@@ -479,7 +479,9 @@
     "acceptedShort": "{{name}}さんが依頼を承諾しました。",
     "rejectedShort": "{{name}}さんは依頼に対応できません。",
     "cancelledNamed": "{{name}}さんが依頼をキャンセルしました。",
-    "newMessageFrom": "{{name}}さんからメッセージが届きました"
+    "newMessageFrom": "{{name}}さんからメッセージが届きました",
+    "accountApproved": "アカウントが承認されました",
+    "accountApprovedBody": "アカウントが承認されました。お客様があなたを見つけて依頼を送れるようになりました。"
   },
   "profile": {
     "loadFailed": "プロフィールを読み込めませんでした。もう一度お試しください。",
@@ -601,7 +603,12 @@
     "nothing": "今のところありません",
     "upcomingHint": "今後の作業がここに表示されます。",
     "activeHint": "対応中の作業はありません。",
-    "doneHint": "完了した作業がここに表示されます。"
+    "doneHint": "完了した作業がここに表示されます。",
+    "pendingStatus": "承認待ち",
+    "pendingTitle": "アカウントは承認待ちです",
+    "pendingText": "お客様にはまだ表示されません。プロフィールを入力し、書類を送信してください。管理者がアカウントを承認します。",
+    "completeProfile": "プロフィールを入力",
+    "sendDocuments": "書類を送信"
   },
   "wres": {
     "noDate": "日付未入力",

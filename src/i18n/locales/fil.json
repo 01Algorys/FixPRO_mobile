@@ -495,7 +495,9 @@
     "acceptedShort": "Tinanggap ni {{name}} ang request mo.",
     "rejectedShort": "Hindi matatanggap ni {{name}} ang request mo.",
     "cancelledNamed": "Kinansela ni {{name}} ang request niya.",
-    "newMessageFrom": "Nagpadala sa iyo si {{name}} ng mensahe"
+    "newMessageFrom": "Nagpadala sa iyo si {{name}} ng mensahe",
+    "accountApproved": "Naaprubahan ang account",
+    "accountApprovedBody": "Naaprubahan na ang iyong account: mahahanap ka na ng mga kliyente at mapapadalhan ng mga request."
   },
   "profile": {
     "loadFailed": "Hindi ma-load ang profile. Pakisubukan ulit.",
@@ -618,7 +620,12 @@
     "nothing": "Wala pa sa ngayon",
     "upcomingHint": "Lalabas dito ang mga susunod mong trabaho.",
     "activeHint": "Walang kasalukuyang trabaho.",
-    "doneHint": "Lalabas dito ang mga natapos mong trabaho."
+    "doneHint": "Lalabas dito ang mga natapos mong trabaho.",
+    "pendingStatus": "Naghihintay ng approval",
+    "pendingTitle": "Naghihintay ng approval ang account",
+    "pendingText": "Hindi ka pa nakikita ng mga kliyente. Kumpletuhin ang iyong profile at ipadala ang iyong mga dokumento: aaprubahan ng isang administrator ang iyong account.",
+    "completeProfile": "Kumpletuhin ang profile",
+    "sendDocuments": "Ipadala ang mga dokumento"
   },
   "wres": {
     "noDate": "Walang petsang nakalagay",

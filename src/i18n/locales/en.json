@@ -495,7 +495,9 @@
     "acceptedShort": "{{name}} accepted your request.",
     "rejectedShort": "{{name}} can't take your request.",
     "cancelledNamed": "{{name}} cancelled their request.",
-    "newMessageFrom": "{{name}} sent you a message"
+    "newMessageFrom": "{{name}} sent you a message",
+    "accountApproved": "Account approved",
+    "accountApprovedBody": "Your account is approved: clients can now find you and send you requests."
   },
   "profile": {
     "loadFailed": "Couldn't load the profile. Please try again.",
@@ -618,7 +620,12 @@
     "nothing": "Nothing for now",
     "upcomingHint": "Your upcoming jobs will appear here.",
     "activeHint": "No jobs in progress.",
-    "doneHint": "Your finished jobs will appear here."
+    "doneHint": "Your finished jobs will appear here.",
+    "pendingStatus": "Awaiting approval",
+    "pendingTitle": "Account awaiting approval",
+    "pendingText": "Clients can't see you yet. Complete your profile and send your documents: an administrator will approve your account.",
+    "completeProfile": "Complete my profile",
+    "sendDocuments": "Send my documents"
   },
   "wres": {
     "noDate": "Date not specified",

@@ -495,7 +495,9 @@
     "acceptedShort": "{{name}} talebinizi kabul etti.",
     "rejectedShort": "{{name}} talebinizi üstlenemiyor.",
     "cancelledNamed": "{{name}} talebini iptal etti.",
-    "newMessageFrom": "{{name}} size bir mesaj gönderdi"
+    "newMessageFrom": "{{name}} size bir mesaj gönderdi",
+    "accountApproved": "Hesap onaylandı",
+    "accountApprovedBody": "Hesabınız onaylandı: müşteriler artık sizi bulup talep gönderebilir."
   },
   "profile": {
     "loadFailed": "Profil yüklenemedi. Lütfen tekrar deneyin.",
@@ -618,7 +620,12 @@
     "nothing": "Şimdilik bir şey yok",
     "upcomingHint": "Yaklaşan işleriniz burada görünür.",
     "activeHint": "Devam eden iş yok.",
-    "doneHint": "Tamamlanan işleriniz burada görünür."
+    "doneHint": "Tamamlanan işleriniz burada görünür.",
+    "pendingStatus": "Onay bekleniyor",
+    "pendingTitle": "Hesap onay bekliyor",
+    "pendingText": "Müşteriler sizi henüz göremiyor. Profilinizi tamamlayın ve belgelerinizi gönderin: bir yönetici hesabınızı onaylayacak.",
+    "completeProfile": "Profilimi tamamla",
+    "sendDocuments": "Belgelerimi gönder"
   },
   "wres": {
     "noDate": "Tarih belirtilmedi",

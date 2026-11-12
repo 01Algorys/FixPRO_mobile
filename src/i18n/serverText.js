@@ -80,6 +80,7 @@ const NOTIFICATION_TITLES = {
   'Réservation expirée': 'notif.expired',
   'Compte vérifié': 'notif.verified',
   'Document refusé': 'notif.docRejected',
+  'Compte approuvé': 'notif.accountApproved',
 };
 
 const NOTIFICATION_MESSAGES = {
@@ -88,6 +89,7 @@ const NOTIFICATION_MESSAGES = {
   "Votre réservation a expiré car le professionnel n'a pas répondu sous 24h.": 'notif.expiredClient',
   'Une réservation a expiré faute de réponse sous 24h.': 'notif.expiredWorker',
   'Vos documents sont validés : vous avez le badge vérifié et passez en priorité dans les recherches.': 'notif.verifiedBody',
+  'Votre compte est validé : les clients peuvent maintenant vous trouver et vous envoyer des demandes.': 'notif.accountApprovedBody',
 };
 
 // Texts with a name or a service in them: pattern, key, names of the captures

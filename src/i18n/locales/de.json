@@ -495,7 +495,9 @@
     "acceptedShort": "{{name}} hat Ihre Anfrage angenommen.",
     "rejectedShort": "{{name}} kann Ihre Anfrage nicht übernehmen.",
     "cancelledNamed": "{{name}} hat die Anfrage storniert.",
-    "newMessageFrom": "{{name}} hat Ihnen eine Nachricht gesendet"
+    "newMessageFrom": "{{name}} hat Ihnen eine Nachricht gesendet",
+    "accountApproved": "Konto freigegeben",
+    "accountApprovedBody": "Dein Konto ist freigegeben: Kunden können dich jetzt finden und dir Anfragen senden."
   },
   "profile": {
     "loadFailed": "Das Profil konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
@@ -618,7 +620,12 @@
     "nothing": "Im Moment nichts",
     "upcomingHint": "Ihre anstehenden Einsätze erscheinen hier.",
     "activeHint": "Keine laufenden Einsätze.",
-    "doneHint": "Ihre abgeschlossenen Einsätze erscheinen hier."
+    "doneHint": "Ihre abgeschlossenen Einsätze erscheinen hier.",
+    "pendingStatus": "Wartet auf Freigabe",
+    "pendingTitle": "Konto wartet auf Freigabe",
+    "pendingText": "Kunden sehen dich noch nicht. Vervollständige dein Profil und sende deine Dokumente: Ein Administrator gibt dein Konto frei.",
+    "completeProfile": "Profil vervollständigen",
+    "sendDocuments": "Dokumente senden"
   },
   "wres": {
     "noDate": "Kein Datum angegeben",

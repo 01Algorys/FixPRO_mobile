@@ -479,7 +479,9 @@
     "acceptedShort": "{{name}} 님이 요청을 수락했어요.",
     "rejectedShort": "{{name}} 님이 요청을 맡을 수 없어요.",
     "cancelledNamed": "{{name}} 님이 요청을 취소했어요.",
-    "newMessageFrom": "{{name}} 님이 메시지를 보냈어요"
+    "newMessageFrom": "{{name}} 님이 메시지를 보냈어요",
+    "accountApproved": "계정 승인됨",
+    "accountApprovedBody": "계정이 승인되었습니다. 이제 고객이 회원님을 찾아 요청을 보낼 수 있습니다."
   },
   "profile": {
     "loadFailed": "프로필을 불러올 수 없어요. 다시 시도해 주세요.",
@@ -601,7 +603,12 @@
     "nothing": "아직 없어요",
     "upcomingHint": "예정된 작업이 여기에 표시돼요.",
     "activeHint": "진행 중인 작업이 없어요.",
-    "doneHint": "완료한 작업이 여기에 표시돼요."
+    "doneHint": "완료한 작업이 여기에 표시돼요.",
+    "pendingStatus": "승인 대기 중",
+    "pendingTitle": "계정 승인 대기 중",
+    "pendingText": "아직 고객에게 표시되지 않습니다. 프로필을 완성하고 서류를 보내세요. 관리자가 계정을 승인합니다.",
+    "completeProfile": "프로필 완성하기",
+    "sendDocuments": "서류 보내기"
   },
   "wres": {
     "noDate": "날짜 미입력",
