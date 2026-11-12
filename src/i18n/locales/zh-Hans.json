@@ -479,7 +479,9 @@
     "acceptedShort": "{{name}} 已接受您的请求。",
     "rejectedShort": "{{name}} 无法接受您的请求。",
     "cancelledNamed": "{{name}} 取消了请求。",
-    "newMessageFrom": "{{name}} 给您发了一条消息"
+    "newMessageFrom": "{{name}} 给您发了一条消息",
+    "accountApproved": "账户已通过审核",
+    "accountApprovedBody": "您的账户已通过审核：客户现在可以找到您并向您发送请求。"
   },
   "profile": {
     "loadFailed": "无法加载个人资料，请重试。",
@@ -601,7 +603,12 @@
     "nothing": "暂时没有",
     "upcomingHint": "即将进行的服务会显示在这里。",
     "activeHint": "没有进行中的服务。",
-    "doneHint": "已完成的服务会显示在这里。"
+    "doneHint": "已完成的服务会显示在这里。",
+    "pendingStatus": "等待审核",
+    "pendingTitle": "账户等待审核",
+    "pendingText": "客户暂时看不到您。请完善个人资料并提交证件，管理员会审核您的账户。",
+    "completeProfile": "完善资料",
+    "sendDocuments": "提交证件"
   },
   "wres": {
     "noDate": "未填写日期",

@@ -479,7 +479,9 @@
     "acceptedShort": "{{name}} 已接受您的需求。",
     "rejectedShort": "{{name}} 無法接受您的需求。",
     "cancelledNamed": "{{name}} 取消了需求。",
-    "newMessageFrom": "{{name}} 傳了一則訊息給您"
+    "newMessageFrom": "{{name}} 傳了一則訊息給您",
+    "accountApproved": "帳戶已通過審核",
+    "accountApprovedBody": "您的帳戶已通過審核：客戶現在可以找到您並向您發送請求。"
   },
   "profile": {
     "loadFailed": "無法載入個人檔案，請再試一次。",
@@ -601,7 +603,12 @@
     "nothing": "目前沒有",
     "upcomingHint": "即將進行的服務會顯示在這裡。",
     "activeHint": "沒有進行中的服務。",
-    "doneHint": "已完成的服務會顯示在這裡。"
+    "doneHint": "已完成的服務會顯示在這裡。",
+    "pendingStatus": "等待審核",
+    "pendingTitle": "帳戶等待審核",
+    "pendingText": "客戶暫時看不到您。請完善個人資料並提交證件，管理員會審核您的帳戶。",
+    "completeProfile": "完善資料",
+    "sendDocuments": "提交證件"
   },
   "wres": {
     "noDate": "未填寫日期",

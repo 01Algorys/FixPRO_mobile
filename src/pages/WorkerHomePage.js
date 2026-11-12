@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, RefreshControl,
-  StyleSheet, ActivityIndicator, StatusBar, Image, Alert, Dimensions,
+  StyleSheet, ActivityIndicator, StatusBar, Image, Alert, Dimensions, AppState,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -153,6 +153,18 @@ export default function WorkerHomePage({ navigation }) {
   useEffect(() => socketService.onNewReservation(() => fetchAll()), []);
   useEffect(() => socketService.onReservationUpdate(() => fetchAll()), []);
 
+  // An admin approved the account: leave "En attente" straight away, and
+  // check again whenever the app comes back to the foreground
+  useEffect(() => socketService.onNotification((data) => {
+    if (data?.notification?.type === 'ACCOUNT_APPROVED') fetchAll();
+  }), []);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') fetchAll();
+    });
+    return () => subscription.remove();
+  }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchAll();
@@ -209,6 +221,9 @@ export default function WorkerHomePage({ navigation }) {
   const rating = Number(profile?.averageRating || 0);
   const reviews = profile?.totalReviews || 0;
   const online = profile?.isActive !== false;
+  // Until an admin approves the account, the technician uses the app but
+  // clients can't see them
+  const awaitingApproval = (profile?.user?.accountStatus || user?.accountStatus) === 'PENDING_APPROVAL';
   const here = liveCoords ? coordsOf(liveCoords) : coordsOf(profile);
   const geoOff = geoStatus === 'denied' || (geoStatus === 'unavailable' && !here);
   const placeLabel = liveCity || city
@@ -290,7 +305,7 @@ export default function WorkerHomePage({ navigation }) {
                   <Text style={styles.avatarInitial}>{firstName[0]?.toUpperCase()}</Text>
                 </View>
               )}
-              <View style={[styles.presenceDot, { backgroundColor: online ? '#22c55e' : '#94a3b8' }]} />
+              <View style={[styles.presenceDot, { backgroundColor: awaitingApproval ? '#f59e0b' : online ? '#22c55e' : '#94a3b8' }]} />
             </View>
             <View style={styles.identityText}>
               <Text style={styles.hello} numberOfLines={1}>{t('whome.hello', { name: firstName })}</Text>
@@ -299,11 +314,18 @@ export default function WorkerHomePage({ navigation }) {
                 <Stars rating={rating} />
                 <Text style={styles.role}>{formatRating(rating)} ({reviews})</Text>
               </View>
-              <View style={[styles.presencePill, !online && styles.presencePillOff]}>
-                <Text style={[styles.presenceText, !online && { color: '#e2e8f0' }]}>
-                  {online ? t('whome.onlineAvailable') : t('whome.offline')}
-                </Text>
-              </View>
+              {awaitingApproval ? (
+                <View style={[styles.presencePill, styles.presencePillPending]}>
+                  <Ionicons name="hourglass-outline" size={12} color="#fff" />
+                  <Text style={styles.presenceText}>{t('whome.pendingStatus')}</Text>
+                </View>
+              ) : (
+                <View style={[styles.presencePill, !online && styles.presencePillOff]}>
+                  <Text style={[styles.presenceText, !online && { color: '#e2e8f0' }]}>
+                    {online ? t('whome.onlineAvailable') : t('whome.offline')}
+                  </Text>
+                </View>
+              )}
             </View>
             <PressableScale style={styles.editProfile} onPress={() => navigation.navigate('Profil')}>
               <Text style={styles.editProfileText}>{t('whome.editProfile')}</Text>
@@ -313,6 +335,31 @@ export default function WorkerHomePage({ navigation }) {
         </LinearGradient>
 
         <View style={styles.body}>
+          {/* Waiting for an admin: what to do meanwhile */}
+          {awaitingApproval && (
+            <FadeIn style={[styles.card, styles.pendingCard]}>
+              <View style={styles.pendingHead}>
+                <View style={styles.pendingIcon}>
+                  <Ionicons name="hourglass" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingTitle}>{t('whome.pendingTitle')}</Text>
+                  <Text style={styles.pendingText}>{t('whome.pendingText')}</Text>
+                </View>
+              </View>
+              <View style={styles.pendingActions}>
+                <PressableScale style={[styles.pendingBtn, styles.pendingBtnLight]} onPress={() => navigation.navigate('Profil')}>
+                  <Ionicons name="person-outline" size={16} color="#b45309" />
+                  <Text style={[styles.pendingBtnText, { color: '#b45309' }]} numberOfLines={1}>{t('whome.completeProfile')}</Text>
+                </PressableScale>
+                <PressableScale style={styles.pendingBtn} onPress={() => navigation.navigate('VerificationDocuments')}>
+                  <Ionicons name="document-text-outline" size={16} color="#fff" />
+                  <Text style={styles.pendingBtnText} numberOfLines={1}>{t('whome.sendDocuments')}</Text>
+                </PressableScale>
+              </View>
+            </FadeIn>
+          )}
+
           {/* Balance + missions */}
           <FadeIn style={styles.row}>
             <PressableScale style={[styles.card, styles.kpiCard]} onPress={() => navigation.navigate('Profil')}>
@@ -604,6 +651,19 @@ const styles = StyleSheet.create({
     borderRadius: 12, marginTop: 2,
   },
   presencePillOff: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  presencePillPending: { backgroundColor: '#f59e0b', flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pendingCard: { padding: 14, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a' },
+  pendingHead: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  pendingIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#f59e0b', alignItems: 'center', justifyContent: 'center' },
+  pendingTitle: { fontSize: 15.5, fontWeight: '800', color: INK },
+  pendingText: { fontSize: 13, color: '#78350f', marginTop: 3, lineHeight: 18 },
+  pendingActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  pendingBtn: {
+    flex: 1, height: 42, borderRadius: 21, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingHorizontal: 8, backgroundColor: '#d97706',
+  },
+  pendingBtnLight: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#fcd34d' },
+  pendingBtnText: { color: '#fff', fontSize: 13.5, fontWeight: '700', flexShrink: 1 },
   presenceText: { color: '#fff', fontSize: 11.5, fontWeight: '700' },
   editProfile: {
     flexDirection: 'row', alignItems: 'center', gap: 2,

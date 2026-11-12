@@ -27,6 +27,7 @@ const STYLES_BY_TYPE = {
   RESERVATION_EXPIRED: { icon: 'hourglass', color: '#64748b', bg: '#eef1f6' },
   RESERVATION_STATUS: { icon: 'checkmark-circle', color: '#16a34a', bg: '#e3f8f0' },
   VERIFICATION_APPROVED: { icon: 'shield-checkmark', color: '#16a34a', bg: '#e3f8f0' },
+  ACCOUNT_APPROVED: { icon: 'checkmark-circle', color: '#16a34a', bg: '#e3f8f0' },
   VERIFICATION_REJECTED: { icon: 'alert-circle', color: '#ef4444', bg: '#fee2e2' },
 };
 const DEFAULT_STYLE = { icon: 'notifications', color: PRIMARY, bg: '#e8f0ff' };
@@ -111,6 +112,8 @@ const NotificationsPage = ({ navigation }) => {
     const { reservationId, workerId, workerName } = item.data || {};
     if (item.type === 'VERIFICATION_REJECTED') {
       navigation.navigate('VerificationDocuments');
+    } else if (item.type === 'ACCOUNT_APPROVED') {
+      navigation.navigate('WorkerDashboard', { screen: 'Dashboard' });
     } else if (item.type === 'VERIFICATION_APPROVED') {
       navigation.navigate('WorkerDashboard', { screen: 'Profil' });
     } else if (user?.role === 'WORKER') {

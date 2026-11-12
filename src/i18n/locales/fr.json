@@ -511,7 +511,9 @@
     "acceptedShort": "{{name}} a accepté votre demande.",
     "rejectedShort": "{{name}} ne peut pas assurer votre demande.",
     "cancelledNamed": "{{name}} a annulé sa demande.",
-    "newMessageFrom": "{{name}} vous a envoyé un message"
+    "newMessageFrom": "{{name}} vous a envoyé un message",
+    "accountApproved": "Compte approuvé",
+    "accountApprovedBody": "Votre compte est validé : les clients peuvent maintenant vous trouver et vous envoyer des demandes."
   },
   "profile": {
     "loadFailed": "Impossible de charger le profil. Veuillez réessayer.",
@@ -635,7 +637,12 @@
     "nothing": "Rien pour le moment",
     "upcomingHint": "Vos prochaines interventions apparaîtront ici.",
     "activeHint": "Aucune intervention en cours.",
-    "doneHint": "Vos interventions terminées apparaîtront ici."
+    "doneHint": "Vos interventions terminées apparaîtront ici.",
+    "pendingStatus": "En attente de validation",
+    "pendingTitle": "Compte en attente de validation",
+    "pendingText": "Vous n'êtes pas encore visible des clients. Complétez votre profil et envoyez vos documents : un administrateur validera votre compte.",
+    "completeProfile": "Compléter mon profil",
+    "sendDocuments": "Envoyer mes documents"
   },
   "wres": {
     "noDate": "Date non spécifiée",
