@@ -3,7 +3,8 @@ import { Alert, AppState, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from './AuthContext';
 import apiService from '../services/api';
-import { reverseGeocodeCity } from '../utils/location';
+import { reverseGeocodePlace } from '../utils/location';
+import { setDeviceCountry } from '../utils/market';
 import { t } from '../i18n';
 
 // The device's position for the whole app. Asked once when the app starts,
@@ -18,6 +19,7 @@ const LocationContext = createContext({
 });
 
 const POSITION_TIMEOUT_MS = 15000;
+const PLACE_TIMEOUT_MS = 3000;
 // A technician who hasn't moved more than this keeps the saved position
 const SAVE_MIN_DISTANCE_M = 30;
 
@@ -86,10 +88,17 @@ export const LocationProvider = ({ children }) => {
         if (!coordsRef.current) setStatus('unavailable');
         return;
       }
+      // The country comes first: a guest's lists are for the country they are in,
+      // and screens reload them as soon as the position is set
+      const place = await Promise.race([
+        reverseGeocodePlace(position.latitude, position.longitude),
+        new Promise((resolve) => setTimeout(() => resolve(null), PLACE_TIMEOUT_MS)),
+      ]);
+      if (place?.country) setDeviceCountry(place.country);
+      if (place?.city) setCity(place.city);
       coordsRef.current = position;
       setCoords(position);
       setStatus('granted');
-      reverseGeocodeCity(position.latitude, position.longitude).then((name) => name && setCity(name)).catch(() => {});
       await saveForTechnician(position);
     } catch (error) {
       console.warn('Location refresh failed:', error.message);

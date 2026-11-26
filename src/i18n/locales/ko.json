@@ -43,6 +43,7 @@
     "password": "비밀번호",
     "name": "이름",
     "city": "도시",
+    "country": "국가",
     "address": "주소",
     "date": "날짜",
     "time": "시간",

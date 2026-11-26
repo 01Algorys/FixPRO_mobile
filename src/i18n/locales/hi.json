@@ -43,6 +43,7 @@
     "password": "पासवर्ड",
     "name": "नाम",
     "city": "शहर",
+    "country": "देश",
     "address": "पता",
     "date": "तारीख",
     "time": "समय",

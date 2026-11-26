@@ -13,7 +13,8 @@ import { getCurrentCoords, reverseGeocodeCity } from '../utils/location';
 import { parsePriceInput } from '../utils/price';
 import { categoryMeta, titleCase, categoryName } from '../utils/categoryMeta';
 import CountryCodePicker from '../components/CountryCodePicker';
-import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
+import { DEFAULT_COUNTRY, countryLabel, fullPhone, splitPhone } from '../utils/countries';
+import { getMarketCountry, marketCurrency } from '../utils/market';
 import {
   THEME, INK, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, VerificationCard, DangerButtons, BottomSheet, PasswordField, styles,
 } from '../components/profile/ProfileParts';
@@ -525,6 +526,7 @@ export default function WorkerProfile({ navigation }) {
             <View style={styles.card}>
               <InfoRow icon="call-outline" value={ltr(profile?.user?.phone) || '—'} onPress={openEdit} />
               <InfoRow icon="mail-outline" value={profile?.user?.email || '—'} />
+              <InfoRow icon="flag-outline" label={t('common.country')} value={countryLabel(getMarketCountry()) || '—'} />
               <InfoRow icon="pricetag-outline" label={t('price.startingPrice')} value={rate ? t('price.from', { price: formatPrice(rate) }) : t('price.onRequest')} onPress={openEdit} />
               <InfoRow icon="calendar-outline" label={t('wprofile.yearsExperience')} value={years ? t('wprofile.years', { count: years }) : '—'} onPress={openEdit} last />
             </View>
@@ -563,7 +565,7 @@ export default function WorkerProfile({ navigation }) {
               </View>
             </View>
             <View style={[styles.fieldGroup, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>{t('price.startingPriceField')}</Text>
+              <Text style={styles.fieldLabel}>{marketCurrency() ? t('price.startingPriceField').replace('TND', marketCurrency()) : t('price.startingPrice')}</Text>
               <View style={styles.inputWrapper}>
                 <TextInput style={styles.input} value={priceMin} onChangeText={setPriceMin} placeholder="0" placeholderTextColor="#94a3b8" keyboardType="decimal-pad" />
               </View>

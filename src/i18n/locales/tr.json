@@ -43,6 +43,7 @@
     "password": "Şifre",
     "name": "Ad",
     "city": "Şehir",
+    "country": "Ülke",
     "address": "Adres",
     "date": "Tarih",
     "time": "Saat",

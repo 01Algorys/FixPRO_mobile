@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '../services/api';
+import { getDeviceCountry, setAccountCountry } from '../utils/market';
 import socketService from '../services/socketService';
 import { getGoogleAccessToken, signOutGoogle, GoogleSignInCancelled } from '../services/googleAuth';
 import { getAppleCredentials, AppleSignInCancelled } from '../services/appleAuth';
@@ -52,10 +53,14 @@ export const AuthProvider = ({ children }) => {
       const userData = await AsyncStorage.getItem('user');
 
       if (token && userData) {
-        setUser(JSON.parse(userData));
+        const stored = JSON.parse(userData);
+        setUser(stored);
+        setAccountCountry(stored.country);
         setIsAuthenticated(true);
         setIsGuest(false);
         socketService.connect();
+        // Sessions opened before FixPro worked by country don't know theirs yet
+        if (!stored.country) learnCountry(stored);
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -71,6 +76,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const learnCountry = async (stored) => {
+    try {
+      const response = await apiService.getUserProfile();
+      const country = (response.data || response)?.country;
+      if (!country) return;
+      const updated = { ...stored, country };
+      setAccountCountry(country);
+      setUser(updated);
+      await AsyncStorage.setItem('user', JSON.stringify(updated));
+    } catch (error) {
+      console.warn('Could not read the account country:', error.message);
+    }
+  };
+
   const continueAsGuest = async () => {
     try {
       await AsyncStorage.setItem('isGuest', 'true');
@@ -78,6 +97,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Failed to persist guest mode:', error);
     }
     setUser(null);
+    setAccountCountry(null);
     setIsAuthenticated(false);
     setIsGuest(true);
   };
@@ -88,6 +108,7 @@ export const AuthProvider = ({ children }) => {
     await AsyncStorage.removeItem('isGuest');
 
     setUser(userData);
+    setAccountCountry(userData?.country);
     setIsAuthenticated(true);
     setIsGuest(false);
     socketService.connect();
@@ -118,14 +139,14 @@ export const AuthProvider = ({ children }) => {
       if (!creds) creds = await social.getCredentials();
       let response;
       try {
-        response = await social.request({ ...creds, role, phone, services });
+        response = await social.request({ ...creds, role, phone, services, country: getDeviceCountry() });
       } catch (error) {
         // Apple identity tokens last 10 minutes; one may expire while the user
         // fills in the technician form. Ask Apple again, keeping the name it
         // only shares the first time.
         if (error.code !== 'APPLE_TOKEN_INVALID' || !credentials) throw error;
         creds = { ...(await social.getCredentials()), fullName: creds.fullName };
-        response = await social.request({ ...creds, role, phone, services });
+        response = await social.request({ ...creds, role, phone, services, country: getDeviceCountry() });
       }
       const data = response.data || {};
 
@@ -154,6 +175,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isGuest');
       setUser(null);
+      setAccountCountry(null);
       setIsAuthenticated(false);
       setIsGuest(false);
     } catch (error) {
@@ -163,7 +185,8 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      const response = await apiService.register(userData);
+      // The phone number decides the account's country; without one, the phone's own
+      const response = await apiService.register({ country: getDeviceCountry(), ...userData });
 
       // Technicians wait for an admin to approve their account
       if (response.pendingApproval) return { success: true, pendingApproval: true };

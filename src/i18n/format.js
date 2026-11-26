@@ -1,5 +1,6 @@
 import { I18nManager } from 'react-native';
 import { getLanguage, t } from './index';
+import { marketCurrency } from '../utils/market';
 
 // Tunisian Arabic keeps Western digits and the local month names (جانفي, فيفري...)
 const LOCALES = {
@@ -39,7 +40,13 @@ export const formatNumber = (value, digits) =>
 // A rating such as 4.5, with the language's decimal separator
 export const formatRating = (value) => formatNumber(value || 0, 1);
 
-export const formatPrice = (amount) => t('common.price', { amount: formatNumber(amount) });
+// Prices are in the currency of the country the app is showing. Tunisia keeps
+// its translated form ("50 TND", "50 د.ت"); others use the currency's code.
+export const formatPrice = (amount) => {
+  const currency = marketCurrency();
+  if (currency === 'TND') return t('common.price', { amount: formatNumber(amount) });
+  return currency ? `${formatNumber(amount)} ${currency}` : formatNumber(amount);
+};
 
 // Keeps a phone number, email or code in reading order inside Arabic text
 export const ltr = (text) => (isRTL && text ? `⁦${text}⁩` : text);

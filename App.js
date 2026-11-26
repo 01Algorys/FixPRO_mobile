@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { initLanguage } from './src/i18n';
+import { initMarket } from './src/utils/market';
 
 // Loads the language before anything else: AppRoot is required only then, so
 // its screens, and the labels they define at the top of their files, are built
@@ -9,7 +10,8 @@ export default function App() {
   const [Root, setRoot] = useState(null);
 
   useEffect(() => {
-    initLanguage().then((ready) => {
+    // The phone's country is read too: sign-up and guest browsing depend on it
+    Promise.all([initLanguage(), initMarket()]).then(([ready]) => {
       if (ready) setRoot(() => require('./src/AppRoot').default);
     });
   }, []);

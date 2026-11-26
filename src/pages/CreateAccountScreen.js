@@ -7,7 +7,7 @@ import { isPasswordValid } from '../utils/passwordValidation';
 import ServicePicker from '../components/auth/ServicePicker';
 import FadeIn from '../components/ui/FadeIn';
 import CountryCodePicker from '../components/CountryCodePicker';
-import { DEFAULT_COUNTRY, fullPhone } from '../utils/countries';
+import { deviceCountry, fullPhone } from '../utils/countries';
 import {
   AuthShell, AuthTitle, RoleSwitch, Stepper, TermsCheckbox, SocialButtons, Divider, PrimaryButton,
   Field, PRIMARY, INK,
@@ -27,7 +27,7 @@ export default function CreateAccountScreen({ navigation, route }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  const [country, setCountry] = useState(deviceCountry);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -64,6 +64,7 @@ export default function CreateAccountScreen({ navigation, route }) {
         password,
         role,
         phone: fullPhone(country, phone),
+        country: country.code,
         ...(isWorker && { services }),
       });
       if (result.pendingApproval) {

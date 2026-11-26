@@ -13,7 +13,8 @@ import PressableScale from '../components/ui/PressableScale';
 import FadeIn from '../components/ui/FadeIn';
 import { Stars } from '../components/reservations/ReservationParts';
 import { titleCase } from '../utils/categoryMeta';
-import { DEFAULT_COUNTRY, fullPhone, splitPhone } from '../utils/countries';
+import { DEFAULT_COUNTRY, countryLabel, fullPhone, splitPhone } from '../utils/countries';
+import { getMarketCountry } from '../utils/market';
 import {
   THEME, INK, MUTED, ProfileHeader, SectionHead, StatsRow, InfoRow, AccountTile, DangerButtons, BottomSheet, PasswordField, styles,
 } from '../components/profile/ProfileParts';
@@ -392,6 +393,7 @@ const ProfilePage = ({ navigation }) => {
             <View style={styles.card}>
               <InfoRow icon="call-outline" value={ltr(phone) || t('profile.addPhone')} onPress={handleOpenEditProfile} />
               <InfoRow icon="mail-outline" value={email || '—'} />
+              <InfoRow icon="flag-outline" label={t('common.country')} value={countryLabel(getMarketCountry()) || '—'} />
               <InfoRow icon="location-outline" label={t('common.city')} value={city || '—'} onPress={handleOpenEditProfile} last />
             </View>
           </FadeIn>

@@ -43,6 +43,7 @@
     "password": "Passwort",
     "name": "Name",
     "city": "Stadt",
+    "country": "Land",
     "address": "Adresse",
     "date": "Datum",
     "time": "Uhrzeit",

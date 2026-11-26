@@ -46,6 +46,18 @@ export const reverseGeocodeCity = async (latitude, longitude) => {
   }
 };
 
+// City and country ("TN") of a position, from the device's own geocoder
+export const reverseGeocodePlace = async (latitude, longitude) => {
+  try {
+    const place = (await Location.reverseGeocodeAsync({ latitude, longitude }))?.[0];
+    if (!place) return null;
+    return { city: place.city || place.subregion || place.region || null, country: place.isoCountryCode || null };
+  } catch (error) {
+    console.error('reverseGeocodePlace error:', error);
+    return null;
+  }
+};
+
 // Resolves coordinates to a street address / city / postal code using the
 // device's native geocoder (no API key required). Returns null if unavailable.
 export const reverseGeocodeAddress = async (latitude, longitude) => {
