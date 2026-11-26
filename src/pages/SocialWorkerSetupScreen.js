@@ -5,7 +5,7 @@ import ServicePicker from '../components/auth/ServicePicker';
 import FadeIn from '../components/ui/FadeIn';
 import { AuthShell, AuthTitle, PrimaryButton, Field, INK, MUTED } from '../components/auth/AuthUI';
 import CountryCodePicker from '../components/CountryCodePicker';
-import { DEFAULT_COUNTRY, fullPhone } from '../utils/countries';
+import { deviceCountry, fullPhone } from '../utils/countries';
 import { t } from '../i18n';
 
 // Last step of a technician's Google / Apple sign-up: the provider gives us
@@ -14,7 +14,7 @@ import { t } from '../i18n';
 export default function SocialWorkerSetupScreen({ navigation, route }) {
   const { loginWithSocial } = useAuth();
   const { provider, credentials, profile } = route.params || {};
-  const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  const [country, setCountry] = useState(deviceCountry);
   const [phone, setPhone] = useState('');
   const [services, setServices] = useState([]);
   const [errors, setErrors] = useState({});

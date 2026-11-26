@@ -43,6 +43,7 @@
     "password": "Password",
     "name": "Pangalan",
     "city": "Lungsod",
+    "country": "Bansa",
     "address": "Address",
     "date": "Petsa",
     "time": "Oras",

@@ -43,6 +43,7 @@
     "password": "密码",
     "name": "姓名",
     "city": "城市",
+    "country": "国家/地区",
     "address": "地址",
     "date": "日期",
     "time": "时间",

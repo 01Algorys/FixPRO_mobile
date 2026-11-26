@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { serverError } from '../i18n/serverText';
+import { getMarketCountry } from '../utils/market';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://fixprobackend-production.up.railway.app/api';
 
@@ -130,20 +131,23 @@ class ApiService {
   }
 
   // Workers endpoints
+  // Lists, search and profiles are by country. The server uses the signed-in
+  // user's own country; `country` is what a guest gets.
   async getWorkers(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
+    const queryString = new URLSearchParams({ ...params, country: getMarketCountry() }).toString();
     const endpoint = queryString ? `/workers?${queryString}` : '/workers';
     return this.request(endpoint);
   }
 
   async searchWorkers(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
+    const queryString = new URLSearchParams({ ...params, country: getMarketCountry() }).toString();
     const endpoint = queryString ? `/workers/search?${queryString}` : '/workers/search';
     return this.request(endpoint);
   }
 
   async search(query = '') {
-    const endpoint = query ? `/search?q=${encodeURIComponent(query)}` : '/search';
+    const country = getMarketCountry();
+    const endpoint = query ? `/search?q=${encodeURIComponent(query)}&country=${country}` : `/search?country=${country}`;
     return this.request(endpoint);
   }
 
@@ -152,7 +156,7 @@ class ApiService {
   }
 
   async getWorkerById(id) {
-    return this.request(`/worker-profile/${id}`);
+    return this.request(`/worker-profile/${id}?country=${getMarketCountry()}`);
   }
 
   async getWorkerProfile() {
@@ -290,7 +294,7 @@ class ApiService {
 
   // Active categories managed from the admin dashboard, with technician counts
   async getPublicCategories() {
-    return this.request('/categories');
+    return this.request(`/categories?country=${getMarketCountry()}`);
   }
 
   // Reservations endpoints

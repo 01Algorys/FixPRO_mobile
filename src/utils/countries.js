@@ -1,6 +1,7 @@
 import names from '../i18n/countries.json';
 import { getLanguage } from '../i18n';
 import { locale } from '../i18n/format';
+import { getDeviceCountry } from './market';
 
 // Every country with its French name and calling code, generated from
 // libphonenumber-js and sorted by name. The other languages' names are in
@@ -258,6 +259,15 @@ export const COUNTRIES = ROWS
   .sort((a, b) => a.name.localeCompare(b.name, locale()));
 
 export const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.code === 'TN');
+
+// The phone's own country, preselected where a number is typed for the first time
+export const deviceCountry = () => COUNTRIES.find((c) => c.code === getDeviceCountry()) || DEFAULT_COUNTRY;
+
+// 'TN' -> "🇹🇳 Tunisie"
+export const countryLabel = (code) => {
+  const country = COUNTRIES.find((c) => c.code === code);
+  return country ? `${countryFlag(code)} ${country.name}` : '';
+};
 
 // 'TN' -> 🇹🇳
 export const countryFlag = (code) =>
